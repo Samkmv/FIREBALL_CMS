@@ -15,6 +15,8 @@
     };
     let theme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
     const defaultCover = () => config.defaultCovers?.[theme] || config.defaultCover;
+    const defaultArtist = () => config.defaultArtists?.[theme] || '';
+    const imageSources = (source,kind = 'cover',compact = false) => window.TapeRoomImages.sources(source,config,theme,kind,compact);
     let data = config.state, saved = {};
     try { saved = JSON.parse(localStorage.getItem(config.storageKey) || '{}'); } catch (_) {}
     if (!saved || typeof saved !== 'object' || Array.isArray(saved)) saved = {};
@@ -51,6 +53,10 @@
     };
     const esc = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
     const icon = name => `<svg class="rp-icon" aria-hidden="true"><use href="#rp-i-${name}"></use></svg>`;
+    const previewImage = (source,alt,kind = 'cover') => {
+        const value=imageSources(source,kind,true);
+        return `<img data-cover-preview data-library-image="${kind}" data-compact-image ${source ? '' : `data-default-${kind}`} ${value.srcset ? `srcset="${esc(value.srcset)}"` : ''} ${value.src ? `src="${esc(value.src)}"` : 'hidden'} alt="${esc(alt)}" width="72" height="72" decoding="async">`;
+    };
     const button = (action, title, name, id, extra = '') => `<button type="button" class="rp-icon-button ${extra}" data-action="${action}" data-id="${id}" title="${title}" aria-label="${title}">${icon(name)}</button>`;
     const track = id => trackMap.get(Number(id));
     const album = id => collections.album(data,id);
@@ -73,7 +79,7 @@
     const element = (tag, className, text) => { const node = document.createElement(tag); node.className = className; if (text !== undefined) node.textContent = text; return node; };
     const setIcon = (node, name) => node.querySelector('use').setAttribute('href', `#rp-i-${name}`);
     const rangeFill = (node, fraction) => node.style.setProperty('--fill', `${Math.max(0, Math.min(1, fraction)) * 100}%`);
-    const catalogUI = new window.TapeRoomCatalogUI({app,icon,escape:esc,defaultCover});
+    const catalogUI = new window.TapeRoomCatalogUI({app,icon,escape:esc,defaultCover,defaultArtist,imageSources});
 
     function applyTheme() {
         const dark = theme === 'dark', control = $('[data-action="theme"]');
@@ -85,7 +91,11 @@
         control.setAttribute('aria-pressed', String(dark));
         setIcon(control, dark ? 'sun' : 'moon');
         try { localStorage.setItem(`${config.storageKey}:theme`, theme); } catch (_) {}
-        app.querySelectorAll('[data-default-cover]').forEach(image => { image.src = defaultCover(); });
+        app.querySelectorAll('[data-default-cover]').forEach(image => { window.TapeRoomImages.apply(image,'',config,theme,'cover',image.hasAttribute('data-compact-image')); });
+        app.querySelectorAll('[data-default-artist]').forEach(image => {
+            window.TapeRoomImages.apply(image,'',config,theme,'artist',image.hasAttribute('data-compact-image'));
+            image.hidden=!defaultArtist();if(defaultArtist()){image.removeAttribute('data-image-fallback');const placeholder=image.parentElement.querySelector('.rp-artist-placeholder');if(placeholder)placeholder.hidden=true;}
+        });
         updateNow();
         catalogUI.render({data,view:libraryView,current,playing:!audio.paused,query:$('[data-search]').value,canPublish:Boolean(config.drive?.canManage)});
     }
@@ -155,7 +165,9 @@
             const play = element('button', 'rp-track-play'); play.type = 'button'; play.dataset.action = 'play-track'; play.dataset.id = t.id;
             play.setAttribute('aria-label', `Воспроизвести ${t.title}`);
             play.innerHTML = `<span class="rp-track-number">${String(index + 1).padStart(2, '0')}</span>${icon(t.id === current && !audio.paused ? 'pause' : 'play')}`;
-            const cover = element('img', 'rp-track-cover'); cover.src = t.cover || defaultCover(); cover.alt = ''; cover.loading = 'lazy';
+            const cover = element('img', 'rp-track-cover'); cover.alt = ''; cover.loading = 'lazy'; cover.decoding = 'async'; cover.width=48; cover.height=48;
+            cover.dataset.libraryImage='cover'; cover.dataset.compactImage='';
+            window.TapeRoomImages.apply(cover,t.cover,config,theme,'cover',true);
             if (!t.cover) cover.dataset.defaultCover = '';
             const info = element('div', 'rp-track-info');
             info.append(element('span', 'rp-track-title', t.title), element('span', 'rp-track-artist', `${t.artist || 'Неизвестный исполнитель'}${t.source === 'drive' ? ' · Google Drive' : ''}`));
@@ -213,13 +225,14 @@
         $('[data-artist]').textContent = t?.artist || (t ? 'НЕИЗВЕСТНЫЙ ИСПОЛНИТЕЛЬ' : 'ДОБАВЬТЕ ЛЮБИМУЮ МУЗЫКУ');
         const albumArtwork = queueSource.type === 'album' ? album(queueSource.id)?.cover : '';
         const customArtwork = t?.cover || albumArtwork || '';
-        const cover = customArtwork || defaultCover();
-        if ($('[data-cover]').getAttribute('src') !== cover) $('[data-cover]').src = cover;
+        if (customArtwork) window.TapeRoomImages.apply($('[data-cover]'),customArtwork,config,theme);
+        else { $('[data-cover]').removeAttribute('srcset'); $('[data-cover]').removeAttribute('src'); }
         $('[data-cover]').closest('.rp-cover-button').classList.toggle('has-custom-cover',Boolean(customArtwork));
         $('[data-source]').textContent = current ? (queueName || 'Вся музыка') + (t?.source === 'drive' ? ' · GOOGLE DRIVE' : ' · STEREO') : 'ВАША МУЗЫКА. ВАШ РИТМ.';
         if (t && 'mediaSession' in navigator && 'MediaMetadata' in window) {
-            const artwork = customArtwork ? {src:new URL(customArtwork,location.href).href,...(t.cover_mime && t.cover ? {type:t.cover_mime} : {})}
-                : {src:new URL(config.defaultCovers?.[theme] || config.defaultArtwork || config.defaultCover,location.href).href,sizes:config.defaultArtworkSize || '512x512',type:'image/png'};
+            const defaultArt = config.defaultCoverVariants?.[theme]?.[640];
+            const artwork = customArtwork ? {src:new URL(window.TapeRoomImages.thumbnail(customArtwork,640),location.href).href}
+                : {src:new URL(defaultArt || config.defaultCovers?.[theme] || config.defaultArtwork || config.defaultCover,location.href).href,sizes:defaultArt ? '640x640' : config.defaultArtworkSize || '512x512',type:defaultArt ? 'image/webp' : 'image/png'};
             const chapter = t.chapters?.length ? t.chapters[window.TapeRoomChapters.indexAt(t.chapters,playbackPosition())] : null;
             try { navigator.mediaSession.metadata = new MediaMetadata({title:chapter?.title || t.title, artist:chapter?.artist || t.artist, album:chapter ? t.title : queueName || 'Tape Room', artwork:[artwork]}); } catch (_) {}
         }
@@ -605,7 +618,7 @@
         chapterJob?.abort(); chapterJob = null;
         if (coverPreviewUrl) { URL.revokeObjectURL(coverPreviewUrl); coverPreviewUrl = undefined; }
         dialogSubmitting = false;
-        dialog.classList.remove('rp-dialog--drive','rp-dialog--chapters','rp-dialog--album');
+        dialog.classList.remove('rp-dialog--drive','rp-dialog--chapters','rp-dialog--album','rp-dialog--artist','rp-dialog--album-delete');
         $('[data-dialog-title]').textContent = title;
         $('[data-dialog-fields]').innerHTML = fields;
         $('[data-dialog-description]').textContent = description; $('[data-dialog-description]').hidden = !description;
@@ -617,11 +630,12 @@
     }
     function lockDialogScroll() {
         if (dialogScroll) return;
-        dialogScroll = {x:window.scrollX,y:window.scrollY,behavior:document.documentElement.style.scrollBehavior};
+        dialogScroll = {x:window.scrollX,y:window.scrollY,behavior:document.documentElement.style.scrollBehavior,rootLocked:document.documentElement.classList.contains('rp-dialog-open')};
         const padding = parseFloat(getComputedStyle(document.body).paddingRight) || 0;
         document.body.style.setProperty('--rp-dialog-page-offset',`${-dialogScroll.y}px`);
         document.body.style.setProperty('--rp-dialog-page-padding',`${padding+Math.max(0,window.innerWidth-document.documentElement.clientWidth)}px`);
         document.body.classList.add('is-dialog-open');
+        document.documentElement.classList.add('rp-dialog-open');
     }
     function unlockDialogScroll() {
         if (!dialogScroll) return;
@@ -630,6 +644,7 @@
         document.body.classList.remove('is-dialog-open');
         document.body.style.removeProperty('--rp-dialog-page-offset');
         document.body.style.removeProperty('--rp-dialog-page-padding');
+        if (!position.rootLocked) document.documentElement.classList.remove('rp-dialog-open');
         window.scrollTo(position.x,position.y);
         document.documentElement.style.scrollBehavior=position.behavior;
     }
@@ -645,6 +660,14 @@
     window.visualViewport?.addEventListener('scroll',() => { if (dialog.open) syncDialogViewport(); });
     window.addEventListener('resize',() => { if (dialog.open) syncDialogViewport(); });
     const field = (name, label, value = '', max = 240) => `<label class="rp-field">${label}<input name="${name}" value="${esc(value)}" maxlength="${max}" ${name === 'artist' ? '' : 'required'}></label>`;
+    function resetCoverPreview(source,kind = 'cover') {
+        if (coverPreviewUrl) { URL.revokeObjectURL(coverPreviewUrl);coverPreviewUrl=undefined; }
+        const preview=dialog.querySelector('[data-cover-preview]');
+        window.TapeRoomImages.apply(preview,source,config,theme,kind,true);
+        preview.hidden=!imageSources(source,kind,true).src;
+        preview.toggleAttribute(`data-default-${kind}`,!source);preview.removeAttribute('data-image-fallback');
+        dialog.querySelector('[data-cover-filename]').textContent='JPG, PNG или WebP · до 8 МБ';
+    }
 
     function renderChapters() {
         const t = activeTrack(), items = currentChapters(), panel = $('[data-chapter-panel]');
@@ -800,9 +823,8 @@
         const order = [...(value.tracks || []), ...data.tracks.map(t=>t.id).filter(trackId=>!(value.tracks || []).includes(trackId))];
         const members = new Set(value.tracks || []);
         const rows = order.map(track).filter(t=>t && !t.shared).map(t=>`<div class="rp-album-member" data-album-member="${t.id}"><label><input type="checkbox" name="album_tracks[]" value="${t.id}" ${members.has(t.id) ? 'checked' : ''}><span><strong>${esc(t.title)}</strong><small>${esc(t.artist || t.filename)}</small></span></label><div>${button('album-order-up','Переместить выше','up',t.id)}${button('album-order-down','Переместить ниже','down',t.id)}</div></div>`).join('');
-        const cover = value.cover || defaultCover();
-        const fields = field('title','Название альбома',value.title || '') + field('artist','Артист / исполнитель альбома',value.artist || '') + `<label class="rp-field">Дата релиза (если известна)<input type="date" name="release_date" value="${esc(value.release_date || '')}"></label><label class="rp-field">Описание<textarea name="description" maxlength="4000" rows="3">${esc(value.description || '')}</textarea></label><div class="rp-cover-field"><span class="rp-field-label">Обложка альбома</span><label class="rp-cover-picker"><input class="rp-file-input" type="file" name="cover" accept="image/jpeg,image/png,image/webp" aria-label="Выбрать обложку альбома"><img data-cover-preview src="${esc(cover)}" alt="Обложка альбома"><span class="rp-cover-picker-info"><span class="rp-cover-picker-button">${icon('upload')}Выбрать обложку</span><span data-cover-filename>JPG, PNG или WebP · до 8 МБ</span></span></label></div><div class="rp-album-members-heading"><h3>Песни и порядок</h3><small>Используются ваши исходные файлы</small></div><label class="rp-search">${icon('search')}<input type="search" data-album-track-search placeholder="Найти песню для альбома" aria-label="Найти песню для альбома"></label><div class="rp-album-members">${rows || '<p>Сначала добавьте музыку в CMS или из Google Drive.</p>'}</div>`;
-        openDialog(existing ? 'Редактировать альбом' : 'Новый альбом',fields+(existing ? `<button type="button" class="rp-button rp-button--danger" data-action="catalog-delete" data-id="${existing.id}">Удалить альбом</button>` : ''),async form => {
+        const fields = field('title','Название альбома',value.title || '') + field('artist','Артист / исполнитель альбома',value.artist || '') + `<label class="rp-field">Дата релиза (если известна)<input type="date" name="release_date" value="${esc(value.release_date || '')}"></label><label class="rp-field">Описание<textarea name="description" maxlength="4000" rows="3">${esc(value.description || '')}</textarea></label><div class="rp-cover-field"><span class="rp-field-label">Обложка альбома</span><label class="rp-cover-picker"><input class="rp-file-input" type="file" name="cover" accept="image/jpeg,image/png,image/webp" aria-label="Выбрать обложку альбома">${previewImage(value.cover,'Обложка альбома')}<span class="rp-cover-picker-info"><span class="rp-cover-picker-button">${icon('upload')}Выбрать обложку</span><span data-cover-filename>JPG, PNG или WebP · до 8 МБ</span></span></label></div><div class="rp-album-members-heading"><h3>Песни и порядок</h3><small>Используются ваши исходные файлы</small></div><label class="rp-search">${icon('search')}<input type="search" data-album-track-search placeholder="Найти песню для альбома" aria-label="Найти песню для альбома"></label><div class="rp-album-members">${rows || '<p>Сначала добавьте музыку в CMS или из Google Drive.</p>'}</div>`;
+        openDialog(existing ? 'Редактировать альбом' : 'Новый альбом',fields,async form => {
             const ids = [...dialog.querySelectorAll('[data-album-member] input:checked')].map(input=>Number(input.value));
             const result = await action(`catalog.album.${existing ? 'update' : 'create'}`,{id,title:form.get('title'),artist:form.get('artist'),release_date:form.get('release_date'),description:form.get('description'),tracks:JSON.stringify(ids)},form.get('cover'));
             browse({type:'album',id:existing?.id || result.id}); toast(existing ? 'Альбом сохранён.' : 'Альбом добавлен в вашу коллекцию.');
@@ -814,29 +836,52 @@
         });
         dialog.querySelector('[name="cover"]').addEventListener('change',event => {
             const file = event.target.files[0]; if (!file) return;
-            if (file.size>8*1048576 || !/\.(jpe?g|png|webp)$/i.test(file.name)) { event.target.value=''; toast('Выберите JPG, PNG или WebP размером до 8 МБ.',true); return; }
+            if (file.size>8*1048576 || !/\.(jpe?g|png|webp)$/i.test(file.name)) { event.target.value=''; resetCoverPreview(value.cover); toast('Выберите JPG, PNG или WebP размером до 8 МБ.',true); return; }
             if (coverPreviewUrl) URL.revokeObjectURL(coverPreviewUrl);
-            coverPreviewUrl=URL.createObjectURL(file); dialog.querySelector('[data-cover-preview]').src=coverPreviewUrl;
+            coverPreviewUrl=URL.createObjectURL(file); const preview=dialog.querySelector('[data-cover-preview]'); preview.removeAttribute('srcset'); preview.removeAttribute('data-default-cover'); preview.src=coverPreviewUrl;
+            dialog.querySelector('[data-cover-filename]').textContent=file.name;
+        });
+    }
+    function editArtist(name) {
+        if (!config.drive?.canManage || !name) return;
+        const profile=(data.catalog?.artistProfiles || []).find(item=>String(item.key || item.name).trim().toLocaleLowerCase()===name.trim().toLocaleLowerCase());
+        const preview=imageSources(profile?.image,'artist');
+        const fields=`<div class="rp-cover-field"><span class="rp-field-label">${esc(name)}</span><label class="rp-cover-picker"><input class="rp-file-input" type="file" name="cover" accept="image/jpeg,image/png,image/webp" aria-label="Выбрать изображение артиста" required>${previewImage(profile?.image,'Изображение артиста','artist')}<span class="rp-cover-picker-info"><span class="rp-cover-picker-button">${icon('upload')}Выбрать фотографию</span><span data-cover-filename>JPG, PNG или WebP · до 8 МБ</span></span></label></div>${profile?.image ? `<button type="button" class="rp-button rp-button--danger" data-action="artist-delete" data-artist="${esc(name)}">${icon('trash')}Удалить фотографию</button>` : ''}`;
+        openDialog('Изображение артиста',fields,async form=>{
+            await action('catalog.artist.update',{name},form.get('cover'));
+            toast('Изображение артиста сохранено.');
+        },'Фотография относится к артисту. Обложки альбомов и песен сохраняются отдельно.');
+        dialog.classList.add('rp-dialog--artist');
+        const image=dialog.querySelector('[data-cover-preview]');
+        if (!preview.src) { image.hidden=true; }
+        dialog.querySelector('[name="cover"]').addEventListener('change',event=>{
+            const file=event.target.files[0]; if (!file) return;
+            if (file.size>8*1048576 || !/\.(jpe?g|png|webp)$/i.test(file.name)) {
+                event.target.value=''; resetCoverPreview(profile?.image,'artist'); toast('Выберите JPG, PNG или WebP размером до 8 МБ.',true); return;
+            }
+            if (coverPreviewUrl) URL.revokeObjectURL(coverPreviewUrl);
+            coverPreviewUrl=URL.createObjectURL(file);
+            image.removeAttribute('srcset');image.removeAttribute('data-default-artist');image.src=coverPreviewUrl;image.hidden=false;
             dialog.querySelector('[data-cover-filename]').textContent=file.name;
         });
     }
     function editTrack(id) {
         const t = track(id); if (!t || t.shared) return;
-        openDialog('О композиции', field('title','Название',t.title) + field('artist','Исполнитель',t.artist) + `<div class="rp-cover-field"><span class="rp-field-label">Обложка</span><label class="rp-cover-picker"><input class="rp-file-input" type="file" name="cover" accept="image/jpeg,image/png,image/webp" aria-label="Выбрать обложку"><img data-cover-preview ${t.cover ? '' : 'data-default-cover'} src="${esc(t.cover || defaultCover())}" alt="Предварительный просмотр обложки"><span class="rp-cover-picker-info"><span class="rp-cover-picker-button">${icon('upload')}Выбрать обложку</span><span data-cover-filename>JPG, PNG или WebP · до 8 МБ</span></span></label></div><div class="rp-chapter-editor-actions"><button type="button" class="rp-button" data-action="chapter-add" data-track-id="${t.id}">${icon('plus')}Добавить таймкод</button><button type="button" class="rp-button" data-action="chapter-tools" data-track-id="${t.id}">${icon('list')}CUE и автопоиск</button></div>`, form => action('track.update',{id,title:form.get('title'),artist:form.get('artist')},form.get('cover')));
+        openDialog('О композиции', field('title','Название',t.title) + field('artist','Исполнитель',t.artist) + `<div class="rp-cover-field"><span class="rp-field-label">Обложка</span><label class="rp-cover-picker"><input class="rp-file-input" type="file" name="cover" accept="image/jpeg,image/png,image/webp" aria-label="Выбрать обложку">${previewImage(t.cover,'Предварительный просмотр обложки')}<span class="rp-cover-picker-info"><span class="rp-cover-picker-button">${icon('upload')}Выбрать обложку</span><span data-cover-filename>JPG, PNG или WebP · до 8 МБ</span></span></label></div><div class="rp-chapter-editor-actions"><button type="button" class="rp-button" data-action="chapter-add" data-track-id="${t.id}">${icon('plus')}Добавить таймкод</button><button type="button" class="rp-button" data-action="chapter-tools" data-track-id="${t.id}">${icon('list')}CUE и автопоиск</button></div>`, form => action('track.update',{id,title:form.get('title'),artist:form.get('artist')},form.get('cover')));
         dialog.querySelector('[name="cover"]').addEventListener('change', event => {
             const file = event.target.files[0]; if (!file) return;
             if (file.size > 8 * 1048576 || !/\.(jpe?g|png|webp)$/i.test(file.name)) {
                 event.target.value = '';
                 if (coverPreviewUrl) { URL.revokeObjectURL(coverPreviewUrl); coverPreviewUrl = undefined; }
                 const preview = dialog.querySelector('[data-cover-preview]');
-                preview.src = t.cover || defaultCover(); preview.toggleAttribute('data-default-cover', !t.cover);
+                window.TapeRoomImages.apply(preview,t.cover,config,theme,'cover',true); preview.toggleAttribute('data-default-cover', !t.cover);
                 dialog.querySelector('[data-cover-filename]').textContent = 'JPG, PNG или WebP · до 8 МБ';
                 toast('Выберите JPG, PNG или WebP размером до 8 МБ.',true); return;
             }
             if (coverPreviewUrl) URL.revokeObjectURL(coverPreviewUrl);
             coverPreviewUrl = URL.createObjectURL(file);
             const preview = dialog.querySelector('[data-cover-preview]');
-            preview.removeAttribute('data-default-cover'); preview.src = coverPreviewUrl;
+            preview.removeAttribute('data-default-cover'); preview.removeAttribute('srcset'); preview.src = coverPreviewUrl;
             dialog.querySelector('[data-cover-filename]').textContent = file.name;
         });
     }
@@ -910,6 +955,13 @@
                 case 'catalog-view': browse({type:control.dataset.view}); break;
                 case 'catalog-album': browse({type:'album',id}); break;
                 case 'catalog-artist': browse({type:'artist',artist:control.dataset.artist}); break;
+                case 'artist-edit': editArtist(control.dataset.artist); break;
+                case 'artist-delete': {
+                    const name=control.dataset.artist;
+                    openDialog('Удалить фотографию артиста?', '',async()=>{
+                        await action('catalog.artist.delete',{name}); toast('Фотография удалена.');
+                    },`У «${name}» будет стандартное изображение с микрофоном. Альбомы и песни сохранятся.`,'Удалить',true);break;
+                }
                 case 'catalog-play-album': {
                     const item=album(id); if (!item?.tracks.length) break;
                     setQueue({type:'album',id}); load(item.tracks[0]); await play('user',event); break;
@@ -923,7 +975,8 @@
                 }
                 case 'catalog-delete': {
                     const item=album(id); if (!item?.editable) break;
-                    openDialog('Удалить альбом?', '', () => action('catalog.album.delete',{id}),`«${item.title}» исчезнет из каталога и коллекций. Исходные песни останутся в вашей музыкальной библиотеке.`,'Удалить',true); break;
+                    openDialog('Удалить альбом?', '', () => action('catalog.album.delete',{id}),`«${item.title}» исчезнет из каталога и коллекций. Исходные песни останутся в вашей музыкальной библиотеке.`,'Удалить',true);
+                    dialog.classList.add('rp-dialog--album-delete');break;
                 }
                 case 'album-order-up': case 'album-order-down': {
                     const row=control.closest('[data-album-member]'), adjacent=name==='album-order-up' ? row.previousElementSibling : row.nextElementSibling;
@@ -1077,7 +1130,30 @@
         } catch (_) {} finally { clearTimeout(timeout); }
         if (version === generation) toast(message,true);
     });
-    $('[data-cover]').addEventListener('error', event => { if (event.target.getAttribute('src') !== defaultCover()) { event.target.closest('.rp-cover-button').classList.remove('has-custom-cover'); event.target.src = defaultCover(); } });
+    $('[data-cover]').addEventListener('error', event => {
+        event.target.closest('.rp-cover-button').classList.remove('has-custom-cover');
+        event.target.removeAttribute('srcset');event.target.removeAttribute('src');
+    });
+    app.addEventListener('error',event=>{
+        const image=event.target;
+        if (!image.matches?.('[data-library-image],[data-theme-cover]')) return;
+        if (image.dataset.libraryImage==='artist') {
+            // A removed or unavailable photo falls back to the owner's artwork,
+            // then to the neutral mic only if that file also fails.
+            if (!image.hasAttribute('data-default-artist') && defaultArtist()) {
+                image.setAttribute('data-default-artist','');
+                window.TapeRoomImages.apply(image,'',config,theme,'artist',image.hasAttribute('data-compact-image')); return;
+            }
+            if (image.dataset.imageFallback!=='original' && defaultArtist() && image.getAttribute('src')!==defaultArtist()) {
+                image.dataset.imageFallback='original';image.removeAttribute('srcset');image.src=defaultArtist();return;
+            }
+            image.hidden=true;const placeholder=image.parentElement.querySelector('.rp-artist-placeholder');if(placeholder)placeholder.hidden=false;
+        } else if (!image.hasAttribute('data-image-fallback')) {
+            image.setAttribute('data-image-fallback','');image.removeAttribute('srcset');
+            if (image.hasAttribute('data-library-image')) image.setAttribute('data-default-cover','');
+            image.src=image.matches('[data-theme-cover]') ? config.defaultCovers[image.classList.contains('rp-theme-cover--dark') ? 'dark' : 'light'] : defaultCover();
+        }
+    },true);
     let dragDepth = 0;
     window.addEventListener('dragenter', event => { if ([...(event.dataTransfer?.types || [])].includes('Files')) { event.preventDefault(); dragDepth++; $('[data-drop-overlay]').hidden = false; } });
     window.addEventListener('dragover', event => { if ([...(event.dataTransfer?.types || [])].includes('Files')) event.preventDefault(); });
@@ -1270,6 +1346,12 @@
     }
     dialog.addEventListener('close', () => { unlockDialogScroll(); dialogRequest++; driveBrowseGeneration++; chapterJob?.abort(); chapterJob = null; $('[data-dialog-submit]').hidden = false; if (coverPreviewUrl) { URL.revokeObjectURL(coverPreviewUrl); coverPreviewUrl = undefined; } });
     app.querySelectorAll('[data-theme-cover]').forEach(image=>{ image.decode?.().catch(()=>{}); });
+    // These small theme placeholders are reused across cards and editors.
+    // Warming both variants avoids a blank artist card on its first theme swap.
+    const artistArtwork = ['light','dark'].filter(value=>config.defaultArtists?.[value]).map(value=>{
+        const image=new Image();image.decoding='async';image.fetchPriority='low';
+        window.TapeRoomImages.apply(image,'',config,value,'artist');image.decode?.().catch(()=>{});return image;
+    });
     audio.volume = Number.isFinite(Number(saved.volume)) ? Math.max(0,Math.min(1,Number(saved.volume))) : .8;
     audio.muted = Boolean(saved.muted); syncVolume();
     $('[data-upload-limit]').textContent = `${(config.maxUpload / 1048576).toFixed(0)} МБ`;

@@ -2,9 +2,14 @@
 use Fireball\ReelPlayer\Controllers\PlayerController;
 
 /** @var \FBL\Router $router */
-$router->get('/plugins/reel-player/assets/(?P<file>player\.(?:css|js)|preload\.js|meters\.js|chapters\.js|transport\.js|quality\.js|collections\.js|catalog\.js|cover-(?:light|dark)\.png)', static function (): never {
+$router->get('/plugins/reel-player/assets/(?P<file>player\.(?:css|js)|preload\.js|meters\.js|chapters\.js|transport\.js|quality\.js|collections\.js|catalog\.js|images\.js|(?:cover|artist)-(?:light|dark)(?:\.png|-(?:96|320|640)\.webp))', static function (): never {
     $file = (string)get_route_param('file');
-    if (!in_array($file, ['player.css', 'player.js', 'preload.js', 'meters.js', 'chapters.js', 'transport.js', 'quality.js', 'collections.js', 'catalog.js', 'cover-light.png', 'cover-dark.png'], true)) abort();
+    $allowed = ['player.css','player.js','preload.js','meters.js','chapters.js','transport.js','quality.js','collections.js','catalog.js','images.js'];
+    foreach (['cover','artist'] as $kind) foreach (['light','dark'] as $theme) {
+        $allowed[] = $kind . '-' . $theme . '.png';
+        foreach ([96,320,640] as $size) $allowed[] = $kind . '-' . $theme . '-' . $size . '.webp';
+    }
+    if (!in_array($file, $allowed, true)) abort();
     $path = __DIR__ . '/assets/' . $file;
     if (!is_file($path)) abort();
     $hash = hash_file('sha256', $path);
@@ -18,7 +23,7 @@ $router->get('/plugins/reel-player/assets/(?P<file>player\.(?:css|js)|preload\.j
     header_remove('Expires');
     header_remove('Set-Cookie');
     header('Content-Type: ' . match (pathinfo($file, PATHINFO_EXTENSION)) {
-        'css' => 'text/css', 'js' => 'application/javascript', 'png' => 'image/png', default => 'image/svg+xml',
+        'css' => 'text/css', 'js' => 'application/javascript', 'png' => 'image/png', 'webp' => 'image/webp', default => 'image/svg+xml',
     } . '; charset=utf-8');
     // Content-versioned assets can stay in the disk cache until their bytes change.
     header('Cache-Control: public, max-age=' . $maxAge . ($maxAge === 31536000 ? ', immutable' : ''));
@@ -49,6 +54,7 @@ $router->get('/admin/reel-player/drive/callback', [PlayerController::class, 'dri
 $router->get('/admin/reel-player/catalog/media/(?P<id>\d+)', [PlayerController::class, 'catalogMedia'])->middleware($guard);
 $router->get('/admin/reel-player/catalog/cover/(?P<id>\d+)', [PlayerController::class, 'catalogCover'])->middleware($guard);
 $router->get('/admin/reel-player/catalog/album-cover/(?P<id>\d+)', [PlayerController::class, 'albumCover'])->middleware($guard);
+$router->get('/admin/reel-player/catalog/artist-image/(?P<id>\d+)', [PlayerController::class, 'artistImage'])->middleware($guard);
 $router->get('/admin/reel-player/api/catalog/quality/(?P<id>\d+)', [PlayerController::class, 'catalogQuality'])->middleware($guard);
 $router->post('/admin/reel-player/api/catalog/prepare', [PlayerController::class, 'catalogPrepare'])->middleware($guard);
 $router->post('/admin/reel-player/api/catalog/listen', [PlayerController::class, 'catalogListen'])->middleware($guard);

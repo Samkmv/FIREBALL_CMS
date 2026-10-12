@@ -6,6 +6,7 @@ use App\Services\UploadPolicy;
 
 final class MediaStorage
 {
+    public const COVER_SIZES = [96, 320, 640];
     private string $root;
 
     public function __construct(?string $root = null)
@@ -53,7 +54,130 @@ final class MediaStorage
 
     public function delete(?string $relative): void
     {
-        if ($relative && is_file($path = $this->path($relative))) @unlink($path);
+        if (!$relative) return;
+        $path = $this->path($relative);
+        if (is_file($path)) @unlink($path);
+        $directory = $this->coverCacheDirectory($relative);
+        if (is_dir($directory)) {
+            // These names are generated exclusively by coverVariant(). Never
+            // recursively delete an owner directory or an arbitrary sidecar.
+            foreach (glob($directory . '/*') ?: [] as $file) {
+                if (preg_match('/^(?:[a-f0-9]{64}-(?:96|320|640)\.webp|generate\.lock)$/D', basename($file))) @unlink($file);
+            }
+            @rmdir($directory);
+        }
+    }
+
+    /**
+     * A bounded, private derivative of an authenticated source image. The caller
+     * must establish access to the track/album/artist before using this method.
+     * Originals are never re-encoded. Missing GD/WebP, limited memory, or a
+     * malformed image fall back to the original instead of a broken image.
+     *
+     * @return array{path:string,mime:string}
+     */
+    public function coverVariant(string $relative, string $mime, int $maxEdge = 0): array
+    {
+        $path = $this->path($relative);
+        $original = ['path' => $path, 'mime' => $mime];
+        if (!is_file($path) || !in_array($maxEdge, self::COVER_SIZES, true)
+            || !in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true)
+            || !function_exists('imagewebp') || !function_exists('imagecreatetruecolor')
+            || ($mime === 'image/jpeg' && !function_exists('exif_read_data'))) return $original;
+        $info = @getimagesize($path);
+        if (!$info || $info[0] < 1 || $info[1] < 1 || $info[0] * $info[1] > 20000000) return $original;
+        // Do not enlarge small originals or spend memory decoding them again.
+        if (max($info[0], $info[1]) <= $maxEdge) return $original;
+        $width = max(1, (int)round($info[0] * $maxEdge / max($info[0], $info[1])));
+        $height = max(1, (int)round($info[1] * $maxEdge / max($info[0], $info[1])));
+        $limit = $this->memoryLimit();
+        $estimate = ($info[0] * $info[1] + $width * $height) * 6 + 8 * 1048576;
+        if ($limit > 0 && memory_get_usage(true) + $estimate > $limit) return $original;
+        $directory = $this->coverCacheDirectory($relative);
+        if (!is_dir($directory) && !@mkdir($directory, 0700, true) && !is_dir($directory)) return $original;
+        $lock = @fopen($directory . '/generate.lock', 'c');
+        if (!$lock) return $original;
+        @chmod($directory . '/generate.lock', 0600);
+        $source = $image = null;
+        $temporary = null;
+        try {
+            if (!flock($lock, LOCK_EX)) return $original;
+            // Recheck after acquiring the per-image lock: a previous worker may
+            // already have generated this size, or the original was removed.
+            clearstatcache(true, $path);
+            if (!is_file($path)) return $original;
+            $fingerprint = hash_file('sha256', $path);
+            if ($fingerprint === false) return $original;
+            $target = $directory . '/' . $fingerprint . '-' . $maxEdge . '.webp';
+            foreach (glob($directory . '/*.webp') ?: [] as $cached) {
+                if (preg_match('/^[a-f0-9]{64}-(?:96|320|640)\.webp$/D', basename($cached))
+                    && !str_starts_with(basename($cached), $fingerprint . '-')) @unlink($cached);
+            }
+            if (is_file($target)) return ['path' => $target, 'mime' => 'image/webp'];
+            $source = match ($info['mime'] ?? '') {
+                'image/jpeg' => function_exists('imagecreatefromjpeg') ? @imagecreatefromjpeg($path) : false,
+                'image/png' => function_exists('imagecreatefrompng') ? @imagecreatefrompng($path) : false,
+                'image/webp' => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($path) : false,
+                default => false,
+            };
+            if (!$source) return $original;
+            $image = imagecreatetruecolor($width, $height);
+            if (!$image) return $original;
+            imagealphablending($image, false);
+            imagesavealpha($image, true);
+            $transparent = imagecolorallocatealpha($image, 0, 0, 0, 127);
+            imagefilledrectangle($image, 0, 0, $width - 1, $height - 1, $transparent);
+            if (!imagecopyresampled($image, $source, 0, 0, 0, 0, $width, $height, $info[0], $info[1])) return $original;
+            // Browser decoding honors camera EXIF orientation; GD does not.
+            // Apply it to the small result, preserving the original and avoiding
+            // another full-resolution allocation for phone photos.
+            if (($info['mime'] ?? '') === 'image/jpeg' && function_exists('exif_read_data')) {
+                $exif = @exif_read_data($path, 'IFD0');
+                $orientation = (int)($exif['Orientation'] ?? 1);
+                if (in_array($orientation, [2, 5, 7], true)) imageflip($image, IMG_FLIP_HORIZONTAL);
+                elseif ($orientation === 4) imageflip($image, IMG_FLIP_VERTICAL);
+                $angle = match ($orientation) { 3 => 180, 5, 8 => 90, 6, 7 => -90, default => 0 };
+                if ($angle) {
+                    $rotated = imagerotate($image, $angle, $transparent);
+                    if (!$rotated) return $original;
+                    imagedestroy($image);
+                    $image = $rotated;
+                    imagealphablending($image, false);
+                    imagesavealpha($image, true);
+                }
+            }
+            $temporary = tempnam($directory, '.variant-');
+            if (!$temporary || !imagewebp($image, $temporary, 88) || filesize($temporary) === 0) return $original;
+            // An already compact original is preferable to a larger derivative.
+            if (filesize($temporary) >= filesize($path)) return $original;
+            @chmod($temporary, 0600);
+            if (!rename($temporary, $target)) return $original;
+            $temporary = null;
+            return ['path' => $target, 'mime' => 'image/webp'];
+        } catch (\Throwable) {
+            return $original;
+        } finally {
+            if ($source instanceof \GdImage) imagedestroy($source);
+            if ($image instanceof \GdImage) imagedestroy($image);
+            if ($temporary && is_file($temporary)) @unlink($temporary);
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+    }
+
+    private function coverCacheDirectory(string $relative): string
+    {
+        // path() performs strict ownership-directory and random-name validation.
+        $this->path($relative);
+        return $this->root . '/' . dirname($relative) . '/.covers/' . pathinfo($relative, PATHINFO_FILENAME);
+    }
+
+    private function memoryLimit(): int
+    {
+        $value = trim((string)ini_get('memory_limit'));
+        if ($value === '-1' || $value === '') return 0;
+        $number = (int)$value;
+        return $number * match (strtolower(substr($value, -1))) { 'g' => 1073741824, 'm' => 1048576, 'k' => 1024, default => 1 };
     }
 
     /** null means an invalid/unsatisfiable range, including multipart ranges. */
@@ -77,14 +201,22 @@ final class MediaStorage
     }
 
     /** The controller must check the current user's ownership before this call. */
-    public function streamCover(string $relative, string $mime): never
+    public function streamCover(string $relative, string $mime, int $maxEdge = 0): never
     {
-        $this->sendFile($relative, $mime, in_array($mime, ['image/jpeg', 'image/png', 'image/webp'], true));
+        // Access was checked by the controller. Thumbnail generation must not
+        // hold the PHP session and delay parallel audio or library requests.
+        session()->close();
+        $cover = $this->coverVariant($relative, $mime, $maxEdge);
+        $this->sendPath($cover['path'], $cover['mime'], in_array($cover['mime'], ['image/jpeg', 'image/png', 'image/webp'], true));
     }
 
     private function sendFile(string $relative, string $mime, bool $cacheCover): never
     {
-        $path = $this->path($relative);
+        $this->sendPath($this->path($relative), $mime, $cacheCover);
+    }
+
+    private function sendPath(string $path, string $mime, bool $cacheCover): never
+    {
         if (!is_file($path)) abort('Файл не найден.', 404);
         $size = (int)filesize($path);
         $range = self::range($size, (string)($_SERVER['HTTP_RANGE'] ?? ''));
@@ -128,6 +260,7 @@ final class MediaStorage
         header('Content-Type: ' . $mime);
         header('Content-Length: ' . ($end - $start + 1));
         if ($partial) header("Content-Range: bytes {$start}-{$end}/{$size}");
+        if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'HEAD') exit;
         $handle = fopen($path, 'rb');
         fseek($handle, $start);
         $remaining = $end - $start + 1;

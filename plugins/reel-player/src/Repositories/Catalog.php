@@ -54,7 +54,111 @@ final class Catalog
                 'editable'=>$editable,'canPublish'=>$editable && $this->canPublish,'created_at'=>$album['created_at'],
             ];
         }
-        return ['albums'=>$publicAlbums,'tracks'=>$publicTracks,'canPublish'=>$this->canPublish];
+        $publishedArtistKeys = []; $publishedTrackIds = [];
+        foreach ($publicAlbums as $album) if ($album['published']) {
+            $publishedArtistKeys[self::artistKey($album['artist'])] = true;
+            foreach ($album['tracks'] as $trackId) $publishedTrackIds[$trackId] = true;
+        }
+        foreach ($publicTracks as $track) if (isset($publishedTrackIds[$track['id']])) $publishedArtistKeys[self::artistKey($track['artist'])] = true;
+        return ['albums'=>$publicAlbums,'tracks'=>$publicTracks,'artistProfiles'=>$this->artistProfiles([...$albums,...$tracks],$publishedArtistKeys),'canPublish'=>$this->canPublish];
+    }
+
+    /** Artist identity remains its existing name; a profile never renames music. */
+    private static function artistKey(string $name): string
+    {
+        return mb_strtolower(trim($name),'UTF-8');
+    }
+
+    private static function missingArtistTable(\PDOException $error): bool
+    {
+        return (string)$error->getCode()==='42S02' || ((string)$error->getCode()==='HY000' && str_contains($error->getMessage(),'no such table: reel_artist_profiles'));
+    }
+
+    /** Only matching accessible artist names are serialized, never private paths. */
+    private function artistProfiles(array $items, array $publishedKeys): array
+    {
+        $keys = [];
+        foreach ($items as $item) {
+            $key = self::artistKey((string)($item['artist'] ?? ''));
+            if ($key!=='') $keys[hash('sha256',$key)] = true;
+        }
+        if (!$keys) return [];
+        $profiles = [];
+        // Bound placeholders independently of the size of a user's collection.
+        foreach (array_chunk(array_keys($keys),500) as $chunk) {
+            try {
+                $rows = db()->query('SELECT id,name,owner_id,image_path FROM reel_artist_profiles WHERE name_key IN ('.implode(',',array_fill(0,count($chunk),'?')).')', $chunk)->get() ?: [];
+            } catch (\PDOException $error) {
+                // A Git checkout can precede the plugin migration. Continue
+                // ordinary playback until the CMS applies migration 007.
+                if (self::missingArtistTable($error)) return [];
+                throw $error;
+            }
+            foreach ($rows as $row) {
+                $key = self::artistKey($row['name']);
+                // A user-created private album with a guessed matching name
+                // must not make another owner's unpublished photo visible.
+                if ((int)$row['owner_id']!==$this->owner && !isset($publishedKeys[$key])) continue;
+                $profiles[] = [
+                    'id'=>(int)$row['id'],'name'=>$row['name'],'key'=>$key,
+                    'image'=>$row['image_path'] ? base_href('/admin/reel-player/catalog/artist-image/'.(int)$row['id']).'?v='.basename($row['image_path']) : '',
+                    'editable'=>$this->canPublish,
+                ];
+            }
+        }
+        return $profiles;
+    }
+
+    private function hasArtist(string $key, bool $publishedOnly = false): bool
+    {
+        $albumAccess = $publishedOnly ? 'published=1' : 'owner_id=? OR published=1';
+        $trackAccess = ($publishedOnly ? '' : 't.owner_id=? OR ').'EXISTS(SELECT 1 FROM reel_album_tracks at JOIN reel_albums a ON a.id=at.album_id WHERE at.track_id=t.id AND a.published=1)';
+        $names = db()->query('SELECT artist FROM reel_albums WHERE '.$albumAccess.' UNION SELECT t.artist FROM reel_tracks t WHERE '.$trackAccess, $publishedOnly ? [] : [$this->owner,$this->owner])->get() ?: [];
+        foreach ($names as $row) if (self::artistKey((string)$row['artist'])===$key) return true;
+        return false;
+    }
+
+    /** Authorization must precede conditional image-cache responses. */
+    public function artistCover(int $id): array
+    {
+        try { $profile = db()->query('SELECT name,owner_id,image_path,image_mime FROM reel_artist_profiles WHERE id=?', [$id])->getOne(); }
+        catch (\PDOException $error) { if (self::missingArtistTable($error)) throw new \InvalidArgumentException('Изображение артиста пока не доступно.'); throw $error; }
+        if (!$profile || !$profile['image_path'] || !$this->hasArtist(self::artistKey($profile['name']),(int)$profile['owner_id']!==$this->owner)) throw new \InvalidArgumentException('Изображение артиста не найдено или больше не доступно.');
+        return ['path'=>$profile['image_path'],'mime'=>$profile['image_mime']];
+    }
+
+    private function updateArtist(string $action, array $data, ?array $cover): ?int
+    {
+        if (!$this->canPublish) throw new \InvalidArgumentException('Изображения артистов может изменять только создатель сайта.');
+        $name = self::text($data['name'] ?? '',240,'Имя артиста',true);
+        $key = self::artistKey($name);
+        if ($action!=='artist.delete' && !$this->hasArtist($key)) throw new \InvalidArgumentException('Сначала добавьте музыку этого артиста в библиотеку или альбом.');
+        $storage = new MediaStorage(); $saved = null; $oldPath = null; $id = null;
+        db()->beginTransaction();
+        try {
+            try { $profile = db()->query('SELECT * FROM reel_artist_profiles WHERE name_key=? FOR UPDATE', [hash('sha256',$key)])->getOne(); }
+            catch (\PDOException $error) { if (self::missingArtistTable($error)) throw new \InvalidArgumentException('Сначала завершите обновление плагина в настройках CMS.'); throw $error; }
+            if ($action==='artist.delete') {
+                if ($profile) {
+                    $id = (int)$profile['id']; $oldPath = $profile['image_path'];
+                    db()->query('UPDATE reel_artist_profiles SET image_path=NULL,image_mime=NULL,updated_at=? WHERE id=?', [date('Y-m-d H:i:s'),$id]);
+                }
+            } else {
+                if (!$cover || (int)($cover['error'] ?? UPLOAD_ERR_NO_FILE)===UPLOAD_ERR_NO_FILE) throw new \InvalidArgumentException('Выберите изображение артиста.');
+                $saved = $storage->upload($cover,$this->owner,true);
+                $now = date('Y-m-d H:i:s');
+                if ($profile) {
+                    $id = (int)$profile['id']; $oldPath = $profile['image_path'];
+                    db()->query('UPDATE reel_artist_profiles SET owner_id=?,image_path=?,image_mime=?,updated_at=? WHERE id=?', [$this->owner,$saved['path'],$saved['mime'],$now,$id]);
+                } else {
+                    db()->query('INSERT INTO reel_artist_profiles(name_key,name,owner_id,image_path,image_mime,created_at,updated_at) VALUES(?,?,?,?,?,?,?)', [hash('sha256',$key),$name,$this->owner,$saved['path'],$saved['mime'],$now,$now]);
+                    $id = (int)db()->getInsertId();
+                }
+            }
+            db()->commit();
+        } catch (\Throwable $error) { db()->rollBack(); if ($saved) $storage->delete($saved['path']); throw $error; }
+        if ($oldPath) $storage->delete($oldPath);
+        return $id;
     }
 
     /** Returns a server-only row: source paths are never serialized by state(). */
@@ -138,6 +242,7 @@ final class Catalog
 
     public function action(string $name, array $data, ?array $cover = null): ?int
     {
+        if (in_array($name,['artist.update','artist.delete'],true)) return $this->updateArtist($name,$data,$cover);
         $id = (int)($data['id'] ?? 0);
         if ($name==='track.favorite') {
             $track = $this->accessibleTrack($id); $favorite = self::flag($data['favorite'] ?? null);

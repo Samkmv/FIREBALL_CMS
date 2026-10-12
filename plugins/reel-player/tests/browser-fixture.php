@@ -70,6 +70,7 @@ function db(): object { static $db; return $db ??= new class {
             CREATE TABLE IF NOT EXISTS reel_catalog_favorites(owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,track_id INTEGER NOT NULL REFERENCES reel_tracks(id) ON DELETE CASCADE,favorite INTEGER NOT NULL DEFAULT 1,PRIMARY KEY(owner_id,track_id));
             CREATE TABLE IF NOT EXISTS reel_track_stats(track_id INTEGER PRIMARY KEY REFERENCES reel_tracks(id) ON DELETE CASCADE,listens INTEGER NOT NULL DEFAULT 0);
             CREATE TABLE IF NOT EXISTS reel_listening_sessions(token_hash TEXT PRIMARY KEY,owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,track_id INTEGER NOT NULL REFERENCES reel_tracks(id) ON DELETE CASCADE,threshold REAL NOT NULL,started_at TEXT NOT NULL,expires_at TEXT NOT NULL,counted INTEGER NOT NULL DEFAULT 0,credited INTEGER NOT NULL DEFAULT 0);");
+        $this->pdo->exec('CREATE TABLE IF NOT EXISTS reel_artist_profiles(id INTEGER PRIMARY KEY AUTOINCREMENT,name_key TEXT UNIQUE NOT NULL,name TEXT NOT NULL,owner_id INTEGER NOT NULL REFERENCES users(id),image_path TEXT,image_mime TEXT,created_at TEXT NOT NULL,updated_at TEXT NOT NULL)');
         if (!in_array('credited', array_column($this->pdo->query('PRAGMA table_info(reel_listening_sessions)')->fetchAll(), 'name'), true)) $this->pdo->exec('ALTER TABLE reel_listening_sessions ADD COLUMN credited INTEGER NOT NULL DEFAULT 0');
     }
     public function query(string $sql,array $params=[]): static {

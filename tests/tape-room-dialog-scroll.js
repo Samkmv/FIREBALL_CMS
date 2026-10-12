@@ -12,11 +12,13 @@ for(const fixture of [
 ]){
     const classes=new Set(['existing-body-class']),styles=new Map([['--unrelated','keep']]),scrolls=[];
     const body={style:{setProperty:(name,value)=>styles.set(name,value),removeProperty:name=>styles.delete(name)},classList:{add:name=>classes.add(name),remove:name=>classes.delete(name)}};
-    const root={clientWidth:fixture.client,style:{scrollBehavior:fixture.behavior}};
+    const rootClasses=new Set();
+    const root={clientWidth:fixture.client,style:{scrollBehavior:fixture.behavior},classList:{contains:name=>rootClasses.has(name),add:name=>rootClasses.add(name),remove:name=>rootClasses.delete(name)}};
     const context=vm.createContext({document:{body,documentElement:root},window:{scrollX:fixture.x,scrollY:fixture.y,innerWidth:fixture.width,scrollTo(x,y){scrolls.push({x,y,behavior:root.style.scrollBehavior});}},getComputedStyle:()=>({paddingRight:fixture.padding})});
     vm.runInContext('let dialogScroll=null;\n'+scrollCode,context);
     context.unlockDialogScroll();assert.equal(scrolls.length,0,'Closing with no open dialog does not jump the page');checks++;
     context.lockDialogScroll();assert.equal(classes.has('is-dialog-open'),true);checks++;
+    assert.equal(rootClasses.has('rp-dialog-open'),true,'Safari document scrolling is locked as well as the body');checks++;
     assert.equal(styles.get('--rp-dialog-page-offset'),`${-fixture.y}px`,'A modal opened below the deck preserves the visible page position');checks++;
     assert.equal(styles.get('--rp-dialog-page-padding'),fixture.expectedPadding,'Scrollbar compensation does not shift the player width or go negative');checks++;
     // Opening another editor within the dialog may happen after the browser
@@ -26,9 +28,12 @@ for(const fixture of [
     context.unlockDialogScroll();assert.deepEqual(scrolls,[{x:fixture.x,y:fixture.y,behavior:'auto'}],'Closing restores both offsets without a smooth scroll animation');checks++;
     assert.equal(root.style.scrollBehavior,fixture.behavior,'The original document scrolling preference is restored');checks++;
     assert.deepEqual([...classes],['existing-body-class'],'Closing removes only the owned scroll-lock class');checks++;
+    assert.equal(rootClasses.size,0,'Document scrolling is released on close');checks++;
     assert.deepEqual([...styles],[['--unrelated','keep']],'Closing removes only the owned scroll-lock properties');checks++;
     context.unlockDialogScroll();assert.equal(scrolls.length,1,'Duplicate close events cannot scroll the page twice');checks++;
     context.window.scrollY=2500;context.lockDialogScroll();context.unlockDialogScroll();
     assert.equal(scrolls.at(-1).y,2500,'A later editor uses the new page position');checks++;
+    rootClasses.add('rp-dialog-open');context.lockDialogScroll();context.unlockDialogScroll();
+    assert.equal(rootClasses.has('rp-dialog-open'),true,'A lock owned by another component is preserved');checks++;
 }
 console.log(`Passed ${checks} Tape Room dialog scroll checks: desktop scrollbar, iPhone-sized page, nested opens, offset restoration and harmless repeated close.`);

@@ -25,10 +25,24 @@ final class PlayerController
         header('Cache-Control: private, no-store');
         $assets = dirname(__DIR__, 2) . '/assets';
         $manifest = json_decode((string)file_get_contents(dirname($assets) . '/plugin.json'), true, 512, JSON_THROW_ON_ERROR);
-        $defaultCovers = [];
+        $defaultCovers = []; $defaultCoverVariants = []; $defaultArtists = []; $defaultArtistVariants = [];
         foreach (['light', 'dark'] as $theme) {
             $file = 'cover-' . $theme . '.png';
             $defaultCovers[$theme] = base_href('/plugins/reel-player/assets/' . $file . '?v=' . substr(hash_file('sha256', $assets . '/' . $file), 0, 16));
+            foreach (MediaStorage::COVER_SIZES as $size) {
+                $variant = 'cover-' . $theme . '-' . $size . '.webp';
+                if (is_file($assets . '/' . $variant)) $defaultCoverVariants[$theme][$size] = base_href('/plugins/reel-player/assets/' . $variant . '?v=' . substr(hash_file('sha256',$assets . '/' . $variant),0,16));
+            }
+            // Owner-supplied microphone artwork is optional; do not substitute
+            // album covers or request missing files while it is unavailable.
+            $artist = 'artist-' . $theme . '.png';
+            if (is_file($assets . '/' . $artist)) {
+                $defaultArtists[$theme] = base_href('/plugins/reel-player/assets/' . $artist . '?v=' . substr(hash_file('sha256',$assets . '/' . $artist),0,16));
+                foreach (MediaStorage::COVER_SIZES as $size) {
+                    $variant = 'artist-' . $theme . '-' . $size . '.webp';
+                    if (is_file($assets . '/' . $variant)) $defaultArtistVariants[$theme][$size] = base_href('/plugins/reel-player/assets/' . $variant . '?v=' . substr(hash_file('sha256',$assets . '/' . $variant),0,16));
+                }
+            }
         }
         $pwa = function_exists('pwa_head_data') ? pwa_head_data() : [];
         return plugin_view('reel-player', 'player', [
@@ -40,6 +54,9 @@ final class PlayerController
                 'defaultCover' => $defaultCovers['light'],
                 'defaultArtwork' => $defaultCovers['light'],
                 'defaultCovers' => $defaultCovers,
+                'defaultCoverVariants' => $defaultCoverVariants,
+                'defaultArtists' => $defaultArtists,
+                'defaultArtistVariants' => $defaultArtistVariants,
                 'defaultArtworkSize' => '1254x1254',
                 'maxUpload' => UploadPolicy::limits()['effective'],
                 'state' => $this->library()->state(),
@@ -56,6 +73,7 @@ final class PlayerController
             'quality_url' => base_href('/plugins/reel-player/assets/quality.js?v=' . substr(hash_file('sha256',$assets . '/quality.js'),0,16)),
             'collections_url' => base_href('/plugins/reel-player/assets/collections.js?v=' . substr(hash_file('sha256',$assets . '/collections.js'),0,16)),
             'catalog_url' => base_href('/plugins/reel-player/assets/catalog.js?v=' . substr(hash_file('sha256',$assets . '/catalog.js'),0,16)),
+            'images_url' => base_href('/plugins/reel-player/assets/images.js?v=' . substr(hash_file('sha256',$assets . '/images.js'),0,16)),
         ], false);
     }
 
@@ -269,7 +287,14 @@ final class PlayerController
     {
         try { $cover = $this->catalog()->albumCover((int)get_route_param('id')); }
         catch (\InvalidArgumentException) { abort('Обложка не найдена.',404); }
-        (new MediaStorage())->streamCover($cover['path'],$cover['mime']);
+        (new MediaStorage())->streamCover($cover['path'],$cover['mime'],(int)request()->get('size',0));
+    }
+
+    public function artistImage(): never
+    {
+        try { $cover = $this->catalog()->artistCover((int)get_route_param('id')); }
+        catch (\InvalidArgumentException) { abort('Изображение артиста не найдено.',404); }
+        (new MediaStorage())->streamCover($cover['path'],$cover['mime'],(int)request()->get('size',0));
     }
 
     public function catalogListen(): void
@@ -296,7 +321,7 @@ final class PlayerController
         $path = $cover ? $track['cover_path'] : $track['file_path'];
         if (!$path) abort('Обложка не найдена.', 404);
         $storage = new MediaStorage();
-        if ($cover) $storage->streamCover($path, $track['cover_mime']);
+        if ($cover) $storage->streamCover($path, $track['cover_mime'],(int)request()->get('size',0));
         $storage->stream($path, $track['mime']);
     }
 }
