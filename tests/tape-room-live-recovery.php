@@ -3,9 +3,9 @@ declare(strict_types=1);
 // Explicit maintenance check; reads only the named owner's existing library.
 // --check-drive refreshes the existing Google authorization and warms its prefix.
 if (PHP_SAPI !== 'cli') exit;
-$options = getopt('', ['owner:', 'check-drive']);
+$options = getopt('', ['owner:', 'check-drive', 'check-quality']);
 $owner = filter_var($options['owner'] ?? '', FILTER_VALIDATE_INT, ['options'=>['min_range'=>1]]);
-if (!$owner) { fwrite(STDERR,"Usage: php tests/tape-room-live-recovery.php --owner=ID [--check-drive]\n"); exit(2); }
+if (!$owner) { fwrite(STDERR,"Usage: php tests/tape-room-live-recovery.php --owner=ID [--check-drive] [--check-quality]\n"); exit(2); }
 $project = dirname(__DIR__);
 $temporary = $project.'/tests/.tmp/tape-room-recovery-'.bin2hex(random_bytes(8));
 mkdir($temporary.'/sessions',0700,true); mkdir($temporary.'/cache',0700);
@@ -53,5 +53,14 @@ if (array_key_exists('check-drive',$options) && $cloud) {
         fwrite(STDERR,"Google Drive live read did not complete.\n");
     }
 }
+if (array_key_exists('check-quality',$options) && $cloud) {
+    try {
+        $result['liveQuality']=$drive->quality($cloud[0]['source_id'],(float)$cloud[0]['duration']);
+        $result['liveQualityHeaderReadable']=isset($result['liveQuality']['sampleRate']);
+    } catch (Throwable $error) {
+        $result['liveQualityErrorType']=get_class($error); $result['liveQualityErrorCode']=$error->getCode();
+        fwrite(STDERR,"Google Drive technical metadata read did not complete.\n");
+    }
+}
 echo json_encode($result,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR).PHP_EOL;
-exit(($present===$local&&$bytesMatch===$local&&(!isset($result['liveDriveErrorType'])))?0:1);
+exit(($present===$local&&$bytesMatch===$local&&!isset($result['liveDriveErrorType'])&&!isset($result['liveQualityErrorType']))?0:1);

@@ -10,11 +10,12 @@ final class Library
 
     public function state(): array
     {
-        $tracks = db()->query('SELECT id, title, artist, filename, duration, file_size, cover_path, cover_mime, source, favorite, created_at FROM reel_tracks WHERE owner_id = ? ORDER BY id DESC', [$this->owner])->get() ?: [];
+        $tracks = db()->query('SELECT id, title, artist, filename, mime, duration, file_size, cover_path, cover_mime, source, favorite, created_at FROM reel_tracks WHERE owner_id = ? ORDER BY id DESC', [$this->owner])->get() ?: [];
         $chapters = (new Chapters($this->owner))->all();
         foreach ($tracks as &$track) {
             $track['id'] = (int)$track['id'];
             $track['duration'] = (float)$track['duration'];
+            $track['file_size'] = (int)$track['file_size'];
             $track['favorite'] = (bool)$track['favorite'];
             $track['chapters'] = $chapters[$track['id']] ?? [];
             $track['url'] = base_href('/admin/reel-player/media/' . $track['id']);

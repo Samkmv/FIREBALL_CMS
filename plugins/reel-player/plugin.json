@@ -2,7 +2,7 @@
   "name": "Tape Room",
   "slug": "reel-player",
   "class": "FireballPluginReelPlayer",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "type": "system",
   "description": "Private reel-to-reel player with playlists, audio chapters and CUE import.",
   "name_i18n": {
@@ -16,23 +16,20 @@
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
-    "Add smooth reel acceleration and inertial braking, including playback and buffering transitions.",
-    "Animate tape tension with a restrained release and settling motion while preserving guide tangents.",
-    "Use clear acrylic reel flanges, visible tape layers and winding-dependent ribbon masking.",
-    "Suspend mechanical effects in the background and respect reduced-motion preferences without changing native audio."
+    "Fade measured stereo meters in and out without changing audio analysis or native playback.",
+    "Hide ribbon ends inside the wound pack and remove bright spoke seams while retaining transparent reels.",
+    "Show audio format, available resolution and verified or explicitly approximate bitrate using bounded file headers."
   ],
   "release_notes_i18n": {
     "en": [
-      "Add smooth reel acceleration and inertial braking, including playback and buffering transitions.",
-      "Animate tape tension with a restrained release and settling motion while preserving guide tangents.",
-      "Use clear acrylic reel flanges, visible tape layers and winding-dependent ribbon masking.",
-      "Suspend mechanical effects in the background and respect reduced-motion preferences without changing native audio."
+      "Fade measured stereo meters in and out without changing audio analysis or native playback.",
+      "Hide ribbon ends inside the wound pack and remove bright spoke seams while retaining transparent reels.",
+      "Show audio format, available resolution and verified or explicitly approximate bitrate using bounded file headers."
     ],
     "ru": [
-      "Плавный разгон катушек и инерционное торможение при паузе и буферизации.",
-      "Эффект натяжения ленты с мягким ослаблением и затуханием, без отрыва от катушек и роликов.",
-      "Прозрачные катушки, видимые витки намотки и тонкая лента с масками по её настоящему радиусу.",
-      "Механические эффекты выключаются в фоне и при уменьшении движения; системное аудио работает независимо."
+      "Плавное включение и затухание измеренных стереоиндикаторов без изменения звука.",
+      "Концы свободной ленты спрятаны под намоткой, яркие границы прозрачных спиц убраны.",
+      "Формат, доступная разрядность и частота аудио, точный или явно приблизительный битрейт из ограниченного заголовка."
     ]
   },
   "update": {

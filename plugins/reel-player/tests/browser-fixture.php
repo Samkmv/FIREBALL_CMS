@@ -125,7 +125,7 @@ JS;
     }).observe(app.querySelector('.rp-machine'), {subtree:true,attributes:true,attributeFilter:['r','d','class']});
     const previewFrame = time => {
         if (previewMotionStart && time - previewMotionStart < 1800 && previewMotionTrace.length < 240) {
-            previewMotionTrace.push({ms:time-previewMotionStart,speed:transport.speed,slack:transport.slack,rates:visuals.reels.map(reel=>reel.motion?.playbackRate ?? null)});
+            previewMotionTrace.push({ms:time-previewMotionStart,speed:transport.speed,slack:transport.slack,rates:visuals.reels.map(reel=>reel.motion?.playbackRate ?? null),levels:[...meterLevels],rms:[...meterSignal.rms]});
         }
         if (previewStart && !audio.paused && !document.hidden) {
             if (previewFrameTime) previewMaxGap = Math.max(previewMaxGap,time-previewFrameTime);
@@ -254,6 +254,7 @@ try {
     // Real network delay for buffering UI checks; only on this opt-in test server.
     if (getenv('REEL_PLAYER_BUFFER_PREVIEW') === '1' && $path === '/admin/reel-player/media/2') sleep(10);
     if (preg_match('~^/admin/reel-player/(media|cover)/(\d+)$~',$path,$match)) { $GLOBALS['route']=['id'=>$match[2]]; $controller->{$match[1]}(); exit; }
+    if (preg_match('~^/admin/reel-player/api/quality/(\d+)$~',$path,$match)) { $GLOBALS['route']=['id'=>$match[1]]; $controller->quality(); exit; }
     $method = match ($path) { '/admin/reel-player'=>'index','/admin/reel-player/api/state'=>'state','/admin/reel-player/api/action'=>'action','/admin/reel-player/api/upload'=>'upload','/admin/reel-player/api/prepare'=>'prepare','/admin/reel-player/api/drive/status'=>'driveStatus','/admin/reel-player/api/chapters/cue'=>'cuePreview','/admin/reel-player/api/chapters/analyze'=>'chapterAnalysis',default=>'' };
     if ($method==='') abort();
     echo $controller->$method();

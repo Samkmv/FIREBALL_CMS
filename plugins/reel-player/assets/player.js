@@ -10,7 +10,7 @@
     // of the animation loop, including the 120 Hz loop on newer displays.
     const visuals = {
         seek:$('[data-seek]'), elapsed:$('[data-elapsed]'), duration:$('[data-duration]'),
-        reels:['left','right'].map(side => ({rotor:$(`[data-rotor="${side}"]`), pack:$(`[data-pack="${side}"]`), clip:$(`[data-pack-clip="${side}"]`), tapeMask:$(`[data-tape-mask="${side}"]`), bars:[...$(`[data-meter="${side}"]`).querySelectorAll('i')]})),
+        reels:['left','right'].map(side => ({rotor:$(`[data-rotor="${side}"]`), pack:$(`[data-pack="${side}"]`), clip:$(`[data-pack-clip="${side}"]`), tapeMask:$(`[data-tape-mask="${side}"]`), tapeFade:$(`[data-tape-fade="${side}"]`), bars:[...$(`[data-meter="${side}"]`).querySelectorAll('i')]})),
         tape:[$('[data-tape-left]'),$('[data-tape-right]')]
     };
     let theme = document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
@@ -29,6 +29,7 @@
     let progressFrame = -Infinity, meterFrame = -Infinity, tapeFrame = -Infinity, packRadii = [174,78], positionKey = '';
     const transport = new window.TapeRoomTransport();
     const meterLevels = [0,0];
+    const meterEnvelope = new window.TapeRoomMeterEnvelope();
     const meterSignal = {generation:-1, values:[0,0], rms:[0,0], sampled:[-Infinity,-Infinity], drawn:0};
     const meterReport = {samples:[], time:-Infinity, status:null};
     let mutationQueue = Promise.resolve();
@@ -52,6 +53,8 @@
     const playbackPosition = () => audio.readyState === 0 && restoreTime ? restoreTime : audio.currentTime || 0;
     let chapterKey = '', chapterIndex = -2, chapterDuration = -1, chapterRows = [], chapterMarkers = [];
     let chapterJob = null;
+    const qualityCache = new Map();
+    let qualityJob = null;
     const collectionName = id => id === -1 ? 'Избранное' : playlist(id)?.name || 'Вся музыка';
     const collectionTracks = id => id === -1 ? data.tracks.filter(t => t.favorite) : id > 0 ? (playlist(id)?.tracks || []).map(track).filter(Boolean) : data.tracks;
     const sortedTracks = (tracks, mode) => mode === 'playlist' ? [...tracks] : [...tracks].sort((a,b) => mode === 'old' ? a.id - b.id : b.id - a.id);
@@ -156,8 +159,37 @@
         $('[data-action="edit-current"]').disabled = !current;
         updateNow(); updateButtons(); renderChapters(); prepareUpcoming();
     }
+    function drawAudioQuality() {
+        const t = activeTrack(), node = $('[data-audio-quality]');
+        if (!node) return;
+        const value = t ? window.TapeRoomQuality.summary(t,qualityCache.get(t.id),audio.readyState > 0 ? audio.duration : 0) : 'АУДИО';
+        if (node.textContent !== value) node.textContent = value;
+        const title = value.includes('≈') ? `${value}. Битрейт оценён по размеру файла и длительности; это среднее значение.` : value;
+        if (node.title !== title) node.title = title;
+    }
+    function cancelQuality() {
+        if (!qualityJob) return;
+        qualityJob.controller.abort(); clearTimeout(qualityJob.timer); qualityJob = null;
+    }
+    async function requestQuality() {
+        cancelQuality();
+        const t = activeTrack();
+        if (!t || qualityCache.has(t.id)) return;
+        const version = generation, id = t.id, controller = new AbortController();
+        const job = {controller,timer:setTimeout(() => controller.abort(),9000)};
+        qualityJob = job;
+        try {
+            const result = await api(`quality/${id}`,undefined,controller.signal);
+            if (generation !== version || current !== id || controller.signal.aborted) return;
+            qualityCache.set(id,result.quality || {});
+            if (qualityCache.size > 64) qualityCache.delete(qualityCache.keys().next().value);
+            drawAudioQuality();
+        } catch (_) { /* Optional technical metadata never gates music or opens an error dialog. */ }
+        finally { clearTimeout(job.timer); if (qualityJob === job) qualityJob = null; }
+    }
     function updateNow() {
         const t = activeTrack();
+        drawAudioQuality();
         $('[data-title]').textContent = t?.title || 'Ваша первая лента';
         $('[data-artist]').textContent = t?.artist || (t ? 'НЕИЗВЕСТНЫЙ ИСПОЛНИТЕЛЬ' : 'ДОБАВЬТЕ ЛЮБИМУЮ МУЗЫКУ');
         const cover = t?.cover || config.defaultCover;
@@ -228,6 +260,7 @@
     function drawProgress(forcePosition = false) {
         const duration = Number.isFinite(audio.duration) ? audio.duration : activeTrack()?.duration || 0;
         const position = playbackPosition();
+        drawAudioQuality();
         const progress = duration > 0 ? Math.max(0, Math.min(1, position / duration)) : 0;
         if (!seekActive) { visuals.seek.value = Math.round(progress * 1000); rangeFill(visuals.seek, progress); }
         drawBuffered(duration,seekActive ? Number(visuals.seek.value)/1000 : progress);
@@ -257,6 +290,16 @@
         visuals.tape.forEach((path,i) => {
             const value = window.TapeRoomTransport.tapePath(i ? 970 : 230,packRadii[i],i ? -1 : 1,slack);
             if (path.getAttribute('d') !== value) path.setAttribute('d',value);
+            const reel = visuals.reels[i];
+            if (reel.tapeFade && reel.fadeRadius !== packRadii[i]) {
+                const entry = window.TapeRoomTransport.tapeEntry(i ? 970 : 230,packRadii[i],i ? -1 : 1);
+                const coords = {x1:entry.x - entry.tx * 2,y1:entry.y - entry.ty * 2,x2:entry.x + entry.tx * 16,y2:entry.y + entry.ty * 16};
+                for (const [name,coordinate] of Object.entries(coords)) {
+                    const text = coordinate.toFixed(2);
+                    if (reel.tapeFade.getAttribute(name) !== text) reel.tapeFade.setAttribute(name,text);
+                }
+                reel.fadeRadius = packRadii[i];
+            }
         });
     }
     function syncReels() {
@@ -304,9 +347,11 @@
     function drawMeters(playing) {
         const now = performance.now();
         const active = playing && !document.hidden && !audio.seeking && !audio.muted && audio.volume > 0 && !meterController.terminal && !meterController.needsGesture && graph?.context.state === 'running';
+        const changedTrack = meterSignal.generation !== generation;
         if (!active || meterSignal.generation !== generation) { meterSignal.values.fill(0); meterSignal.rms.fill(0); meterSignal.sampled.fill(-Infinity); meterSignal.generation = generation; }
         const available = active && meterController.canSample() && (!graph.mirror || (!graph.mirror.paused && !graph.mirror.seeking && graph.mirror.readyState >= 2 && !graph.mirror.ended));
-        const elapsed = Math.max(0, Math.min(250, now - meterSignal.drawn)); meterSignal.drawn = now;
+        const elapsed = Math.max(0, Math.min(1000, now - meterSignal.drawn)); meterSignal.drawn = now;
+        const targets = [0,0];
         visuals.reels.forEach((reel,i) => {
             let level = 0, measured = false;
             if (available) {
@@ -328,11 +373,18 @@
             meterSignal.values[i] = level;
             if (measured) meterSignal.sampled[i] = now;
             if (level < .15) level = 0;
-            const lit = Math.ceil(level);
+            targets[i] = level;
+        });
+        const displayActive = active && (available || meterSignal.sampled.some(time => now - time <= 180));
+        const immediate = changedTrack || document.hidden || reducedMotion.matches || audio.seeking || audio.muted || audio.volume === 0 || Boolean(audio.error) || meterController.terminal || meterController.needsGesture || (playing && !displayActive);
+        const displayed = meterEnvelope.step(targets,elapsed / 1000,{active:displayActive,immediate});
+        visuals.reels.forEach((reel,i) => {
+            const lit = displayed[i] < .15 ? 0 : Math.ceil(displayed[i]);
             if (lit === meterLevels[i]) return;
             reel.bars.forEach((bar,n) => { if ((n < lit) !== (n < meterLevels[i])) bar.classList.toggle('is-lit',n < lit); });
             meterLevels[i] = lit;
         });
+        if (meterEnvelope.moving && !frameInProgress) startAnimation();
         recordMeterDiagnostic();
     }
     function recordMeterDiagnostic(force = false) {
@@ -377,7 +429,7 @@
             visuals.reels.forEach((reel,i) => { if (!reel.motion) { angles[i] = (angles[i] - elapsed * 95 * 126 / packRadii[i] * audio.playbackRate * transport.speed) % 360; reel.rotor.style.transform = `rotate(${angles[i]}deg)`; } });
         }
         frameInProgress = false;
-        if ((playing || transport.moving) && !document.hidden) frameId = requestAnimationFrame(animate);
+        if ((playing || transport.moving || meterEnvelope.moving) && !document.hidden) frameId = requestAnimationFrame(animate);
     }
     function startAnimation() { if (!frameId && !frameInProgress && !document.hidden) { frameTime = 0; progressFrame = meterFrame = tapeFrame = -Infinity; frameId = requestAnimationFrame(animate); } }
     async function play(origin = 'automatic', event) {
@@ -431,7 +483,7 @@
         const t = track(id); if (!t) return;
         preloader.cancel(); generation++; audio.pause(); stopMeters('track-change'); current = t.id; restoreTime = time; setBuffering(false);
         chapterKey = ''; chapterIndex = -2; chapterDuration = -1;
-        audio.src = t.url; audio.load(); render(); drawProgress(); save();
+        audio.src = t.url; audio.load(); render(); drawProgress(); save(); requestQuality();
     }
     function next(automatic = false, origin = 'automatic', event) {
         if (!current) return;
@@ -911,7 +963,7 @@
         for (const [name,handler] of Object.entries(handlers)) { try { navigator.mediaSession.setActionHandler(name,handler); } catch (_) {} }
     }
     window.addEventListener('pagehide', () => {
-        save(); transport.reset(); visuals.reels.forEach(reel => reel.motion?.pause());
+        save(); cancelQuality(); transport.reset(); visuals.reels.forEach(reel => reel.motion?.pause());
         cancelAnimationFrame(frameId); frameId = 0; frameTime = 0;
     });
     document.addEventListener('visibilitychange', () => {

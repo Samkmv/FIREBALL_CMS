@@ -370,6 +370,42 @@ final class GoogleDrive
         }
     }
 
+    /** Optional format label: at most 256 KiB, cached prefix first, eight-second budget. */
+    public function quality(string $id, float $duration = 0): array
+    {
+        $previousDeadline = $this->analysisDeadline;
+        $this->analysisDeadline = microtime(true) + 8;
+        try {
+            $file = self::assertAudio($this->file($id));
+            $size = (int)$file['size'];
+            try { $prefix = $this->cache()->prefix($file); } catch (\Throwable) { $prefix = null; }
+            if ($prefix) return AudioQuality::local($prefix, $file['name'], $file['mimeType'], $size, $duration);
+            // Other containers retain honest format/average labels; no speculative full downloads.
+            if (!in_array(AudioQuality::format($file['name'], $file['mimeType']), ['FLAC', 'WAV', 'MP3'], true)) return AudioQuality::describe('', $file['name'], $file['mimeType'], $size, $duration);
+            $length = min(AudioQuality::HEADER_BYTES, $size); $bytes = ''; $end = $length - 1;
+            $identity = $this->cacheKey();
+            $head = static function(int $status, array $headers) use ($end, $size): void {
+                if ($status >= 400) throw new \RuntimeException('Не удалось прочитать аудиозаголовок.', $status);
+                if ($status !== 206 || !preg_match('~^bytes (\d+)-(\d+)/(\d+)$~D', $headers['content-range'] ?? '', $range) || (int)$range[1] !== 0 || (int)$range[2] !== $end || (int)$range[3] !== $size) throw new \RuntimeException('Google Drive вернул несовпадающий диапазон аудиозаголовка.');
+            };
+            $body = function(string $chunk) use (&$bytes, $length, $identity): bool {
+                if (strlen($bytes) + strlen($chunk) > $length) throw new \RuntimeException('Аудиозаголовок превышает лимит.');
+                if (!hash_equals($identity, $this->cacheKey())) throw new \RuntimeException('Подключение Google Drive изменилось.');
+                $bytes .= $chunk;
+                return microtime(true) < $this->analysisDeadline && !connection_aborted();
+            };
+            try { $this->download($file, 0, $end, false, $head, $body); }
+            catch (\RuntimeException $error) {
+                if (empty($file['headRevisionId']) || !in_array($error->getCode(), [403,404], true)) throw $error;
+                // Some shares allow current content only. A fresh single bounded header is safe.
+                unset($file['headRevisionId']); $bytes = '';
+                $this->download($file, 0, $end, false, $head, $body);
+            }
+            if (strlen($bytes) !== $length) throw new \RuntimeException('Аудиозаголовок получен не полностью.');
+            return AudioQuality::describe($bytes, $file['name'], $file['mimeType'], $size, $duration);
+        } finally { $this->analysisDeadline = $previousDeadline; }
+    }
+
     /** Read-only, bounded WAV analysis. Never expose OAuth or make file copies. */
     public function analyzeChapters(string $id, float $duration = 0): array
     {

@@ -37,7 +37,7 @@
         get moving() {
             return this.speed > 0 || this.elapsed < this.duration || this.slackVelocity !== 0 || this.slack !== (this.running ? 0 : 8);
         }
-        static tapePath(cx, radius, direction, slack = 0) {
+        static tapeEntry(cx, radius, direction) {
             const rollerX = direction === 1 ? 378 : 822;
             // The centre line sits half a ribbon width outside each surface.
             const rollerRadius = 29.75, tapeRadius = radius + 1.75;
@@ -49,11 +49,26 @@
             const start = [cx + tapeRadius * nx, 210 + tapeRadius * ny];
             const end = [rollerX + rollerRadius * nx, 425 + rollerRadius * ny];
             const x = end[0] - start[0], y = end[1] - start[1];
-            const sag = Math.max(0, Math.min(12, Number(slack) || 0));
+            const tangentLength = Math.hypot(x, y), tx = x / tangentLength, ty = y / tangentLength;
+            return {x:start[0],y:start[1],tx,ty};
+        }
+        static tapePath(cx, radius, direction, slack = 0) {
+            const rollerX = direction === 1 ? 378 : 822, rollerRadius = 29.75, tapeRadius = radius + 1.75;
+            const contact = TapeRoomTransport.tapeEntry(cx, radius, direction);
+            const {tx,ty} = contact, nx = (contact.x - cx) / tapeRadius, ny = (contact.y - 210) / tapeRadius;
+            const start = [contact.x,contact.y], end = [rollerX + rollerRadius * nx,425 + rollerRadius * ny];
+            const x = end[0] - start[0], y = end[1] - start[1];
+            const hiddenStart = [start[0] - nx * 6 - tx * 8, start[1] - ny * 6 - ty * 8];
+            const coordinate = (px, py) => `${px.toFixed(2)} ${py.toFixed(2)}`;
+            // The dynamic pack mask covers the ribbon's complete leading cap.
+            // A short hidden lead-in emerges with the exact outer tangent rather
+            // than exposing a detached flat tip on the clear reel face.
+            const entry = `M${coordinate(...hiddenStart)} C${coordinate(hiddenStart[0] + tx * 4,hiddenStart[1] + ty * 4)} ${coordinate(start[0] - tx * 4,start[1] - ty * 4)} ${coordinate(...start)}`;
+            const sag = Math.max(0, Math.min(12, Number(slack) || 0)) * .75;
             const point = (part, drop = 0) => `${(start[0] + x * part).toFixed(2)} ${(start[1] + y * part + drop).toFixed(2)}`;
             // Both end derivatives stay on the true outer tangent. The two
             // halves share a tangent too, so slack never kinks at a guide.
-            return `M${point(0)} C${point(1/6)} ${point(1/3,sag)} ${point(1/2,sag)} C${point(2/3,sag)} ${point(5/6)} ${point(1)} A${rollerRadius} ${rollerRadius} 0 0 ${direction === 1 ? 0 : 1} ${rollerX + direction * rollerRadius} 425 L${rollerX} 425`;
+            return `${entry} C${point(1/6)} ${point(1/3,sag)} ${point(1/2,sag)} C${point(2/3,sag)} ${point(5/6)} ${point(1)} A${rollerRadius} ${rollerRadius} 0 0 ${direction === 1 ? 0 : 1} ${rollerX + direction * rollerRadius} 425 L${rollerX} 425`;
         }
     }
     if (typeof module !== 'undefined' && module.exports) module.exports = TapeRoomTransport;

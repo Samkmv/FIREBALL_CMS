@@ -10,6 +10,7 @@ use Fireball\ReelPlayer\Services\DriveCache;
 use Fireball\ReelPlayer\Repositories\Chapters;
 use Fireball\ReelPlayer\Services\CueParser;
 use Fireball\ReelPlayer\Services\ChapterAnalysis;
+use Fireball\ReelPlayer\Services\AudioQuality;
 
 final class PlayerController
 {
@@ -42,6 +43,7 @@ final class PlayerController
             'preload_url' => base_href('/plugins/reel-player/assets/preload.js?v=' . substr(hash_file('sha256',$assets . '/preload.js'),0,16)),
             'chapters_url' => base_href('/plugins/reel-player/assets/chapters.js?v=' . substr(hash_file('sha256',$assets . '/chapters.js'),0,16)),
             'transport_url' => base_href('/plugins/reel-player/assets/transport.js?v=' . substr(hash_file('sha256',$assets . '/transport.js'),0,16)),
+            'quality_url' => base_href('/plugins/reel-player/assets/quality.js?v=' . substr(hash_file('sha256',$assets . '/quality.js'),0,16)),
         ], false);
     }
 
@@ -136,6 +138,25 @@ final class PlayerController
 
     public function media(): void { $this->stream(false); }
     public function cover(): void { $this->stream(true); }
+
+    public function quality(): void
+    {
+        header('Cache-Control: private, no-store');
+        try { $track = $this->library()->track((int)get_route_param('id')); }
+        catch (\InvalidArgumentException) { abort('Трек не найден.', 404); }
+        // Optional metadata must not hold the session lock or delay native audio.
+        $drive = $this->drive(); session()->close();
+        $fallback = AudioQuality::describe('', (string)$track['filename'], (string)$track['mime'], (int)$track['file_size'], (float)$track['duration']);
+        try {
+            $info = ($track['source'] ?? 'local') === 'drive'
+                ? $drive->quality((string)$track['source_id'], (float)$track['duration'])
+                : AudioQuality::local((new MediaStorage())->path((string)$track['file_path']), (string)$track['filename'], (string)$track['mime'], (int)$track['file_size'], (float)$track['duration']);
+        } catch (\Throwable) {
+            // Format/known average remains useful when an optional header is unavailable.
+            $info = $fallback;
+        }
+        response()->json(['status' => true, 'quality' => $info]);
+    }
 
     public function prepare(): void
     {

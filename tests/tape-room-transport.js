@@ -91,7 +91,7 @@ for (const sample of samples.slice(1)) {
 
 function parsePath(path) {
     const commands = [...path.matchAll(/([MCAL])([^MCAL]*)/g)].map(match => ({type:match[1], values:(match[2].match(/-?\d+(?:\.\d+)?/g) || []).map(Number)}));
-    assert.deepEqual(commands.map(command => command.type), ['M', 'C', 'C', 'A', 'L']); checks++;
+    assert.deepEqual(commands.map(command => command.type), ['M', 'C', 'C', 'C', 'A', 'L']); checks++;
     verify(commands.every(command => command.values.every(Number.isFinite)), 'Tape path contains only finite coordinates');
     verify(!/NaN|Infinity/.test(path), 'Tape path contains no invalid numeric text');
     return commands;
@@ -112,8 +112,16 @@ for (const [cx, direction, rollerX] of [[230, 1, 378], [970, -1, 822]]) {
         const radius = Math.sqrt(78 ** 2 + (174 ** 2 - 78 ** 2) * index / 20);
         for (const slack of [0, 4, 9, 12]) {
             const commands = parsePath(TapeRoomTransport.tapePath(cx, radius, direction, slack));
-            const start = commands[0].values, first = commands[1].values, second = commands[2].values;
+            const hiddenStart = commands[0].values, entry = commands[1].values, first = commands[2].values, second = commands[3].values;
+            const start = point(entry, 2);
             const middle = point(first, 2), end = point(second, 2), span = subtract(end, start);
+            const contact = TapeRoomTransport.tapeEntry(cx, radius, direction);
+            close(contact.x, start[0], .0051, 'Fade contact follows the actual tape-path tangent x');
+            close(contact.y, start[1], .0051, 'Fade contact follows the actual tape-path tangent y');
+            close(Math.hypot(contact.tx,contact.ty), 1, 1e-12, 'Fade direction is a unit tangent');
+            parallel([contact.tx,contact.ty], span, 'Fade follows the outgoing ribbon instead of the radial direction');
+            verify(length(subtract(hiddenStart, [cx, 210])) + halfThickness < radius - .5, 'The entire leading cap is hidden inside the real tape pack');
+            parallel(subtract(start, point(entry, 1)), span, 'Hidden lead-in joins visible tape on the outer tangent');
             close(length(subtract(start, [cx, 210])) - halfThickness, radius, .015, 'Inner tape edge contacts the changing pack without a floating gap');
             close(length(subtract(end, [rollerX, 425])) - halfThickness, 28, .015, 'Inner tape edge contacts the solid guide rim');
             const startDerivative = subtract(point(first, 0), start), endDerivative = subtract(end, point(second, 1));
@@ -122,9 +130,9 @@ for (const [cx, direction, rollerX] of [[230, 1, 378], [970, -1, 822]]) {
             close(dot(span, subtract(start, [cx, 210])) / (length(span) * (radius + halfThickness)), 0, .0001, 'Straight path is tangent to tape pack');
             close(dot(span, subtract(end, [rollerX, 425])) / (length(span) * guideRadius), 0, .0003, 'Straight path is tangent to guide rim');
             parallel(subtract(middle, point(first, 1)), subtract(point(second, 0), middle), 'Curved halves share a smooth tangent');
-            close(middle[1] - (start[1] + end[1]) / 2, slack, .015, 'Tension changes sag while preserving endpoints');
-            assert.deepEqual(commands[3].values, [guideRadius, guideRadius, 0, 0, direction === 1 ? 0 : 1, rollerX + direction * guideRadius, 425], 'Thin tape wraps around the outside of the guide at a fixed radius'); checks++;
-            assert.deepEqual(commands[4].values, [rollerX, 425], 'Hidden head path remains fixed'); checks++;
+            close(middle[1] - (start[1] + end[1]) / 2, slack * .75, .015, 'Tension changes restrained sag while preserving endpoints');
+            assert.deepEqual(commands[4].values, [guideRadius, guideRadius, 0, 0, direction === 1 ? 0 : 1, rollerX + direction * guideRadius, 425], 'Thin tape wraps around the outside of the guide at a fixed radius'); checks++;
+            assert.deepEqual(commands[5].values, [rollerX, 425], 'Hidden head path remains fixed'); checks++;
             verify([...start, ...first, ...second].every(Number.isFinite), 'Multiple-hour position geometry remains finite');
             for (const segment of [[start, point(first, 0), point(first, 1), middle], [middle, point(second, 0), point(second, 1), end]]) {
                 for (let sample = 0; sample <= 10; sample++) {
@@ -148,6 +156,23 @@ const playerSource = fs.readFileSync(path.join(__dirname, '../plugins/reel-playe
 const radiusCalculation = playerSource.match(/const inner = 78, outer = 174;[\s\S]+?packRadii = radii;/);
 verify(Boolean(radiusCalculation), 'Exercise the actual player pack-radius calculation and mask update');
 const viewSource = fs.readFileSync(path.join(__dirname, '../plugins/reel-player/views/player.php'), 'utf8');
+for (const [side, cx, radius, direction] of [['left', 230, 174, 1], ['right', 970, 78, -1]]) {
+    const initialPath = viewSource.match(new RegExp(`<path data-tape-${side} d="([^"]+)"`));
+    verify(Boolean(initialPath) && initialPath[1] === TapeRoomTransport.tapePath(cx, radius, direction, 8), 'Initial visible ribbon matches the animated geometry before player startup');
+    const gradient = viewSource.match(new RegExp(`<linearGradient id="rp-tape-feed-${side}"[^>]+>[\\s\\S]+?<\\/linearGradient>`))?.[0];
+    verify(Boolean(gradient) && gradient.includes(`data-tape-fade="${side}"`) && gradient.includes('gradientUnits="userSpaceOnUse"'), 'Feed fade is linked to its physical reel in absolute deck coordinates');
+    const contact = TapeRoomTransport.tapeEntry(cx, radius, direction);
+    for (const [attribute, expected] of [['x1',contact.x - 2 * contact.tx],['y1',contact.y - 2 * contact.ty],['x2',contact.x + 16 * contact.tx],['y2',contact.y + 16 * contact.ty]]) {
+        const value = gradient.match(new RegExp(`${attribute}="([^"]+)"`))?.[1];
+        close(Number(value), expected, .0051, 'Initial fade coordinates match the dynamic tangent transition');
+    }
+    const stops = [...gradient.matchAll(/<stop\b[^>]+>/g)].map(stop => Number(stop[0].match(/stop-opacity="([^"]+)"/)?.[1]));
+    assert.deepEqual(stops, [0,.75,1], 'Opaque ribbon emerges gradually from a fully transparent leading join'); checks++;
+    verify(viewSource.includes(`style="--rp-tape-stroke:url(#rp-tape-feed-${side})"`), 'Ribbon stroke uses the matching feed fade');
+}
+const rotatingSpoke = viewSource.split('\n').find(line => line.includes('<path class="rp-reel-spoke"'));
+verify(Boolean(rotatingSpoke) && !/stroke=/.test(rotatingSpoke) && !/fill="url/.test(rotatingSpoke), 'Clear rotor reinforcement adds no bright seam or gradient band across the windings');
+verify(!viewSource.includes('M76 109 A166'), 'Clear flange has no decorative arc glare across the tape');
 const annulus = viewSource.match(/<mask id="rp-pack-annulus-[\s\S]+?<\/mask>/)?.[0];
 verify(Boolean(annulus) && /<circle[^>]+r="78"[^>]+fill="black"/.test(annulus), 'Wound-tape rendering cuts out the full inner hub rather than painting a dark disk');
 verify(viewSource.includes('<g mask="url(#rp-pack-annulus-'), 'Inner hub cutout applies to both the tape fill and visible windings');
