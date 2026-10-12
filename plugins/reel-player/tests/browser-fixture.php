@@ -5,7 +5,12 @@ if (PHP_SAPI !== 'cli-server') { http_response_code(404); exit; }
 $project = dirname(__DIR__, 3);
 $auditMode = getenv('REEL_PLAYER_SEQUENCE_PREVIEW');
 $audit = in_array($auditMode, ['short','long'], true);
-define('STORAGE', $project . '/tmp/reel-player-browser' . ($audit ? '-audit-'.$auditMode : ''));
+$testRoot = realpath((string)getenv('REEL_PLAYER_TEST_ROOT'));
+$temporaryRoot = realpath($project . '/tests/.tmp');
+if (!$testRoot || !$temporaryRoot || !str_starts_with($testRoot, $temporaryRoot . DIRECTORY_SEPARATOR)) {
+    http_response_code(500); exit('Start this fixture with tests/tape-room-preview.sh.');
+}
+define('STORAGE', $testRoot . '/data');
 if (!is_dir(STORAGE)) mkdir(STORAGE, 0700, true);
 require $project . '/vendor/autoload.php';
 require dirname(__DIR__) . '/Plugin.php';
@@ -33,7 +38,9 @@ function plugin_view(string $slug,string $view,array $data,bool $layout=true): s
     }
     if (getenv('REEL_PLAYER_METERS_PREVIEW') === '1' && ($_GET['mirror'] ?? '') === '1') $data['meters_url'] .= '&mirror=1';
     if (getenv('REEL_PLAYER_METERS_PREVIEW') === '1' && in_array($_GET['meterFault'] ?? '', ['clock','resume','blocked'], true)) $data['meters_url'] .= '&meterFault=' . $_GET['meterFault'];
-    unset($track); extract($data); ob_start(); require dirname(__DIR__).'/views/'.$view.'.php'; return (string)ob_get_clean();
+    unset($track); extract($data); ob_start(); require dirname(__DIR__).'/views/'.$view.'.php'; $html = (string)ob_get_clean();
+    if (getenv('REEL_PLAYER_SAFE_AREA_PREVIEW') === '1') $html = str_replace('</head>', '<style>.rp-dialog{--rp-dialog-safe-top:59px;--rp-dialog-safe-bottom:34px}</style></head>', $html);
+    return $html;
 }
 function setting(string $key,mixed $default=null): mixed { return $default; }
 function config_value(string $key,mixed $default=null): mixed { return $default; }
@@ -44,12 +51,23 @@ function db(): object { static $db; return $db ??= new class {
         $this->pdo->exec('PRAGMA foreign_keys=ON');
         $this->pdo->exec("CREATE TABLE IF NOT EXISTS reel_tracks(id INTEGER PRIMARY KEY AUTOINCREMENT,owner_id INTEGER,title TEXT,artist TEXT DEFAULT '',filename TEXT,file_path TEXT,mime TEXT,file_size INTEGER,duration REAL DEFAULT 0,cover_path TEXT,cover_mime TEXT,source TEXT DEFAULT 'local',source_id TEXT,created_at TEXT,UNIQUE(owner_id,source,source_id)); CREATE TABLE IF NOT EXISTS reel_playlists(id INTEGER PRIMARY KEY AUTOINCREMENT,owner_id INTEGER,name TEXT,created_at TEXT); CREATE TABLE IF NOT EXISTS reel_playlist_tracks(playlist_id INTEGER REFERENCES reel_playlists(id) ON DELETE CASCADE,track_id INTEGER REFERENCES reel_tracks(id) ON DELETE CASCADE,position INTEGER,PRIMARY KEY(playlist_id,track_id));");
         if (!in_array('favorite', array_column($this->pdo->query('PRAGMA table_info(reel_tracks)')->fetchAll(), 'name'), true)) $this->pdo->exec('ALTER TABLE reel_tracks ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0');
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS reel_chapters(id INTEGER PRIMARY KEY AUTOINCREMENT,track_id INTEGER NOT NULL REFERENCES reel_tracks(id) ON DELETE CASCADE,title TEXT NOT NULL,artist TEXT NOT NULL DEFAULT '',start_time NUMERIC NOT NULL,UNIQUE(track_id,start_time))");
     }
-    public function query(string $sql,array $params=[]): static { $sql=str_replace([' FOR UPDATE','INSERT IGNORE'],['','INSERT OR IGNORE'],$sql); $this->stmt=$this->pdo->prepare($sql); $this->stmt->execute($params); return $this; }
+    public function query(string $sql,array $params=[]): static {
+        $sql=str_replace([' FOR UPDATE','INSERT IGNORE'],['','INSERT OR IGNORE'],$sql);
+        // Match MySQL's LAST_INSERT_ID(existing id) without overwriting edits.
+        $sql=str_replace(' ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)',' ON CONFLICT(owner_id,source,source_id) DO UPDATE SET id = reel_tracks.id RETURNING id',$sql);
+        $this->stmt=$this->pdo->prepare($sql); $this->stmt->execute($params); return $this;
+    }
     public function get(): array { return $this->stmt->fetchAll(); }
     public function getOne(): mixed { return $this->stmt->fetch(); }
     public function getColumn(): mixed { return $this->stmt->fetchColumn(); }
-    public function getInsertId(): string { return $this->pdo->lastInsertId(); }
+    public function getInsertId(): string {
+        if (str_ends_with($this->stmt->queryString,' RETURNING id')) {
+            $id=(string)$this->stmt->fetchColumn();$this->stmt->closeCursor();return $id;
+        }
+        return $this->pdo->lastInsertId();
+    }
     public function beginTransaction(): void { $this->pdo->beginTransaction(); }
     public function commit(): void { $this->pdo->commit(); }
     public function rollBack(): void { $this->pdo->rollBack(); }
@@ -95,6 +113,10 @@ JS;
         $diagnostic = <<<'JS'
     // Opt-in, DOM-visible measurements for browser QA, absent in production.
     let previewStart = 0, previewFirstMeter = null, previewFrames = 0, previewGeometry = 0, previewFrameTime = 0, previewMaxGap = 0;
+    let previewMotionStart = 0, previewMotionPhase = 'idle', previewMotionTrace = [];
+    for (const phase of ['play','pause']) audio.addEventListener(phase, () => {
+        previewMotionStart = performance.now(); previewMotionPhase = phase; previewMotionTrace = [];
+    });
     audio.addEventListener('play', () => { previewStart = performance.now(); previewFirstMeter = null; previewFrames = previewGeometry = previewFrameTime = previewMaxGap = 0; });
     new MutationObserver(records => {
         if (!previewStart || audio.paused) return;
@@ -102,6 +124,9 @@ JS;
         if (previewFirstMeter === null && app.querySelector('[data-meter] i.is-lit')) previewFirstMeter = performance.now() - previewStart;
     }).observe(app.querySelector('.rp-machine'), {subtree:true,attributes:true,attributeFilter:['r','d','class']});
     const previewFrame = time => {
+        if (previewMotionStart && time - previewMotionStart < 1800 && previewMotionTrace.length < 240) {
+            previewMotionTrace.push({ms:time-previewMotionStart,speed:transport.speed,slack:transport.slack,rates:visuals.reels.map(reel=>reel.motion?.playbackRate ?? null),levels:[...meterLevels],rms:[...meterSignal.rms]});
+        }
         if (previewStart && !audio.paused && !document.hidden) {
             if (previewFrameTime) previewMaxGap = Math.max(previewMaxGap,time-previewFrameTime);
             previewFrameTime = time; previewFrames++;
@@ -111,6 +136,7 @@ JS;
     requestAnimationFrame(previewFrame);
     let previewGeneration=-1,previewCurrent=null;const previewTransitions=[];
     setInterval(() => {
+        app.dataset.transportDiagnostics = JSON.stringify({phase:previewMotionPhase,speed:transport.speed,slack:transport.slack,moving:transport.moving,trace:previewMotionTrace});
         if(previewGeneration!==generation){previewGeneration=generation;previewCurrent={generation,phase:meterController.phase,firstSignalMs:null,maxRms:[0,0],track:current};previewTransitions.push(previewCurrent);if(previewTransitions.length>100)previewTransitions.shift();}
         if(previewCurrent){previewCurrent.phase=meterController.phase;previewCurrent.firstSignalMs=meterController.firstSignal;previewCurrent.maxRms=previewCurrent.maxRms.map((v,i)=>Math.max(v,meterController.rms[i]));}
         app.dataset.meterDiagnostics = JSON.stringify({health:meterController.snapshot(),nativeTime:audio.currentTime,nativePaused:audio.paused,nativeReady:audio.readyState,waiting:loading,captureTrack:graph?.capturedTrack?.readyState,preloadActive:preloader.active,preloadDone:preloader.done.size,firstMeterMs:previewFirstMeter,frames:previewFrames,geometryWrites:previewGeometry,maxFrameGapMs:previewMaxGap,transitions:previewTransitions,rotors:visuals.reels.map(reel=>({state:reel.motion?.playState,rate:reel.motion?.playbackRate,time:reel.motion?.currentTime}))});
@@ -214,12 +240,22 @@ if (getenv('REEL_PLAYER_DRIVE_PREVIEW') === '1') {
         response()->json(['status'=>true,...($folder !== '' ? \Fireball\ReelPlayer\Services\GoogleDrive::browsePage($result) : \Fireball\ReelPlayer\Services\GoogleDrive::audioPage($result))]);
     }
 }
+if (getenv('REEL_PLAYER_CHAPTERS_PREVIEW') === '1' && $path === '/admin/reel-player') {
+    $lock=fopen(STORAGE.'/chapters-seed.lock','c');flock($lock,LOCK_EX);
+    try {
+        $row=db()->query('SELECT id FROM reel_tracks WHERE title=?',['Stereo'])->getOne();
+        if($row && !(int)db()->query('SELECT COUNT(*) FROM reel_chapters WHERE track_id=?',[$row['id']])->getColumn()) {
+            foreach ([['Вступление','Stereo Lab',0],['Ночной путь','Stereo Lab',5],['Солнечный ветер','Stereo Lab',10],['Лунный берег','Stereo Lab',16]] as [$title,$artist,$start]) db()->query('INSERT INTO reel_chapters(track_id,title,artist,start_time) VALUES(?,?,?,?)',[$row['id'],$title,$artist,$start]);
+        }
+    } finally {flock($lock,LOCK_UN);fclose($lock);}
+}
 $controller=new \Fireball\ReelPlayer\Controllers\PlayerController();
 try {
     // Real network delay for buffering UI checks; only on this opt-in test server.
     if (getenv('REEL_PLAYER_BUFFER_PREVIEW') === '1' && $path === '/admin/reel-player/media/2') sleep(10);
     if (preg_match('~^/admin/reel-player/(media|cover)/(\d+)$~',$path,$match)) { $GLOBALS['route']=['id'=>$match[2]]; $controller->{$match[1]}(); exit; }
-    $method = match ($path) { '/admin/reel-player'=>'index','/admin/reel-player/api/state'=>'state','/admin/reel-player/api/action'=>'action','/admin/reel-player/api/upload'=>'upload','/admin/reel-player/api/prepare'=>'prepare','/admin/reel-player/api/drive/status'=>'driveStatus',default=>'' };
+    if (preg_match('~^/admin/reel-player/api/quality/(\d+)$~',$path,$match)) { $GLOBALS['route']=['id'=>$match[1]]; $controller->quality(); exit; }
+    $method = match ($path) { '/admin/reel-player'=>'index','/admin/reel-player/api/state'=>'state','/admin/reel-player/api/action'=>'action','/admin/reel-player/api/upload'=>'upload','/admin/reel-player/api/prepare'=>'prepare','/admin/reel-player/api/drive/status'=>'driveStatus','/admin/reel-player/api/chapters/cue'=>'cuePreview','/admin/reel-player/api/chapters/analyze'=>'chapterAnalysis',default=>'' };
     if ($method==='') abort();
     echo $controller->$method();
 } catch (Throwable $error) { error_log((string)$error); response()->json(['status'=>false,'message'=>$error->getMessage()],500); }

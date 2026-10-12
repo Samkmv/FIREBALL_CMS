@@ -20,6 +20,7 @@ use App\Controllers\AnalyticsController;
 use App\Controllers\NotificationController;
 use App\Controllers\FileManagerController;
 use App\Controllers\ThemeEditorController;
+use App\Controllers\WidgetsController;
 use App\Controllers\PluginController;
 use App\Controllers\PwaController;
 use App\Controllers\Api\V1\MenuController;
@@ -129,9 +130,11 @@ $app->router->get('/category/(?P<slug>[a-z0-9-]+)/?', [PostsController::class, '
 $app->router->get('/archive', [PostsController::class, 'archive']);
 $app->router->get('/posts/(?P<slug>[a-z0-9-]+)/?', [PostsController::class, 'show']);
 $app->router->get('/posts', [PostsController::class, 'index']);
+$app->router->post('/widgets/weather/(?P<id>\d+)/?', [WidgetsController::class, 'weather']);
 
 // Admin pages ---------- //
 $app->router->get('/admin', [AdminController::class, 'dashboard'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/ui-kit', [\App\Controllers\AdminUiController::class, 'index'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/analytics', [AnalyticsController::class, 'index'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/analytics/data', [AnalyticsController::class, 'dashboardData'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/analytics/refresh', [AnalyticsController::class, 'refresh'])->middleware(['auth', 'admin']);
@@ -249,6 +252,8 @@ $app->router->get('/admin/system/database-maintenance', [AdminMaintenanceControl
 $app->router->post('/admin/system/database-maintenance/run', [AdminMaintenanceController::class, 'run'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/system/database-maintenance/logs/clear', [AdminMaintenanceController::class, 'clearLogs'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/themes', [AdminController::class, 'themes'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/widgets', [WidgetsController::class, 'index'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/widgets/save', [WidgetsController::class, 'save'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/themes/create', [AdminController::class, 'themeCreate'])->middleware(['auth', 'admin', 'creator']);
 $app->router->post('/admin/themes/create', [AdminController::class, 'themeCreate'])->middleware(['auth', 'admin', 'creator']);
 $app->router->get('/admin/themes/import', [AdminController::class, 'themeImport'])->middleware(['auth', 'admin', 'creator']);

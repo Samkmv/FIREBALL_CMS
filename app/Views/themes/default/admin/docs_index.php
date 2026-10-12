@@ -5,6 +5,17 @@
 
     <div class="row g-4">
         <div class="col-md-6">
+            <a class="card h-100 rounded-5 text-decoration-none border hover-shadow" href="<?= base_href('/admin/ui-kit') ?>">
+                <div class="card-body p-4 p-md-5">
+                    <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary-subtle text-primary mb-4" style="width: 3rem; height: 3rem;">
+                        <i class="ci-sliders fs-4" aria-hidden="true"></i>
+                    </span>
+                    <h2 class="h4 text-body mb-2"><?= htmlSC(return_translation('admin_ui_kit_title')) ?></h2>
+                    <p class="text-body-secondary mb-0"><?= htmlSC(return_translation('admin_ui_kit_description')) ?></p>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-6">
             <a class="card h-100 rounded-5 text-decoration-none border hover-shadow" href="<?= base_href('/admin/docs/themes') ?>">
                 <div class="card-body p-4 p-md-5">
                     <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary-subtle text-primary mb-4" style="width: 3rem; height: 3rem;">

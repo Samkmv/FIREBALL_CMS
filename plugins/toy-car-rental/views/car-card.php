@@ -54,7 +54,7 @@ $operatorBase = FireballPluginToyCarRental::operatorBasePath();
         </div>
         <div class="toy-rental-ride-note small text-body-secondary">
             <?php if ($isMetered): ?>
-                <span data-toy-rental-live-cost><?= number_format(max(1, (int)ceil((time() - $started) / 60)) * (float)$ride['price_per_minute'], 2, '.', ' ') ?></span> <?= htmlSC($currency) ?> · <?= $t('toy_rental_payment_after_completion_option') ?>
+                <span data-toy-rental-live-cost><?= number_format(FireballPluginToyCarRental::billableMinutes(min(max(0, time() - $started), (int)$settings['max_ride_minutes'] * 60)) * (float)$ride['price_per_minute'], 2, '.', ' ') ?></span> <?= htmlSC($currency) ?> · <?= $t('toy_rental_payment_after_completion_option') ?>
             <?php else: ?>
                 <?= number_format((float)$ride['payment_amount'], 2, '.', ' ') ?> <?= htmlSC($currency) ?> · <?= htmlSC(FireballPluginToyCarRental::paymentStatusLabel((string)$ride['payment_status'])) ?>
             <?php endif; ?>
@@ -70,7 +70,7 @@ $operatorBase = FireballPluginToyCarRental::operatorBasePath();
                     <button class="btn btn-primary toy-rental-round-button" type="submit" title="<?= $t('toy_rental_start_fixed') ?>" aria-label="<?= $t('toy_rental_start_fixed') ?>">
                         <i class="ci-play" aria-hidden="true"></i>
                     </button>
-                    <span><?= $t('toy_rental_billing_fixed') ?></span>
+                    <span class="toy-rental-billing-caption"><?= $t('toy_rental_billing_fixed') ?></span>
                 </div>
                 <select class="form-select form-select-sm toy-rental-duration" name="duration_minutes" aria-label="<?= $t('toy_rental_settings_default_duration') ?>">
                     <?php foreach ($settings['fixed_durations'] as $minutes): ?>
@@ -86,7 +86,7 @@ $operatorBase = FireballPluginToyCarRental::operatorBasePath();
                     <button class="btn btn-outline-secondary toy-rental-round-button" type="submit" title="<?= $t('toy_rental_start_metered') ?>" aria-label="<?= $t('toy_rental_start_metered') ?>">
                         <i class="ci-clock" aria-hidden="true"></i>
                     </button>
-                    <span><?= $t('toy_rental_billing_metered') ?></span>
+                    <span class="toy-rental-billing-caption"><?= $t('toy_rental_billing_metered') ?></span>
                 </div>
             </form>
         </div>

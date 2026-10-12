@@ -7,6 +7,7 @@ final class GoogleDrive
 {
     private bool $meterStream = false;
     private int $meterSpeed = 2097152;
+    private ?float $analysisDeadline = null;
     private const SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
     private string $directory;
     private string $root;
@@ -33,6 +34,7 @@ final class GoogleDrive
         if (!preg_match('/^[a-zA-Z0-9._-]{10,450}\.apps\.googleusercontent\.com$/D', $id)) throw new \InvalidArgumentException('Проверьте OAuth Client ID Google.');
         if (strlen($secret) > 500 || preg_match('/[\x00-\x1f]/', $secret)) throw new \InvalidArgumentException('Проверьте Client Secret.');
         $app = $this->sharedApp();
+        if ($secret === '' && !empty($app['client_id']) && $app['client_id'] !== $id) throw new \InvalidArgumentException('Для нового OAuth Client ID введите соответствующий Client Secret.');
         $nextSecret = $secret ?: ($app['client_secret'] ?? '');
         if (!$nextSecret) throw new \InvalidArgumentException('Введите OAuth Client Secret.');
         $this->writeFile($this->root . '/drive-app.json', ['client_id' => $id, 'client_secret' => $nextSecret]);
@@ -45,7 +47,7 @@ final class GoogleDrive
         $account = $this->read();
         if (empty($account['client_id']) || empty($account['client_secret'])) throw new \InvalidArgumentException('Создатель сайта ещё не настроил подключение Google Drive.');
         $state = bin2hex(random_bytes(32));
-        session()->set('reel_drive_oauth', ['state' => $state, 'owner' => $this->owner, 'created' => time(), 'app_binding' => $this->binding($account)]);
+        session()->set('reel_drive_oauth', ['state' => $state, 'owner' => $this->owner, 'created' => time(), 'app_binding' => $this->binding($account), 'account_epoch' => $this->accountEpoch()]);
         return 'https://accounts.google.com/o/oauth2/v2/auth?' . http_build_query([
             'client_id' => $account['client_id'], 'redirect_uri' => $this->callbackUrl(), 'response_type' => 'code',
             'scope' => self::SCOPE, 'access_type' => 'offline', 'prompt' => 'consent', 'state' => $state,
@@ -62,22 +64,30 @@ final class GoogleDrive
         }
         $account = $this->read();
         if (!hash_equals((string)($pending['app_binding'] ?? ''), $this->binding($account))) throw new \InvalidArgumentException('Настройки Google изменились. Начните подключение заново.');
+        $epoch = (string)($pending['account_epoch'] ?? '');
+        if (!hash_equals($epoch,$this->accountEpoch())) throw new \InvalidArgumentException('Подключение Google Drive отменено. Начните вход заново.');
         $tokens = $this->request('https://oauth2.googleapis.com/token', [
             'code' => $code, 'client_id' => $account['client_id'], 'client_secret' => $account['client_secret'],
             'redirect_uri' => $this->callbackUrl(), 'grant_type' => 'authorization_code',
         ]);
         if (isset($tokens['scope']) && !in_array(self::SCOPE, explode(' ', $tokens['scope']), true)) throw new \InvalidArgumentException('Разрешите чтение Google Drive при подключении.');
         if (empty($tokens['access_token']) || empty($tokens['refresh_token'])) throw new \InvalidArgumentException('Google не предоставил доступ. Повторите подключение.');
-        $this->write([...$account, 'access_token' => $tokens['access_token'], 'refresh_token' => $tokens['refresh_token'], 'expires_at' => time() + (int)($tokens['expires_in'] ?? 3600)]);
+        $this->withAccountLock(function() use ($account,$tokens,$epoch): void {
+            if (!hash_equals($this->binding($account),$this->binding($this->read()))) throw new \InvalidArgumentException('Настройки Google изменились. Начните подключение заново.');
+            if (!hash_equals($epoch,$this->accountEpoch())) throw new \InvalidArgumentException('Подключение Google Drive отменено. Начните вход заново.');
+            $this->write([...$account, 'access_token' => $tokens['access_token'], 'refresh_token' => $tokens['refresh_token'], 'expires_at' => time() + (int)($tokens['expires_in'] ?? 3600)]);
+        });
     }
 
     public function disconnect(): void
     {
-        $account = $this->read();
-        $token = $account['refresh_token'] ?? $account['access_token'] ?? '';
         // Always remove local access, even if Google's revocation service is unavailable.
-        $this->write([]);
-        DriveCache::clearOwner($this->root, $this->owner);
+        $token = $this->withAccountLock(function(): string {
+            $account = $this->read();
+            $this->write([],true);
+            DriveCache::clearOwner($this->root, $this->owner);
+            return (string)($account['refresh_token'] ?? $account['access_token'] ?? '');
+        });
         if ($token !== '') {
             try { $this->request('https://oauth2.googleapis.com/revoke', ['token' => $token]); } catch (\Throwable) {}
         }
@@ -100,10 +110,19 @@ final class GoogleDrive
         return [...$app, ...$tokens];
     }
 
-    private function write(array $account): void
+    private function accountEpoch(): string
+    {
+        return (string)($this->readFile($this->directory . '/drive.json')['account_epoch'] ?? '');
+    }
+
+    private function write(array $account, bool $invalidateAuthorization = false): void
     {
         $tokens = array_intersect_key($account, array_flip(['access_token','refresh_token','expires_at']));
         if ($tokens) $tokens['app_binding'] = $this->binding($account);
+        // Keep cancellation across sessions and callbacks already exchanging a
+        // code. A later explicit sign-in captures the new epoch and remains valid.
+        $epoch = $invalidateAuthorization ? bin2hex(random_bytes(16)) : $this->accountEpoch();
+        if ($epoch !== '') $tokens['account_epoch'] = $epoch;
         $this->writeFile($this->directory . '/drive.json', $tokens);
     }
 
@@ -138,9 +157,7 @@ final class GoogleDrive
         $account = $this->read();
         if (!empty($account['access_token']) && (int)($account['expires_at'] ?? 0) > time() + 90) return $account['access_token'];
         if (empty($account['refresh_token'])) throw new \InvalidArgumentException('Подключите аккаунт Google Drive.');
-        $lock = fopen($this->directory . '/drive.lock', 'c');
-        if (!$lock || !flock($lock, LOCK_EX)) throw new \RuntimeException('Подключение Google Drive занято.');
-        try {
+        return $this->withAccountLock(function(): string {
             $account = $this->read();
             if (!empty($account['access_token']) && (int)($account['expires_at'] ?? 0) > time() + 90) return $account['access_token'];
             if (empty($account['refresh_token'])) throw new \InvalidArgumentException('Настройки Google изменились. Подключите свой аккаунт снова.');
@@ -150,13 +167,26 @@ final class GoogleDrive
             if (($latest['refresh_token'] ?? '') !== $account['refresh_token'] || $this->binding($latest) !== $this->binding($account)) throw new \InvalidArgumentException('Подключение Google Drive изменилось. Войдите снова.');
             $this->write([...$account, 'access_token' => $tokens['access_token'], 'expires_at' => time() + (int)($tokens['expires_in'] ?? 3600)]);
             return $tokens['access_token'];
-        } finally { flock($lock, LOCK_UN); fclose($lock); }
+        });
+    }
+
+    /** All account writes share the refresh lock, including disconnect and 401. */
+    private function withAccountLock(callable $operation): mixed
+    {
+        if (!is_dir($this->directory) && !mkdir($this->directory,0700,true) && !is_dir($this->directory)) throw new \RuntimeException('Не удалось сохранить подключение.');
+        $lock = fopen($this->directory . '/drive.lock','c');
+        if (!$lock) throw new \RuntimeException('Подключение Google Drive занято.');
+        chmod($this->directory . '/drive.lock',0600);
+        if (!flock($lock,LOCK_EX)) { fclose($lock); throw new \RuntimeException('Подключение Google Drive занято.'); }
+        try { return $operation(); }
+        finally { flock($lock,LOCK_UN); fclose($lock); }
     }
 
     private function request(string $url, ?array $post = null, ?string $token = null, bool $retry = true): array
     {
+        if ($this->analysisDeadline !== null && microtime(true) >= $this->analysisDeadline) throw new \InvalidArgumentException('Время анализа Google Drive истекло.');
         $curl = curl_init($url);
-        curl_setopt_array($curl, [CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT => 10, CURLOPT_TIMEOUT => 30,
+        curl_setopt_array($curl, [CURLOPT_RETURNTRANSFER => true, CURLOPT_CONNECTTIMEOUT => 10, CURLOPT_TIMEOUT => $this->analysisDeadline !== null ? min(30,max(1,(int)ceil($this->analysisDeadline-microtime(true)))) : 30,
             CURLOPT_PROTOCOLS => CURLPROTO_HTTPS, CURLOPT_HTTPHEADER => $token ? ['Authorization: Bearer ' . $token] : []]);
         if ($post !== null) curl_setopt_array($curl, [CURLOPT_POST => true, CURLOPT_POSTFIELDS => http_build_query($post)]);
         $body = curl_exec($curl); $status = (int)curl_getinfo($curl, CURLINFO_RESPONSE_CODE); curl_close($curl);
@@ -181,8 +211,10 @@ final class GoogleDrive
 
     private function expireAccess(string $token): void
     {
-        $account = $this->read();
-        if (($account['access_token'] ?? '') === $token) $this->write([...$account,'expires_at'=>0]);
+        $this->withAccountLock(function() use ($token): void {
+            $account = $this->read();
+            if (($account['access_token'] ?? '') === $token) $this->write([...$account,'expires_at'=>0]);
+        });
     }
 
     private static function id(string $id): string
@@ -338,13 +370,81 @@ final class GoogleDrive
         }
     }
 
+    /** Optional format label: at most 256 KiB, cached prefix first, eight-second budget. */
+    public function quality(string $id, float $duration = 0): array
+    {
+        $previousDeadline = $this->analysisDeadline;
+        $this->analysisDeadline = microtime(true) + 8;
+        try {
+            $file = self::assertAudio($this->file($id));
+            $size = (int)$file['size'];
+            try { $prefix = $this->cache()->prefix($file); } catch (\Throwable) { $prefix = null; }
+            if ($prefix) return AudioQuality::local($prefix, $file['name'], $file['mimeType'], $size, $duration);
+            // Other containers retain honest format/average labels; no speculative full downloads.
+            if (!in_array(AudioQuality::format($file['name'], $file['mimeType']), ['FLAC', 'WAV', 'MP3'], true)) return AudioQuality::describe('', $file['name'], $file['mimeType'], $size, $duration);
+            $length = min(AudioQuality::HEADER_BYTES, $size); $bytes = ''; $end = $length - 1;
+            $identity = $this->cacheKey();
+            $head = static function(int $status, array $headers) use ($end, $size): void {
+                if ($status >= 400) throw new \RuntimeException('Не удалось прочитать аудиозаголовок.', $status);
+                if ($status !== 206 || !preg_match('~^bytes (\d+)-(\d+)/(\d+)$~D', $headers['content-range'] ?? '', $range) || (int)$range[1] !== 0 || (int)$range[2] !== $end || (int)$range[3] !== $size) throw new \RuntimeException('Google Drive вернул несовпадающий диапазон аудиозаголовка.');
+            };
+            $body = function(string $chunk) use (&$bytes, $length, $identity): bool {
+                if (strlen($bytes) + strlen($chunk) > $length) throw new \RuntimeException('Аудиозаголовок превышает лимит.');
+                if (!hash_equals($identity, $this->cacheKey())) throw new \RuntimeException('Подключение Google Drive изменилось.');
+                $bytes .= $chunk;
+                return microtime(true) < $this->analysisDeadline && !connection_aborted();
+            };
+            try { $this->download($file, 0, $end, false, $head, $body); }
+            catch (\RuntimeException $error) {
+                if (empty($file['headRevisionId']) || !in_array($error->getCode(), [403,404], true)) throw $error;
+                // Some shares allow current content only. A fresh single bounded header is safe.
+                unset($file['headRevisionId']); $bytes = '';
+                $this->download($file, 0, $end, false, $head, $body);
+            }
+            if (strlen($bytes) !== $length) throw new \RuntimeException('Аудиозаголовок получен не полностью.');
+            return AudioQuality::describe($bytes, $file['name'], $file['mimeType'], $size, $duration);
+        } finally { $this->analysisDeadline = $previousDeadline; }
+    }
+
+    /** Read-only, bounded WAV analysis. Never expose OAuth or make file copies. */
+    public function analyzeChapters(string $id, float $duration = 0): array
+    {
+        $this->analysisDeadline = microtime(true) + 55;
+        try {
+            $file = self::assertAudio($this->file($id));
+            if (strtolower(pathinfo($file['name'],PATHINFO_EXTENSION)) !== 'wav') throw new \InvalidArgumentException('Автопоиск Google Drive доступен для PCM WAV. Для MP3, FLAC и других форматов импортируйте CUE или добавьте таймкоды вручную.');
+            if (empty($file['headRevisionId'])) throw new \InvalidArgumentException('Google Drive не предоставил версию файла для безопасного анализа. Используйте CUE или ручные таймкоды.');
+            $identity = $this->cacheKey();
+            $size = (int)$file['size'];
+            $reader = function(int $offset,int $length) use ($file,$size,$identity): string {
+                if (!hash_equals($identity,$this->cacheKey())) throw new \InvalidArgumentException('Подключение Google Drive изменилось. Повторите анализ.');
+                if (microtime(true) >= $this->analysisDeadline || connection_aborted()) throw new \InvalidArgumentException('Анализ отменён или превышен лимит времени.');
+                if ($offset < 0 || $length < 1 || $length > 2*1048576 || $offset > $size-$length) throw new \InvalidArgumentException('Недопустимый диапазон аудиофайла.');
+                $bytes = ''; $end = $offset+$length-1;
+                $this->download($file,$offset,$end,false,
+                    static function(int $status,array $headers) use ($offset,$end,$size): void {
+                        if ($status >= 400) throw new \RuntimeException('Google Drive не предоставил диапазон для анализа. Проверьте доступ к файлу.',$status);
+                        if ($status !== 206 || !preg_match('~^bytes (\d+)-(\d+)/(\d+)$~D',$headers['content-range'] ?? '',$match) || (int)$match[1]!==$offset || (int)$match[2]!==$end || (int)$match[3]!==$size) throw new \InvalidArgumentException('Google Drive вернул несовпадающий диапазон или размер файла.');
+                    },
+                    function(string $chunk) use (&$bytes,$length): bool {
+                        if (strlen($bytes)+strlen($chunk)>$length) throw new \InvalidArgumentException('Google Drive вернул слишком большой диапазон.');
+                        $bytes.=$chunk; return microtime(true)<$this->analysisDeadline && !connection_aborted();
+                    });
+                if (strlen($bytes)!==$length) throw new \InvalidArgumentException('Не удалось прочитать весь диапазон Google Drive.');
+                return $bytes;
+            };
+            return (new ChapterAnalysis(null,55))->analyzeRanges($reader,$size,$duration);
+        } finally { $this->analysisDeadline = null; }
+    }
+
     private function download(array $file, int $start, int $end, bool $warming, callable $head, callable $body, bool $retry = true): void
     {
         $token = $this->token(); $status = 0; $fields = []; $cancelled = false;
+        if ($this->analysisDeadline !== null && microtime(true) >= $this->analysisDeadline) throw new \InvalidArgumentException('Время анализа Google Drive истекло.');
         $url = 'https://www.googleapis.com/drive/v3/files/' . rawurlencode(self::id($file['id']));
         if (!empty($file['headRevisionId'])) $url .= '/revisions/' . rawurlencode($file['headRevisionId']);
         $curl = curl_init($url . '?alt=media&supportsAllDrives=true');
-        curl_setopt_array($curl,[CURLOPT_CONNECTTIMEOUT=>8,CURLOPT_TIMEOUT=>$warming ? 15 : 0,
+        curl_setopt_array($curl,[CURLOPT_CONNECTTIMEOUT=>8,CURLOPT_TIMEOUT=>$this->analysisDeadline !== null ? max(1,(int)ceil($this->analysisDeadline-microtime(true))) : ($warming ? 15 : 0),
             CURLOPT_LOW_SPEED_LIMIT=>1024,CURLOPT_LOW_SPEED_TIME=>$warming ? 8 : 45,
             CURLOPT_PROTOCOLS=>CURLPROTO_HTTPS,CURLOPT_REDIR_PROTOCOLS=>CURLPROTO_HTTPS,
             CURLOPT_FOLLOWLOCATION=>true,CURLOPT_MAXREDIRS=>3,CURLOPT_UNRESTRICTED_AUTH=>false,

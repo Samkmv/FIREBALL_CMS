@@ -7,6 +7,10 @@ use Fireball\ReelPlayer\Repositories\Library;
 use Fireball\ReelPlayer\Services\MediaStorage;
 use Fireball\ReelPlayer\Services\GoogleDrive;
 use Fireball\ReelPlayer\Services\DriveCache;
+use Fireball\ReelPlayer\Repositories\Chapters;
+use Fireball\ReelPlayer\Services\CueParser;
+use Fireball\ReelPlayer\Services\ChapterAnalysis;
+use Fireball\ReelPlayer\Services\AudioQuality;
 
 final class PlayerController
 {
@@ -37,6 +41,9 @@ final class PlayerController
             'js_url' => base_href('/plugins/reel-player/assets/player.js?v=' . substr(hash_file('sha256',$assets . '/player.js'),0,16)),
             'meters_url' => base_href('/plugins/reel-player/assets/meters.js?v=' . substr(hash_file('sha256',$assets . '/meters.js'),0,16)),
             'preload_url' => base_href('/plugins/reel-player/assets/preload.js?v=' . substr(hash_file('sha256',$assets . '/preload.js'),0,16)),
+            'chapters_url' => base_href('/plugins/reel-player/assets/chapters.js?v=' . substr(hash_file('sha256',$assets . '/chapters.js'),0,16)),
+            'transport_url' => base_href('/plugins/reel-player/assets/transport.js?v=' . substr(hash_file('sha256',$assets . '/transport.js'),0,16)),
+            'quality_url' => base_href('/plugins/reel-player/assets/quality.js?v=' . substr(hash_file('sha256',$assets . '/quality.js'),0,16)),
         ], false);
     }
 
@@ -84,6 +91,37 @@ final class PlayerController
         });
     }
 
+    public function cuePreview(): void
+    {
+        $this->respond(function (): array {
+            $id = (int)request()->post('track_id',0);
+            $track = $this->library()->track($id);
+            $parsed = CueParser::upload($_FILES['cue'] ?? [],$track['filename'],(float)$track['duration']);
+            $preview = (new Chapters((int)get_user()['id']))->preview($id,$parsed['entries']);
+            return [...$parsed,...$preview];
+        });
+    }
+
+    public function chapterAnalysis(): void
+    {
+        $this->respond(function (): array {
+            $id = (int)request()->post('track_id',0);
+            $track = $this->library()->track($id);
+            $chapters = new Chapters((int)get_user()['id']);
+            $revision = $chapters->revision($id);
+            // Ownership and CSRF have already been checked by the CMS. Analysis
+            // releases the session so playback and other tabs remain responsive.
+            $drive = $this->drive(); session()->close();
+            if (function_exists('set_time_limit')) @set_time_limit(65);
+            try {
+                $analysis = ($track['source'] ?? 'local') === 'drive'
+                    ? $drive->analyzeChapters($track['source_id'],(float)$track['duration'])
+                    : (new ChapterAnalysis())->analyze((new MediaStorage())->path($track['file_path']),(float)$track['duration']);
+            } catch (\RuntimeException $error) { throw new \InvalidArgumentException($error->getMessage(),0,$error); }
+            return [...$analysis,'entries'=>$analysis['chapters'],'revision'=>$revision];
+        });
+    }
+
     private function respond(callable $callback): never
     {
         try {
@@ -100,6 +138,25 @@ final class PlayerController
 
     public function media(): void { $this->stream(false); }
     public function cover(): void { $this->stream(true); }
+
+    public function quality(): void
+    {
+        header('Cache-Control: private, no-store');
+        try { $track = $this->library()->track((int)get_route_param('id')); }
+        catch (\InvalidArgumentException) { abort('Трек не найден.', 404); }
+        // Optional metadata must not hold the session lock or delay native audio.
+        $drive = $this->drive(); session()->close();
+        $fallback = AudioQuality::describe('', (string)$track['filename'], (string)$track['mime'], (int)$track['file_size'], (float)$track['duration']);
+        try {
+            $info = ($track['source'] ?? 'local') === 'drive'
+                ? $drive->quality((string)$track['source_id'], (float)$track['duration'])
+                : AudioQuality::local((new MediaStorage())->path((string)$track['file_path']), (string)$track['filename'], (string)$track['mime'], (int)$track['file_size'], (float)$track['duration']);
+        } catch (\Throwable) {
+            // Format/known average remains useful when an optional header is unavailable.
+            $info = $fallback;
+        }
+        response()->json(['status' => true, 'quality' => $info]);
+    }
 
     public function prepare(): void
     {

@@ -19,6 +19,20 @@ final class HookManager
         }
     }
 
+    /** Extension initialization can isolate one broken plugin without skipping later callbacks. */
+    public function doActionSafely(string $hook, mixed ...$args): void
+    {
+        foreach ($this->callbacks($this->actions, $hook) as $callback) {
+            try {
+                $callback(...$args);
+            } catch (\Throwable $exception) {
+                \log_error_details('Plugin action failed without interrupting the request', [
+                    'Hook' => $hook, 'Callback' => $this->callbackName($callback),
+                ], $exception);
+            }
+        }
+    }
+
     public function addFilter(string $hook, callable $callback, int $priority = 10): void
     {
         $this->filters[$hook][$priority][] = $callback;

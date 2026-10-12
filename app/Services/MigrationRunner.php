@@ -7,7 +7,7 @@ use FBL\Database;
 /** Shared versioned migration journal for installer, updater and CLI. */
 final class MigrationRunner
 {
-    public function run(?Database $database = null): array
+    public function run(?Database $database = null, ?array $only = null): array
     {
         $previous = app()->db;
         app()->db = $database ?? $previous ?? new Database();
@@ -18,7 +18,7 @@ final class MigrationRunner
             if (!$locked) {
                 throw new \RuntimeException('Could not acquire CMS migration lock.');
             }
-            return SchemaMigration::run(function (): array {
+            return SchemaMigration::run(function () use ($only): array {
                 db()->query('CREATE TABLE IF NOT EXISTS update_migrations (
                     id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
                     migration VARCHAR(255) NOT NULL,
@@ -33,6 +33,14 @@ final class MigrationRunner
                     }
                 }
                 ksort($files);
+                if ($only !== null) {
+                    foreach ($only as $name) {
+                        if (!is_string($name) || !isset($files[$name])) {
+                            throw new \InvalidArgumentException('Unknown CMS migration.');
+                        }
+                    }
+                    $files = array_intersect_key($files, array_fill_keys($only, true));
+                }
                 $applied = array_flip(array_column(db()->query('SELECT migration FROM update_migrations')->get() ?: [], 'migration'));
                 $executed = [];
                 foreach ($files as $name => $file) {

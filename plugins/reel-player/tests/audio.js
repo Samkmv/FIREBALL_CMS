@@ -102,12 +102,15 @@ function setup({capture=false,contextState='running',resumeHang=false}={}){
     let nativePlays=0,analysisErrors=0;
     const isolated=vm.createContext({current:1,generation:1,audio:{paused:true,ended:false,error:null,play(){nativePlays++;this.paused=false;return Promise.resolve();}},meterController:{engine:null,resume(){throw new Error('analysis fault');},state(phase){assert.equal(phase,'unavailable');analysisErrors++;}},configureAudioSession(){},toast(){throw new Error('Analysis must not be misreported as native audio failure');},graph:null});
     vm.runInContext(wrapper+playback,isolated);await isolated.play('user',{isTrusted:true,type:'click'});assert.equal(nativePlays,1);assert.equal(isolated.audio.paused,false);assert.equal(analysisErrors,1,'Analysis command exceptions do not reject native play');
-    const controls=source.slice(source.indexOf("    if ('mediaSession' in navigator) {"),source.indexOf("    window.addEventListener('pagehide', save);"));
+    const controlsEnd=source.indexOf("    window.addEventListener('pagehide',");
+    assert.ok(controlsEnd>source.indexOf("    if ('mediaSession' in navigator) {"),'Media Session harness must end before visual page lifecycle');
+    const controls=source.slice(source.indexOf("    if ('mediaSession' in navigator) {"),controlsEnd);
     const navigation=source.slice(source.indexOf('    function next(automatic = false,'),source.indexOf('    function applyState(result)'));
+    const seekCode=source.slice(source.indexOf('    function seekTo('),source.indexOf('    function jumpChapter('));
     const actions=new Map(); const audio={duration:200,currentTime:75,paused:false,pause(){this.paused=true;}};
-    const context=vm.createContext({audio,current:2,queue:[1,2,3],repeat:'off',shuffle:false,bag:[],futureBag:[],history:[],playOrigins:[],navigator:{mediaSession:{setActionHandler(name,handler){actions.set(name,handler);}}},drawProgress(){}});
+    const context=vm.createContext({audio,current:2,queue:[1,2,3],repeat:'off',shuffle:false,bag:[],futureBag:[],history:[],playOrigins:[],navigator:{mediaSession:{setActionHandler(name,handler){actions.set(name,handler);}}},drawProgress(){},save(){},seekChapter(){return false;}});
     vm.runInContext('function load(id){current=id;audio.currentTime=0;} function play(origin){playOrigins.push(origin);audio.paused=false;}',context);
-    vm.runInContext(navigation+controls,context);
+    vm.runInContext(navigation+seekCode+controls,context);
     assert.equal(actions.get('seekbackward'),null); assert.equal(actions.get('seekforward'),null);
     actions.get('nexttrack')(); assert.equal(context.current,3); assert.equal(audio.currentTime,0);
     actions.get('previoustrack')(); assert.equal(context.current,2);
@@ -115,7 +118,7 @@ function setup({capture=false,contextState='running',resumeHang=false}={}){
     actions.get('pause')(); assert.equal(audio.paused,true); actions.get('play')(); assert.equal(audio.paused,false);assert.deepEqual(Array.from(context.playOrigins),['system','system','system'],'Lock-screen commands never pretend to be user gestures');
     const cover=source.slice(source.indexOf('    function updateNow()'),source.indexOf('    function updateButtons()'));
     const nodes=new Map(); const currentTrack={title:'Fixture',artist:'Artist',cover:'',source:'drive'};
-    const metaContext=vm.createContext({activeTrack:()=>currentTrack,$:selector=>{if(!nodes.has(selector))nodes.set(selector,{textContent:'',getAttribute(){return '';}});return nodes.get(selector);},config:{defaultCover:'/cover.svg',defaultArtwork:'/cover.png'},current:1,queueName:'Fixture',navigator:{mediaSession:{}},window:{MediaMetadata:true},MediaMetadata:class {constructor(metadata){Object.assign(this,metadata);}},URL,location:{href:'https://fixture.invalid/player'}});
+    const metaContext=vm.createContext({drawAudioQuality(){},activeTrack:()=>currentTrack,$:selector=>{if(!nodes.has(selector))nodes.set(selector,{textContent:'',getAttribute(){return '';}});return nodes.get(selector);},config:{defaultCover:'/cover.svg',defaultArtwork:'/cover.png'},current:1,queueName:'Fixture',navigator:{mediaSession:{}},window:{MediaMetadata:true},MediaMetadata:class {constructor(metadata){Object.assign(this,metadata);}},URL,location:{href:'https://fixture.invalid/player'}});
     vm.runInContext(cover,metaContext); metaContext.updateNow();
     assert.equal(metaContext.navigator.mediaSession.metadata.artwork[0].sizes,'512x512'); assert.equal(metaContext.navigator.mediaSession.metadata.artwork[0].type,'image/png'); assert.equal(metaContext.navigator.mediaSession.metadata.artwork[0].src,'https://fixture.invalid/cover.png');
     currentTrack.cover='/private-cover';currentTrack.cover_mime='image/jpeg';metaContext.updateNow();assert.equal(metaContext.navigator.mediaSession.metadata.artwork[0].type,'image/jpeg');assert.equal(metaContext.navigator.mediaSession.metadata.artwork[0].sizes,undefined);

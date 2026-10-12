@@ -2,6 +2,8 @@
 .DS_Store
 .gigaide
 .gigacode
+# Local agent instructions; keep the root file out of the repository.
+/AGENTS.md
 public/uploads/*
 !public/uploads/.htaccess
 !public/uploads/.gitkeep
@@ -47,3 +49,7 @@ storage/update-recovery.json*
 
 # Locally built engine release artifacts.
 dist/fireball-cms-*.zip*
+
+# Agent-created test scratch data and local verification artifacts.
+/tests/.tmp/
+/tests/artifacts/

@@ -27,6 +27,7 @@ $visibleCars = $activeOnly ? array_values(array_filter($cars, static fn(array $c
             </div>
             <div class="modal-body">
                 <p class="fw-medium" data-toy-rental-modal-car></p>
+                <p class="small text-body-secondary"><?= $t('toy_rental_billing_rounding_hint') ?></p>
                 <div class="row g-3">
                     <div class="col-6">
                         <label class="form-label" for="toyCompleteDuration"><?= $t('toy_rental_actual_time') ?></label>

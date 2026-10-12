@@ -303,5 +303,34 @@
                 copy:m?{time:m.currentTime,ready:m.readyState,paused:m.paused,seeking:m.seeking,ended:m.ended,rate:m.playbackRate,drift:e.drift}:null};
         }
     }
-    if(typeof module!=='undefined'&&module.exports)module.exports=TapeRoomMeters;else window.TapeRoomMeters=TapeRoomMeters;
+    // Presentation has its own envelope. The analyser's samples and deadlines
+    // stay untouched; release uses only the last displayed, measured level.
+    class TapeRoomMeterEnvelope {
+        constructor() { this.values = [0,0]; this.active = false; this.gain = 0; this.phase = 1; this.release = [0,0]; this.attackFrom = [0,0]; }
+        step(targets, seconds, {active, immediate = false}) {
+            const dt = Number.isFinite(seconds) ? Math.max(0,Math.min(1,seconds)) : 0;
+            if (immediate) {
+                this.values = targets.map(value => Math.max(0,Math.min(15,Number(value) || 0)));
+                this.active = active; this.gain = active ? 1 : 0; this.phase = 1;
+                return this.values;
+            }
+            if (active) {
+                if (!this.active) { this.gain = 0; this.attackFrom = [...this.values]; }
+                this.active = true; this.phase = 1;
+                this.gain = Math.min(1,this.gain + dt / .22);
+                const gain = this.gain * this.gain * (3 - 2 * this.gain);
+                this.values = targets.map((value,i) => this.attackFrom[i] * (1 - gain) + Math.max(0,Math.min(15,Number(value) || 0)) * gain);
+            } else {
+                if (this.active) { this.release = [...this.values]; this.phase = 0; }
+                this.active = false; this.gain = 0;
+                this.phase = Math.min(1,this.phase + dt / .45);
+                this.values = this.release.map(value => value * (1 - this.phase) ** 2);
+            }
+            return this.values;
+        }
+        get moving() { return this.active ? this.gain < 1 : this.phase < 1 && this.values.some(value => value >= .15); }
+    }
+    TapeRoomMeters.Envelope = TapeRoomMeterEnvelope;
+    if(typeof module!=='undefined'&&module.exports)module.exports=TapeRoomMeters;
+    else { window.TapeRoomMeters=TapeRoomMeters; window.TapeRoomMeterEnvelope=TapeRoomMeterEnvelope; }
 })();

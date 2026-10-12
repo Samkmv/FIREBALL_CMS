@@ -33,6 +33,13 @@ $returnTo = current_url_with_query();
 
     <?php require __DIR__ . '/tabs.php'; ?>
 
+    <div class="d-flex justify-content-end mb-3">
+        <form action="<?= base_href('/admin/toy-rental/rides/clear-history') ?>" method="post" data-admin-delete-form data-confirm-title="<?= htmlSC(FireballPluginToyCarRental::t('toy_rental_history_clear_confirm')) ?>" data-delete-message="<?= htmlSC(FireballPluginToyCarRental::t('toy_rental_history_clear_hint')) ?>" data-delete-confirm-label="<?= htmlSC(FireballPluginToyCarRental::t('toy_rental_history_clear')) ?>">
+            <?= get_csrf_field() ?>
+            <button class="btn btn-outline-danger d-flex align-items-center gap-2" type="submit"><i class="ci-trash" aria-hidden="true"></i><span><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_history_clear')) ?></span></button>
+        </form>
+    </div>
+
     <form class="fb-card p-3 p-md-4 mb-4" method="get" action="<?= base_href('/admin/toy-rental/rides') ?>">
         <div class="row g-3 align-items-end">
             <div class="col-md-3">
@@ -124,7 +131,8 @@ $returnTo = current_url_with_query();
                         : (float)($ride['final_amount'] ?? $ride['payment_amount']);
                     $paidAmount = (float)($ride['payment_amount'] ?? 0);
                     $isUnpaid = (string)($ride['payment_status'] ?? '') === 'unpaid';
-                    $canMarkPaid = $isUnpaid && (string)($ride['status'] ?? '') === 'completed';
+                    $rideStatus = (string)($ride['status'] ?? '');
+                    $canMarkPaid = $isUnpaid && $rideStatus === 'completed';
                     $mobileActions = [];
                     if ($canMarkPaid) {
                         foreach (FireballPluginToyCarRental::PAYMENT_METHODS as $method) {
@@ -141,6 +149,44 @@ $returnTo = current_url_with_query();
                                 ],
                             ];
                         }
+                    }
+                    if ($rideStatus === 'completed') {
+                        $mobileActions[] = [
+                            'type' => 'form',
+                            'icon' => 'ci-refresh-cw',
+                            'label' => FireballPluginToyCarRental::t('toy_rental_recalculate'),
+                            'action' => base_href('/admin/toy-rental/rides/recalculate'),
+                            'form_attributes' => [
+                                'data-admin-delete-form' => true,
+                                'data-confirm-title' => FireballPluginToyCarRental::t('toy_rental_recalculate_confirm'),
+                                'data-delete-message' => FireballPluginToyCarRental::t('toy_rental_recalculate_hint'),
+                                'data-delete-item' => (string)$ride['car_name'] . ' #' . (int)$ride['id'],
+                                'data-delete-confirm-label' => FireballPluginToyCarRental::t('toy_rental_recalculate'),
+                                'data-confirm-variant' => 'primary',
+                                'data-confirm-icon' => 'ci-refresh-cw',
+                            ],
+                            'hidden' => ['id' => (int)$ride['id'], 'return_to' => $returnTo],
+                        ];
+                    }
+                    if (in_array($rideStatus, ['completed', 'cancelled'], true)) {
+                        if (!empty($mobileActions)) {
+                            $mobileActions[] = ['type' => 'divider'];
+                        }
+                        $mobileActions[] = [
+                            'type' => 'form',
+                            'icon' => 'ci-trash',
+                            'label' => FireballPluginToyCarRental::t('toy_rental_history_delete'),
+                            'class' => 'text-danger',
+                            'action' => base_href('/admin/toy-rental/rides/delete'),
+                            'form_attributes' => [
+                                'data-admin-delete-form' => true,
+                                'data-confirm-title' => FireballPluginToyCarRental::t('toy_rental_history_delete_confirm'),
+                                'data-delete-message' => FireballPluginToyCarRental::t('toy_rental_history_delete_hint'),
+                                'data-delete-item' => (string)$ride['car_name'] . ' #' . (int)$ride['id'],
+                                'data-delete-confirm-label' => FireballPluginToyCarRental::t('toy_rental_history_delete'),
+                            ],
+                            'hidden' => ['id' => (int)$ride['id'], 'return_to' => $returnTo],
+                        ];
                     }
                     $mobileCards[] = [
                         'id' => (int)$ride['id'],
@@ -188,25 +234,7 @@ $returnTo = current_url_with_query();
                         </td>
                         <td><span class="badge rounded-pill text-bg-light border"><?= htmlSC(FireballPluginToyCarRental::statusLabel((string)$ride['status'])) ?></span></td>
                         <td class="text-nowrap">
-                            <?php if ($canMarkPaid): ?>
-                                <form class="d-flex align-items-center gap-2" action="<?= base_href('/admin/toy-rental/rides/pay') ?>" method="post">
-                                    <?= get_csrf_field() ?>
-                                    <input type="hidden" name="id" value="<?= (int)$ride['id'] ?>">
-                                    <input type="hidden" name="payment_amount" value="<?= htmlSC((string)($paidAmount > 0 ? $paidAmount : $calculated)) ?>">
-                                    <input type="hidden" name="return_to" value="<?= htmlSC($returnTo) ?>">
-                                    <select class="form-select form-select-sm w-auto" name="payment_method" aria-label="<?= htmlSC(FireballPluginToyCarRental::t('toy_rental_table_payment_method')) ?>">
-                                        <?php foreach ($paymentMethods as $key => $label): ?>
-                                            <?php if ($key === '') { continue; } ?>
-                                            <option value="<?= htmlSC((string)$key) ?>" <?= (string)$ride['payment_method'] === (string)$key ? 'selected' : '' ?>><?= htmlSC($label) ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                    <button class="btn btn-sm btn-primary" type="submit">
-                                        <?= htmlSC(FireballPluginToyCarRental::t('toy_rental_mark_paid')) ?>
-                                    </button>
-                                </form>
-                            <?php else: ?>
-                                <span class="text-body-tertiary">—</span>
-                            <?php endif; ?>
+                            <?php require __DIR__ . '/history-actions.php'; ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>

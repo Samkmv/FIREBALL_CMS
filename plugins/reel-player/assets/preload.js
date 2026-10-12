@@ -25,6 +25,9 @@
         connectivity(online) { this.online=Boolean(online); if(!this.online)this.cancel();else this.schedule(this.targets,this.allowed); }
         cancel() {
             this.epoch++; clearTimeout(this.timer); this.timer = null;
+            // A deliberate pause, seek or background transition is not a
+            // failed download. Preserve the two-attempt budget for real errors.
+            if (this.controller && this.active) this.attempts.set(this.active,Math.max(0,(this.attempts.get(this.active) || 0)-1));
             this.controller?.abort(); this.controller = null; this.active = '';
         }
         reset() { this.cancel(); this.targets = []; this.done.clear(); this.attempts.clear(); }
