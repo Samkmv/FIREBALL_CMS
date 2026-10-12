@@ -118,7 +118,7 @@ namespace {
     $connection = new PDO($dsn . ';dbname=' . $schema, DB_SETTINGS['username'], DB_SETTINGS['password'], $options);
     $GLOBALS['tapeUpdateDb'] = new \FBL\Database($connection);
     db()->query('CREATE TABLE users (id INT UNSIGNED NOT NULL PRIMARY KEY) ENGINE=InnoDB');
-    db()->query('INSERT INTO users(id) VALUES(1)');
+    db()->query('INSERT INTO users(id) VALUES(1),(2)');
     db()->query('CREATE TABLE site_settings (setting_key VARCHAR(100) NOT NULL PRIMARY KEY, setting_value TEXT, updated_at DATETIME NOT NULL) ENGINE=InnoDB');
     db()->query('INSERT INTO site_settings VALUES(?,?,?)', ['site_title', 'Isolated update fixture', date('Y-m-d H:i:s')]);
 
@@ -139,9 +139,11 @@ namespace {
     $installed = PLUGINS . '/reel-player';
     $copy($source, $installed);
     $metadata = json_decode((string)file_get_contents($installed . '/plugin.json'), true, 512, JSON_THROW_ON_ERROR);
+    $releaseMetadata = $metadata;
+    $assert($releaseMetadata['version'] === '1.4.0', 'Source plugin is the actual 1.4.0 release under review');
     $metadata['version'] = '1.2.14';
     file_put_contents($installed . '/plugin.json', json_encode($metadata, JSON_THROW_ON_ERROR));
-    unlink($installed . '/migrations/004_chapters.sql');
+    foreach (['004_chapters.sql','005_catalog.sql','006_catalog_listening_credits.sql'] as $migration) unlink($installed . '/migrations/' . $migration);
     file_put_contents($installed . '/obsolete-update-fixture.txt', 'Must disappear when the plugin is replaced.');
     $manager = new \FBL\Plugins\PluginManager(PLUGINS);
     $manager->install('reel-player');
@@ -198,6 +200,9 @@ namespace {
             if (!$file->isFile() || $file->isLink()) continue;
             $relative = substr($file->getPathname(), strlen($source) + 1);
             if (str_starts_with($relative, 'tests/') || preg_match('~(?:^|/)\.~', $relative)) continue;
+            // The pre-catalog releases must contain only their historical
+            // migrations, even though the code fixture comes from this tree.
+            if (version_compare($version,'1.4.0','<') && in_array($relative,['migrations/005_catalog.sql','migrations/006_catalog_listening_credits.sql'],true)) continue;
             $name = 'fixture-repository/plugins/reel-player/' . $relative;
             if ($relative === 'plugin.json') $zip->addFromString($name, $json); else $zip->addFile($file->getPathname(), $name);
         }
@@ -242,27 +247,76 @@ namespace {
     $assert((int)db()->query('SELECT COUNT(*) FROM plugin_migrations WHERE plugin_slug=?', ['reel-player'])->getColumn() === 4, 'Existing migrations do not run again');
     $checkFiles('Second update');
 
-    $makeRemote('1.3.2', true);
+    $makeRemote($releaseMetadata['version']);
+    $result = $updater->update('reel-player', ['id' => 1, 'name' => 'Fixture creator']);
+    $assert($result['status'] === 'success' && $result['version'] === '1.4.0', 'Real updater installs the actual catalog release from the 1.3.1 fixture');
+    $assert($snapshot() === $before, 'Catalog migration preserves original local/Drive IDs, metadata, favorites and playlists exactly');
+    $assert(db()->query('SELECT * FROM reel_chapters ORDER BY id')->get() === $chapterSnapshot, 'Catalog release preserves source chapter IDs, titles and timing exactly');
+    $assert((int)db()->query('SELECT COUNT(*) FROM plugin_migrations WHERE plugin_slug=?', ['reel-player'])->getColumn() === 6, 'Catalog and credited migrations are journaled once after the four existing migrations');
+    $catalogTables = ['reel_albums','reel_album_tracks','reel_album_saves','reel_catalog_favorites','reel_track_stats','reel_listening_sessions'];
+    foreach ($catalogTables as $table) {
+        $assert((int)db()->query('SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?',[$table])->getColumn() === 1, 'Catalog migration creates '.$table);
+        $assert((int)db()->query('SELECT COUNT(*) FROM '.$table)->getColumn() === 0, 'Catalog migration does not create or publish data automatically: '.$table);
+    }
+    $assert((int)db()->query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='reel_listening_sessions' AND COLUMN_NAME='credited'")->getColumn() === 1, 'Listening-credit migration adds the processed/credited distinction');
+    $assert(db()->query('SELECT status FROM plugins WHERE slug=?', ['reel-player'])->getColumn() === 'active', 'Catalog release preserves activation state');
+    $assert($manager->setting('reel-player', 'preserved-fixture-setting') === ['value' => 'preserved'], 'Catalog release preserves existing plugin settings');
+    $assert($drive->status()['configured'] && $drive->status()['connected'], 'Catalog release keeps the existing Google account configured and connected');
+    $checkFiles('Catalog release update');
+    $assert(!is_file(STORAGE . '/update.maintenance'), 'Catalog release finishes maintenance mode');
+    $assert((glob(STORAGE . '/plugin-updates/work/*') ?: []) === [], 'Catalog release removes its own temporary extraction workspace');
+
+    // Seed all catalog structures through the actual updated repository. These
+    // records are user actions after migration, rather than automatic imports.
+    $catalog = new \Fireball\ReelPlayer\Repositories\Catalog(1,true);
+    $viewerCatalog = new \Fireball\ReelPlayer\Repositories\Catalog(2,false);
+    $album = $catalog->action('album.create',['title'=>'Explicit fixture album','artist'=>'Fixture artist','tracks'=>[$track,$driveTrack]]);
+    $assert((int)$catalog->album($album)['published'] === 0, 'New album stays private until an explicit creator action');
+    $catalog->action('album.publish',['id'=>$album,'published'=>1]);
+    $viewerCatalog->action('album.save',['id'=>$album,'saved'=>1]);
+    $viewerCatalog->action('track.favorite',['id'=>$track,'favorite'=>1]);
+    $listen = $viewerCatalog->beginListening($driveTrack);
+    db()->query('UPDATE reel_listening_sessions SET started_at=DATE_SUB(NOW(6),INTERVAL 31 SECOND) WHERE token_hash=?',[hash('sha256',$listen['token'])]);
+    $assert($viewerCatalog->finishListening($listen['token'],30)['credited'] === true, 'Updated catalog can count a guarded, actually elapsed shared-source listen');
+    $viewerState = $viewerCatalog->state();
+    $assert(count($viewerState['albums']) === 1 && $viewerState['albums'][0]['saved'] === true, 'Updated catalog creates and saves shared albums without audio copies');
+    $assert($snapshot() === $before, 'Post-upgrade album saves and viewer favorites preserve original private library rows');
+    $catalogSnapshot = static fn(): array => [
+        db()->query('SELECT * FROM reel_albums ORDER BY id')->get(),
+        db()->query('SELECT * FROM reel_album_tracks ORDER BY album_id,position')->get(),
+        db()->query('SELECT * FROM reel_album_saves ORDER BY owner_id,album_id')->get(),
+        db()->query('SELECT * FROM reel_catalog_favorites ORDER BY owner_id,track_id')->get(),
+        db()->query('SELECT * FROM reel_track_stats ORDER BY track_id')->get(),
+        db()->query('SELECT * FROM reel_listening_sessions ORDER BY token_hash')->get(),
+    ];
+    $beforeFailedCatalog = $catalogSnapshot();
+
+    $makeRemote('1.4.1', true);
     $failed = false;
     try { $updater->update('reel-player', ['id' => 1, 'name' => 'Fixture creator']); }
     catch (RuntimeException $error) { $failed = true; }
     $assert($failed, 'Invalid new migration rejects the update');
-    $assert($manager->metadata('reel-player')['version'] === '1.3.1', 'Failed update restores the preceding plugin directory');
+    $assert($manager->metadata('reel-player')['version'] === '1.4.0', 'Failed update restores the preceding catalog plugin directory');
     $assert($snapshot() === $before && db()->query('SELECT * FROM reel_chapters ORDER BY id')->get() === $chapterSnapshot, 'Rejected migration preserves all library and chapter data');
+    $assert($catalogSnapshot() === $beforeFailedCatalog, 'Rejected later migration preserves album IDs, order, saves, per-viewer favorites, stats and credited listening tokens exactly');
+    $assert((int)db()->query('SELECT COUNT(*) FROM plugin_migrations WHERE plugin_slug=?', ['reel-player'])->getColumn() === 6, 'Failed later migration does not reapply or erase the catalog migration ledger');
     $checkFiles('Failed update rollback');
     $assert(is_file(STORAGE . '/update.maintenance'), 'A migration failure retains recovery maintenance instead of exposing a partially migrated site');
     $assert((glob(PLUGINS . '/.reel-player.*') ?: []) === [], 'Successful replacement and rollback clean their own staging directories');
-    $assert(count($GLOBALS['tapeUpdateHttpCalls']) === 12, 'Three update attempts use only the four expected fixture transfers each');
+    $assert(count($GLOBALS['tapeUpdateHttpCalls']) === 16, 'Four update attempts use only the four expected fixture transfers each');
 
-    $artifact = __DIR__ . '/artifacts/tape-room-recovery';
+    $artifact = __DIR__ . '/artifacts/tape-room-1.4.0';
     if (!is_dir($artifact)) mkdir($artifact, 0700, true);
     $report = [
         'result' => 'passed', 'checks' => $checks, 'php' => PHP_VERSION,
         'pipeline' => 'Unmodified PluginUpdateService::update, PluginManager, MySQL migrations, private storage, database/file backups, rollback and cleanup',
         'transfers' => 'Only GitHub cURL responses replaced with local metadata and ZIP fixtures; no outbound requests',
-        'scenarios' => ['1.2.14 fixture to 1.3.0 with automatic chapter migration', '1.3.0 to synthetic fixture 1.3.1 with existing chapters', 'Rejected synthetic 1.3.2 migration with file rollback'],
-        'preserved' => ['OAuth app settings and per-owner tokens: byte equality and 0600 permissions', 'Local audio and cover bytes', 'Local and Google Drive DB tracks, favorites, playlists, order', 'Chapter IDs, associations and timestamps', 'Plugin settings and active status'],
-        'limitations' => ['Synthetic OAuth and audio bytes; no actual Google authentication or audio decoder playback', 'GitHub network transport mocked; server hosting and filesystem behavior not tested', 'Failed migration fixture makes no preceding schema changes; this is not a test of database rollback after arbitrary DDL'],
+        'http_fixture_transfers' => count($GLOBALS['tapeUpdateHttpCalls']),
+        'migration_ledger' => (int)db()->query('SELECT COUNT(*) FROM plugin_migrations WHERE plugin_slug=?',['reel-player'])->getColumn(),
+        'catalog_tables' => $catalogTables,
+        'scenarios' => ['1.2.14 fixture to 1.3.0 with automatic chapter migration', '1.3.0 to synthetic fixture 1.3.1 with existing chapters', '1.3.1 fixture to actual 1.4.0 with six empty catalog tables and listening credits', 'Explicit album create/publication/save and actual elapsed listening after update', 'Rejected synthetic 1.4.1 migration with 1.4.0 file rollback and unchanged catalog rows'],
+        'preserved' => ['OAuth app settings and per-owner tokens: byte equality and 0600 permissions', 'Local audio and cover bytes', 'Local and Google Drive DB tracks, favorites, playlists, order', 'Chapter IDs, associations and timestamps', 'Catalog album IDs, track order, user saves/favorites, counts and credited tokens', 'Plugin settings and active status'],
+        'limitations' => ['Synthetic OAuth and audio bytes; no actual Google authentication or audio decoder playback', 'GitHub network transport mocked; live hosting and external API behavior not exercised', 'Failed migration fixture makes no preceding schema changes; this is not a test of database rollback after arbitrary DDL'],
     ];
     file_put_contents($artifact . '/update-safety.json', json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n");
     echo "Passed {$checks} real plugin update preservation checks. Only HTTP transport was fixture-backed; all files and the MySQL database were isolated.\n";

@@ -5,6 +5,15 @@ if (PHP_SAPI !== 'cli-server') { http_response_code(404); exit; }
 $project = dirname(__DIR__, 3);
 $auditMode = getenv('REEL_PLAYER_SEQUENCE_PREVIEW');
 $audit = in_array($auditMode, ['short','long'], true);
+$catalogPreview = getenv('REEL_PLAYER_CATALOG_PREVIEW') === '1';
+// The switch is available only on this disposable CLI test server and only
+// with the explicit catalog fixture flag. Production authorization is untouched.
+$catalogViewer = $catalogPreview ? (string)($_COOKIE['reel_catalog_fixture_viewer'] ?? 'creator') : '';
+if ($catalogPreview && in_array($_GET['catalogViewer'] ?? '', ['creator', 'admin'], true)) {
+    $catalogViewer = $_GET['catalogViewer'];
+    setcookie('reel_catalog_fixture_viewer', $catalogViewer, ['path'=>'/admin/reel-player', 'httponly'=>true, 'samesite'=>'Lax']);
+}
+$GLOBALS['catalogFixtureViewer'] = in_array($catalogViewer, ['creator', 'admin'], true) ? $catalogViewer : 'creator';
 $testRoot = realpath((string)getenv('REEL_PLAYER_TEST_ROOT'));
 $temporaryRoot = realpath($project . '/tests/.tmp');
 if (!$testRoot || !$temporaryRoot || !str_starts_with($testRoot, $temporaryRoot . DIRECTORY_SEPARATOR)) {
@@ -17,7 +26,7 @@ require dirname(__DIR__) . '/Plugin.php';
 function htmlSC(mixed $value): string { return htmlspecialchars((string)$value,ENT_QUOTES,'UTF-8'); }
 function base_href(string $path): string { return $path; }
 function base_url(string $path): string { return 'http://127.0.0.1:8897' . $path; }
-function get_user(): array { $admin = getenv('REEL_PLAYER_ROLE_PREVIEW') === 'admin'; return ['id'=>$admin ? 2 : 1,'role'=>$admin ? 'admin' : 'creator']; }
+function get_user(): array { $admin = getenv('REEL_PLAYER_ROLE_PREVIEW') === 'admin' || (getenv('REEL_PLAYER_CATALOG_PREVIEW') === '1' && $GLOBALS['catalogFixtureViewer'] === 'admin'); return ['id'=>$admin ? 2 : 1,'role'=>$admin ? 'admin' : 'creator']; }
 function check_creator(): bool { return get_user()['role'] === 'creator'; }
 function session(): object { static $session; return $session ??= new class {
     private array $values = [];
@@ -52,11 +61,27 @@ function db(): object { static $db; return $db ??= new class {
         $this->pdo->exec("CREATE TABLE IF NOT EXISTS reel_tracks(id INTEGER PRIMARY KEY AUTOINCREMENT,owner_id INTEGER,title TEXT,artist TEXT DEFAULT '',filename TEXT,file_path TEXT,mime TEXT,file_size INTEGER,duration REAL DEFAULT 0,cover_path TEXT,cover_mime TEXT,source TEXT DEFAULT 'local',source_id TEXT,created_at TEXT,UNIQUE(owner_id,source,source_id)); CREATE TABLE IF NOT EXISTS reel_playlists(id INTEGER PRIMARY KEY AUTOINCREMENT,owner_id INTEGER,name TEXT,created_at TEXT); CREATE TABLE IF NOT EXISTS reel_playlist_tracks(playlist_id INTEGER REFERENCES reel_playlists(id) ON DELETE CASCADE,track_id INTEGER REFERENCES reel_tracks(id) ON DELETE CASCADE,position INTEGER,PRIMARY KEY(playlist_id,track_id));");
         if (!in_array('favorite', array_column($this->pdo->query('PRAGMA table_info(reel_tracks)')->fetchAll(), 'name'), true)) $this->pdo->exec('ALTER TABLE reel_tracks ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0');
         $this->pdo->exec("CREATE TABLE IF NOT EXISTS reel_chapters(id INTEGER PRIMARY KEY AUTOINCREMENT,track_id INTEGER NOT NULL REFERENCES reel_tracks(id) ON DELETE CASCADE,title TEXT NOT NULL,artist TEXT NOT NULL DEFAULT '',start_time NUMERIC NOT NULL,UNIQUE(track_id,start_time))");
+        // SQLite equivalent of migration 005; ordinary previews also exercise
+        // the same migrated Library::state(), without creating production data.
+        $this->pdo->exec("CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY); INSERT OR IGNORE INTO users(id) VALUES(1),(2);
+            CREATE TABLE IF NOT EXISTS reel_albums(id INTEGER PRIMARY KEY AUTOINCREMENT,owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,title TEXT NOT NULL,artist TEXT NOT NULL DEFAULT '',release_date TEXT,description TEXT NOT NULL,cover_path TEXT,cover_mime TEXT,published INTEGER NOT NULL DEFAULT 0,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS reel_album_tracks(album_id INTEGER NOT NULL REFERENCES reel_albums(id) ON DELETE CASCADE,track_id INTEGER NOT NULL REFERENCES reel_tracks(id) ON DELETE CASCADE,position INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(album_id,track_id));
+            CREATE TABLE IF NOT EXISTS reel_album_saves(owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,album_id INTEGER NOT NULL REFERENCES reel_albums(id) ON DELETE CASCADE,created_at TEXT NOT NULL,PRIMARY KEY(owner_id,album_id));
+            CREATE TABLE IF NOT EXISTS reel_catalog_favorites(owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,track_id INTEGER NOT NULL REFERENCES reel_tracks(id) ON DELETE CASCADE,favorite INTEGER NOT NULL DEFAULT 1,PRIMARY KEY(owner_id,track_id));
+            CREATE TABLE IF NOT EXISTS reel_track_stats(track_id INTEGER PRIMARY KEY REFERENCES reel_tracks(id) ON DELETE CASCADE,listens INTEGER NOT NULL DEFAULT 0);
+            CREATE TABLE IF NOT EXISTS reel_listening_sessions(token_hash TEXT PRIMARY KEY,owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,track_id INTEGER NOT NULL REFERENCES reel_tracks(id) ON DELETE CASCADE,threshold REAL NOT NULL,started_at TEXT NOT NULL,expires_at TEXT NOT NULL,counted INTEGER NOT NULL DEFAULT 0,credited INTEGER NOT NULL DEFAULT 0);");
+        if (!in_array('credited', array_column($this->pdo->query('PRAGMA table_info(reel_listening_sessions)')->fetchAll(), 'name'), true)) $this->pdo->exec('ALTER TABLE reel_listening_sessions ADD COLUMN credited INTEGER NOT NULL DEFAULT 0');
     }
     public function query(string $sql,array $params=[]): static {
         $sql=str_replace([' FOR UPDATE','INSERT IGNORE'],['','INSERT OR IGNORE'],$sql);
         // Match MySQL's LAST_INSERT_ID(existing id) without overwriting edits.
         $sql=str_replace(' ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)',' ON CONFLICT(owner_id,source,source_id) DO UPDATE SET id = reel_tracks.id RETURNING id',$sql);
+        $sql=str_replace(' ON DUPLICATE KEY UPDATE favorite=1',' ON CONFLICT(owner_id,track_id) DO UPDATE SET favorite=1',$sql);
+        $sql=str_replace(' ON DUPLICATE KEY UPDATE listens=listens+1',' ON CONFLICT(track_id) DO UPDATE SET listens=reel_track_stats.listens+1',$sql);
+        // Preserve actual wall-clock thresholds and idempotent listening in
+        // this fixture rather than pretending each play click was a listen.
+        $sql=str_replace('TIMESTAMPDIFF(MICROSECOND,started_at,NOW(6))/1000000',"((julianday(strftime('%Y-%m-%d %H:%M:%f','now','localtime'))-julianday(started_at))*86400)",$sql);
+        $sql=str_replace(['DATE_SUB(NOW(6),INTERVAL 1 MINUTE)','DATE_ADD(NOW(6),INTERVAL 2 HOUR)','DATE_SUB(?,INTERVAL 30 SECOND)','NOW(6)'],["datetime('now','localtime','-1 minute')","datetime('now','localtime','+2 hours')","datetime(?,'-30 seconds')","strftime('%Y-%m-%d %H:%M:%f','now','localtime')"],$sql);
         $this->stmt=$this->pdo->prepare($sql); $this->stmt->execute($params); return $this;
     }
     public function get(): array { return $this->stmt->fetchAll(); }
@@ -74,8 +99,9 @@ function db(): object { static $db; return $db ??= new class {
 }; }
 $router=new class {
     public string $assetPattern='';public mixed $assetHandler=null;
-    public function get(string $pattern,mixed $handler):static{if(str_starts_with($pattern,'/plugins/reel-player/assets/')){$this->assetPattern=$pattern;$this->assetHandler=$handler;}return $this;}
-    public function post(string $pattern,mixed $handler):static{return $this;}
+    public array $routes=[];
+    public function get(string $pattern,mixed $handler):static{if(str_starts_with($pattern,'/plugins/reel-player/assets/')){$this->assetPattern=$pattern;$this->assetHandler=$handler;}else $this->routes[]=['GET',$pattern,$handler];return $this;}
+    public function post(string $pattern,mixed $handler):static{$this->routes[]=['POST',$pattern,$handler];return $this;}
     public function middleware(array $guard):static{return $this;}
 };
 require dirname(__DIR__).'/routes.php';
@@ -153,7 +179,7 @@ if ($audit && $path === '/admin/reel-player') {
     $lock=fopen(STORAGE.'/seed.lock','c');flock($lock,LOCK_EX);
     try {
         if(!(int)db()->query('SELECT COUNT(*) FROM reel_tracks')->getColumn()) {
-            $owner=(int)get_user()['id'];$dir=STORAGE.'/reel-player/'.$owner;
+            $owner=$catalogPreview ? 1 : (int)get_user()['id'];$dir=STORAGE.'/reel-player/'.$owner;
             if(!is_dir($dir))mkdir($dir,0700,true);
             $duration=$auditMode==='short'?2:24;$rate=44100;
             foreach ([['Zero',2,0,0],['Quiet',2,.014,.007],['Mono',1,.12,.12],['Stereo',2,.18,.04]] as [$name,$channels,$left,$right]) {
@@ -249,12 +275,39 @@ if (getenv('REEL_PLAYER_CHAPTERS_PREVIEW') === '1' && $path === '/admin/reel-pla
         }
     } finally {flock($lock,LOCK_UN);fclose($lock);}
 }
+if ($catalogPreview && $path === '/admin/reel-player') {
+    $lock=fopen(STORAGE.'/catalog-seed.lock','c');flock($lock,LOCK_EX);
+    try {
+        $owned=db()->query('SELECT id,title FROM reel_tracks WHERE owner_id=1')->get();
+        $byTitle=array_column($owned,'id','title');
+        if (!is_file(STORAGE.'/catalog-seeded') && isset($byTitle['Stereo'],$byTitle['Mono'],$byTitle['Quiet'],$byTitle['Zero']) && !(int)db()->query('SELECT COUNT(*) FROM reel_albums')->getColumn()) {
+            $catalog=new \Fireball\ReelPlayer\Repositories\Catalog(1,true);
+            foreach ([
+                ['Ночная сторона · демо','Stereo Lab','2026-10-10',[$byTitle['Stereo'],$byTitle['Mono']],true],
+                ['Тихий океан · демо','PCM Sessions','2026-10-05',[$byTitle['Quiet'],$byTitle['Stereo']],true],
+                ['Черновик · демо','Private Sessions','',[$byTitle['Zero']],false],
+            ] as [$title,$artist,$release,$tracks,$publish]) {
+                $album=$catalog->action('album.create',['title'=>$title,'artist'=>$artist,'release_date'=>$release,'description'=>'Изолированная тестовая библиотека: короткие синусоидальные WAV, не настоящая музыка.','tracks'=>array_map('intval',$tracks)]);
+                if ($publish) $catalog->action('album.publish',['id'=>$album,'published'=>1]);
+            }
+            (new \Fireball\ReelPlayer\Repositories\Library(2))->action('playlist.create',['name'=>'Личная лента · демо']);
+            file_put_contents(STORAGE.'/catalog-seeded','Demo albums were explicitly seeded by REEL_PLAYER_CATALOG_PREVIEW=1.');
+        }
+    } finally {flock($lock,LOCK_UN);fclose($lock);}
+}
 $controller=new \Fireball\ReelPlayer\Controllers\PlayerController();
 try {
     // Real network delay for buffering UI checks; only on this opt-in test server.
     if (getenv('REEL_PLAYER_BUFFER_PREVIEW') === '1' && $path === '/admin/reel-player/media/2') sleep(10);
     if (preg_match('~^/admin/reel-player/(media|cover)/(\d+)$~',$path,$match)) { $GLOBALS['route']=['id'=>$match[2]]; $controller->{$match[1]}(); exit; }
     if (preg_match('~^/admin/reel-player/api/quality/(\d+)$~',$path,$match)) { $GLOBALS['route']=['id'=>$match[1]]; $controller->quality(); exit; }
+    // Route the actual plugin endpoints, including catalog media, covers,
+    // preparation and listening. Authorization lives in their real repositories.
+    foreach ($router->routes as [$verb,$pattern,$handler]) {
+        if ($verb === $_SERVER['REQUEST_METHOD'] && preg_match('~^'.$pattern.'$~',$path,$match) && is_array($handler) && $handler[0] === \Fireball\ReelPlayer\Controllers\PlayerController::class) {
+            $GLOBALS['route']=$match;echo $controller->{$handler[1]}();exit;
+        }
+    }
     $method = match ($path) { '/admin/reel-player'=>'index','/admin/reel-player/api/state'=>'state','/admin/reel-player/api/action'=>'action','/admin/reel-player/api/upload'=>'upload','/admin/reel-player/api/prepare'=>'prepare','/admin/reel-player/api/drive/status'=>'driveStatus','/admin/reel-player/api/chapters/cue'=>'cuePreview','/admin/reel-player/api/chapters/analyze'=>'chapterAnalysis',default=>'' };
     if ($method==='') abort();
     echo $controller->$method();

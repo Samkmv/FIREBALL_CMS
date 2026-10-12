@@ -126,11 +126,9 @@ $button = static function (string $action, string $label, string $name, string $
             <?php endforeach; ?>
             <div class="rp-now-playing">
                 <button type="button" class="rp-cover-button" data-action="edit-current" title="Изменить название и обложку" aria-label="Изменить название и обложку">
-                    <img data-cover alt="Обложка текущей композиции" width="280" height="280">
-                    <script>
-                        // Choose the saved theme before downloading the first cover.
-                        document.currentScript.previousElementSibling.src = <?= json_encode($config['defaultCovers'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>[document.documentElement.dataset.theme] || <?= json_encode($config['defaultCover'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
-                    </script>
+                    <img class="rp-custom-cover" data-cover alt="Обложка текущей композиции" width="280" height="280">
+                    <img class="rp-theme-cover rp-theme-cover--light" data-theme-cover src="<?= htmlSC($config['defaultCovers']['light']) ?>" alt="Стандартная обложка" width="280" height="280" decoding="async">
+                    <img class="rp-theme-cover rp-theme-cover--dark" data-theme-cover src="<?= htmlSC($config['defaultCovers']['dark']) ?>" alt="Стандартная обложка" width="280" height="280" decoding="async">
                     <span class="rp-cover-edit"><?= $icon('edit') ?></span>
                 </button>
                 <h1 data-title>Ваша первая лента</h1>
@@ -176,17 +174,26 @@ $button = static function (string $action, string $label, string $name, string $
         <div class="rp-chapter-list" data-chapter-list></div>
         <p class="rp-chapter-empty" data-chapter-empty hidden>Ничего не найдено. Попробуйте другое название или имя исполнителя.</p>
     </section>
-    <section class="rp-library" aria-label="Музыкальная библиотека">
+    <section class="rp-library rp-library--catalog" aria-label="Музыкальная библиотека">
         <aside class="rp-playlists">
-            <div class="rp-section-heading"><h2>Мои ленты</h2><?= $button('create-playlist', 'Создать плейлист', 'plus') ?></div>
-            <nav data-playlists aria-label="Плейлисты"></nav>
+            <div class="rp-catalog-nav-heading">Библиотека</div>
+            <nav class="rp-catalog-nav" data-catalog-nav aria-label="Музыкальный каталог">
+                <button type="button" class="rp-catalog-nav-button" data-action="catalog-view" data-view="overview"><?= $icon('music') ?><span>Обзор</span></button>
+                <button type="button" class="rp-catalog-nav-button" data-action="catalog-view" data-view="albums"><?= $icon('folder') ?><span>Альбомы</span><span class="rp-catalog-nav-count" data-catalog-album-count></span></button>
+                <button type="button" class="rp-catalog-nav-button" data-action="catalog-view" data-view="artists"><?= $icon('music') ?><span>Артисты</span></button>
+                <button type="button" class="rp-catalog-nav-button" data-action="catalog-view" data-view="new"><?= $icon('plus') ?><span>Новинки</span></button>
+                <button type="button" class="rp-catalog-nav-button" data-action="catalog-view" data-view="popular"><?= $icon('play') ?><span>Популярное</span></button>
+                <button type="button" class="rp-catalog-nav-button" data-action="catalog-view" data-view="mine"><?= $icon('heart') ?><span>Моя музыка</span><span class="rp-catalog-nav-count" data-catalog-saved-count></span></button>
+            </nav>
+            <div class="rp-section-heading rp-personal-heading"><h2>Мои ленты</h2><?= $button('create-playlist', 'Создать плейлист', 'plus') ?></div>
+            <nav data-playlists aria-label="Личные песни и плейлисты"></nav>
             <button class="rp-upload-button rp-drive-button" type="button" data-action="drive"><?= $icon('music') ?><span>Google Drive</span></button>
-            <div class="rp-private-note"><span class="rp-status-dot"></span>Только для вас<span>Музыка хранится в вашей CMS</span></div>
+            <div class="rp-private-note"><span class="rp-status-dot"></span>Личная коллекция<span>Сохраняйте альбомы и свою музыку</span></div>
         </aside>
         <div class="rp-track-panel">
             <div class="rp-library-toolbar">
-                <div class="rp-list-heading"><h2 data-list-title>Вся музыка</h2><span data-list-summary>0 треков</span></div>
-                <div class="rp-library-actions"><div data-playlist-actions hidden><?= $button('rename-playlist', 'Переименовать плейлист', 'edit') ?><?= $button('delete-playlist', 'Удалить плейлист', 'trash') ?></div><button type="button" class="rp-upload-button" data-action="upload"><?= $icon('plus') ?><span>Добавить музыку</span></button></div>
+                <div class="rp-list-heading"><h2 data-list-title>Обзор</h2><span data-list-summary></span></div>
+                <div class="rp-library-actions"><div data-playlist-actions hidden><?= $button('rename-playlist', 'Переименовать плейлист', 'edit') ?><?= $button('delete-playlist', 'Удалить плейлист', 'trash') ?></div><button type="button" class="rp-button rp-catalog-create" data-action="catalog-create" data-catalog-create hidden><?= $icon('plus') ?><span>Создать альбом</span></button><button type="button" class="rp-upload-button" data-action="upload"><?= $icon('plus') ?><span>Добавить музыку</span></button></div>
             </div>
             <div class="rp-library-filters">
                 <label class="rp-search"><?= $icon('search') ?><input type="search" data-search placeholder="Найти трек или исполнителя" aria-label="Найти трек или исполнителя"></label>
@@ -195,6 +202,7 @@ $button = static function (string $action, string $label, string $name, string $
                     <div class="rp-sort-options" id="rp-sort-options" data-sort-options role="listbox" aria-label="Сортировка музыки" hidden></div>
                 </div>
             </div>
+            <div class="rp-catalog-content" data-catalog-content hidden></div>
             <div class="rp-track-list" data-tracks></div>
             <div class="rp-empty" data-empty>
                 <div class="rp-empty-icon"><?= $icon('music') ?></div><h3 data-empty-title>Здесь начинается ваша коллекция</h3><p data-empty-description>Перетащите аудиофайлы сюда или добавьте их кнопкой выше.</p><span>MP3 · FLAC · WAV · M4A · OGG · OPUS · AAC · WEBM</span>
@@ -224,6 +232,8 @@ $button = static function (string $action, string $label, string $name, string $
 <?php if (!empty($chapters_url)): ?><script src="<?= htmlSC($chapters_url) ?>" defer></script><?php endif; ?>
 <script src="<?= htmlSC($transport_url) ?>" defer></script>
 <script src="<?= htmlSC($quality_url) ?>" defer></script>
+<script src="<?= htmlSC($collections_url) ?>" defer></script>
+<script src="<?= htmlSC($catalog_url) ?>" defer></script>
 <script src="<?= htmlSC($js_url) ?>" defer></script>
 </body>
 </html>

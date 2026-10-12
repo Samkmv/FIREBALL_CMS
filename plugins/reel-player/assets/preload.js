@@ -46,7 +46,8 @@
             let retry = false;
             try {
                 const form = new FormData(); form.set('id',track.id); form.set('needCSRFToken',this.csrf);
-                const response = await this.fetcher(this.url,{method:'POST',credentials:'same-origin',headers:{'X-CSRF-Token':this.csrf,'X-Requested-With':'XMLHttpRequest','Accept':'application/json'},body:form,signal:controller.signal});
+                const url = track.shared ? this.url.replace(/\/prepare$/, '/catalog/prepare') : this.url;
+                const response = await this.fetcher(url,{method:'POST',credentials:'same-origin',headers:{'X-CSRF-Token':this.csrf,'X-Requested-With':'XMLHttpRequest','Accept':'application/json'},body:form,signal:controller.signal});
                 if (!response.ok && response.status >= 400 && response.status < 500 && response.status !== 429) { if(epoch===this.epoch)this.attempts.set(key,2);return; }
                 const result = await response.json();
                 if (epoch !== this.epoch) return;

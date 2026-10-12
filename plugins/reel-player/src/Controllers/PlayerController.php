@@ -4,6 +4,7 @@ namespace Fireball\ReelPlayer\Controllers;
 
 use App\Services\UploadPolicy;
 use Fireball\ReelPlayer\Repositories\Library;
+use Fireball\ReelPlayer\Repositories\Catalog;
 use Fireball\ReelPlayer\Services\MediaStorage;
 use Fireball\ReelPlayer\Services\GoogleDrive;
 use Fireball\ReelPlayer\Services\DriveCache;
@@ -16,6 +17,8 @@ final class PlayerController
 {
     private function library(): Library { return new Library((int)get_user()['id']); }
     private function drive(): GoogleDrive { return new GoogleDrive((int)get_user()['id'], null, check_creator()); }
+    private function catalog(): Catalog { return new Catalog((int)get_user()['id'],check_creator()); }
+    private function trackDrive(array $track): GoogleDrive { return new GoogleDrive((int)$track['owner_id']); }
 
     public function index(): string
     {
@@ -51,6 +54,8 @@ final class PlayerController
             'chapters_url' => base_href('/plugins/reel-player/assets/chapters.js?v=' . substr(hash_file('sha256',$assets . '/chapters.js'),0,16)),
             'transport_url' => base_href('/plugins/reel-player/assets/transport.js?v=' . substr(hash_file('sha256',$assets . '/transport.js'),0,16)),
             'quality_url' => base_href('/plugins/reel-player/assets/quality.js?v=' . substr(hash_file('sha256',$assets . '/quality.js'),0,16)),
+            'collections_url' => base_href('/plugins/reel-player/assets/collections.js?v=' . substr(hash_file('sha256',$assets . '/collections.js'),0,16)),
+            'catalog_url' => base_href('/plugins/reel-player/assets/catalog.js?v=' . substr(hash_file('sha256',$assets . '/catalog.js'),0,16)),
         ], false);
     }
 
@@ -65,6 +70,10 @@ final class PlayerController
         $this->respond(function (): array {
             $data = request()->getData();
             $action = (string)($data['action'] ?? '');
+            if (str_starts_with($action, 'catalog.')) {
+                $id = $this->catalog()->action(substr($action,8),$data,$_FILES['cover'] ?? null);
+                return ['id'=>$id,...$this->library()->state()];
+            }
             if (str_starts_with($action, 'drive.')) {
                 $drive = $this->drive();
                 switch ($action) {
@@ -81,7 +90,10 @@ final class PlayerController
                         if (!is_array($ids)) throw new \InvalidArgumentException('Выберите файлы Google Drive.');
                         $files = $drive->importFiles($ids, (string)($data['link'] ?? ''));
                         $count = $this->library()->importDrive($files, $playlist);
-                        return ['imported' => $count, ...$this->library()->state()];
+                        $sourceIds = array_column($files,'id');
+                        $imported = db()->query('SELECT id,source_id FROM reel_tracks WHERE owner_id=? AND source=? AND source_id IN ('.implode(',',array_fill(0,count($sourceIds),'?')).')',[(int)get_user()['id'],'drive',...$sourceIds])->get() ?: [];
+                        $bySource = array_column($imported,'id','source_id');
+                        return ['imported' => $count,'imported_ids'=>array_values(array_filter(array_map(static fn(string $source): int => (int)($bySource[$source] ?? 0),$sourceIds))), ...$this->library()->state()];
                     default: throw new \InvalidArgumentException('Неизвестное действие Google Drive.');
                 }
             }
@@ -151,8 +163,21 @@ final class PlayerController
         header('Cache-Control: private, no-store');
         try { $track = $this->library()->track((int)get_route_param('id')); }
         catch (\InvalidArgumentException) { abort('Трек не найден.', 404); }
+        $this->trackQuality($track);
+    }
+
+    public function catalogQuality(): void
+    {
+        header('Cache-Control: private, no-store');
+        try { $track = $this->catalog()->accessibleTrack((int)get_route_param('id')); }
+        catch (\InvalidArgumentException) { abort('Трек не найден.',404); }
+        $this->trackQuality($track);
+    }
+
+    private function trackQuality(array $track): void
+    {
         // Optional metadata must not hold the session lock or delay native audio.
-        $drive = $this->drive(); session()->close();
+        $drive = $this->trackDrive($track); session()->close();
         $fallback = AudioQuality::describe('', (string)$track['filename'], (string)$track['mime'], (int)$track['file_size'], (float)$track['duration']);
         try {
             $info = ($track['source'] ?? 'local') === 'drive'
@@ -170,12 +195,25 @@ final class PlayerController
         // Authentication/CSRF are checked before releasing the session lock.
         try { $track = $this->library()->track((int)request()->post('id',0)); }
         catch (\InvalidArgumentException) { abort('Трек не найден.',404); }
+        $this->prepareTrack($track);
+    }
+
+    public function catalogPrepare(): void
+    {
+        try { $track = $this->catalog()->accessibleTrack((int)request()->post('id',0)); }
+        catch (\InvalidArgumentException) { abort('Трек не найден.',404); }
+        $this->prepareTrack($track);
+    }
+
+    private function prepareTrack(array $track): void
+    {
+        $drive = $this->trackDrive($track);
         session()->close();
         header('Content-Type: application/json; charset=utf-8'); header('Cache-Control: private, no-store'); header('X-Accel-Buffering: no');
         while (ob_get_level() > 0) ob_end_clean();
         echo ' '; flush();
         try {
-            $result = ($track['source'] ?? 'local') === 'drive' ? $this->drive()->prepare($track['source_id']) : ['ready'=>true,'bytes'=>min(DriveCache::PREFIX_BYTES,(int)$track['file_size'])];
+            $result = ($track['source'] ?? 'local') === 'drive' ? $drive->prepare($track['source_id']) : ['ready'=>true,'bytes'=>min(DriveCache::PREFIX_BYTES,(int)$track['file_size'])];
             echo json_encode(['status'=>true,...$result],JSON_THROW_ON_ERROR);
         } catch (\Throwable $error) { echo json_encode(['status'=>false,'ready'=>false,'message'=>$error->getMessage()],JSON_THROW_ON_ERROR); }
         exit;
@@ -214,8 +252,45 @@ final class PlayerController
     {
         try { $track = $this->library()->track((int)get_route_param('id')); }
         catch (\InvalidArgumentException) { abort('Трек не найден.', 404); }
+        $this->deliverTrack($track,$cover);
+    }
+
+    public function catalogMedia(): never { $this->streamCatalog(false); }
+    public function catalogCover(): never { $this->streamCatalog(true); }
+
+    private function streamCatalog(bool $cover): never
+    {
+        try { $track = $this->catalog()->accessibleTrack((int)get_route_param('id')); }
+        catch (\InvalidArgumentException) { abort('Трек не найден.',404); }
+        $this->deliverTrack($track,$cover);
+    }
+
+    public function albumCover(): never
+    {
+        try { $cover = $this->catalog()->albumCover((int)get_route_param('id')); }
+        catch (\InvalidArgumentException) { abort('Обложка не найдена.',404); }
+        (new MediaStorage())->streamCover($cover['path'],$cover['mime']);
+    }
+
+    public function catalogListen(): void
+    {
+        header('Cache-Control: private, no-store');
+        $this->respond(function(): array {
+            $catalog = $this->catalog();
+            $data = request()->getData();
+            session()->close();
+            return match ((string)($data['action'] ?? '')) {
+                'start' => $catalog->beginListening((int)($data['id'] ?? 0)),
+                'finish' => $catalog->finishListening((string)($data['token'] ?? ''),$data['seconds'] ?? null),
+                default => throw new \InvalidArgumentException('Неизвестное действие статистики.'),
+            };
+        });
+    }
+
+    private function deliverTrack(array $track,bool $cover): never
+    {
         if (!$cover && ($track['source'] ?? 'local') === 'drive') {
-            try { $this->drive()->stream($track['source_id'], (string)request()->get('meter','') === '1', (float)($track['duration'] ?? 0)); }
+            try { $this->trackDrive($track)->stream($track['source_id'], (string)request()->get('meter','') === '1', (float)($track['duration'] ?? 0)); }
             catch (\InvalidArgumentException $error) { http_response_code(403); header('Content-Type: text/plain; charset=utf-8'); header('Cache-Control: private, no-store'); exit($error->getMessage()); }
         }
         $path = $cover ? $track['cover_path'] : $track['file_path'];

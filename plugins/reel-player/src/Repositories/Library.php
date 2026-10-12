@@ -10,13 +10,16 @@ final class Library
 
     public function state(): array
     {
-        $tracks = db()->query('SELECT id, title, artist, filename, mime, duration, file_size, cover_path, cover_mime, source, favorite, created_at FROM reel_tracks WHERE owner_id = ? ORDER BY id DESC', [$this->owner])->get() ?: [];
+        $tracks = db()->query('SELECT t.id, t.title, t.artist, t.filename, t.mime, t.duration, t.file_size, t.cover_path, t.cover_mime, t.source, t.favorite, t.created_at, COALESCE(s.listens,0) AS listen_count FROM reel_tracks t LEFT JOIN reel_track_stats s ON s.track_id=t.id WHERE t.owner_id = ? ORDER BY t.id DESC', [$this->owner])->get() ?: [];
         $chapters = (new Chapters($this->owner))->all();
         foreach ($tracks as &$track) {
             $track['id'] = (int)$track['id'];
             $track['duration'] = (float)$track['duration'];
             $track['file_size'] = (int)$track['file_size'];
             $track['favorite'] = (bool)$track['favorite'];
+            $track['listen_count'] = (int)$track['listen_count'];
+            $track['shared'] = false;
+            $track['collected'] = true;
             $track['chapters'] = $chapters[$track['id']] ?? [];
             $track['url'] = base_href('/admin/reel-player/media/' . $track['id']);
             $track['cover'] = $track['cover_path'] ? base_href('/admin/reel-player/cover/' . $track['id']) . '?v=' . basename($track['cover_path']) : '';
@@ -29,7 +32,7 @@ final class Library
             $playlist['id'] = (int)$playlist['id'];
             $playlist['tracks'] = array_map(static fn(array $row): int => (int)$row['track_id'], array_values(array_filter($memberships, static fn(array $row): bool => (int)$row['playlist_id'] === $playlist['id'])));
         }
-        return ['tracks' => $tracks, 'playlists' => $playlists];
+        return ['tracks' => $tracks, 'playlists' => $playlists, 'catalog'=>(new Catalog($this->owner,function_exists('check_creator') && check_creator()))->state()];
     }
 
     public function track(int $id, bool $lock = false): array
@@ -87,7 +90,7 @@ final class Library
 
     public function add(int $playlist, int $track): void
     {
-        $this->track($track);
+        (new Catalog($this->owner))->accessibleTrack($track);
         db()->beginTransaction();
         try {
             $this->playlist($playlist, true);
@@ -208,6 +211,8 @@ final class Library
                 try {
                     $track = $this->track($id,true);
                     db()->query('DELETE FROM reel_tracks WHERE id = ? AND owner_id = ?', [$id, $this->owner]);
+                    // A deleted last member must not leave an empty public album.
+                    db()->query('UPDATE reel_albums a SET a.published=0 WHERE a.owner_id=? AND a.published=1 AND NOT EXISTS(SELECT 1 FROM reel_album_tracks at WHERE at.album_id=a.id)', [$this->owner]);
                     db()->commit();
                 } catch (\Throwable $error) { db()->rollBack(); throw $error; }
                 $storage = new MediaStorage();

@@ -7,7 +7,10 @@ import zipfile
 project = Path(__file__).resolve().parent.parent
 plugin = project / "plugins/reel-player"
 version = json.loads((plugin / "plugin.json").read_text())["version"]
+# The prepared favicon is reserved for a later task; it is not wired or released.
+excluded_assets = {"assets/favicon-tape-room-plugin.png"}
 files = sorted(path for path in plugin.rglob("*") if path.is_file()
+               and path.relative_to(plugin).as_posix() not in excluded_assets
                and "tests" not in path.relative_to(plugin).parts
                and not any(part.startswith(".") for part in path.relative_to(plugin).parts))
 archive = project / "dist" / f"reel-player-{version}.zip"
