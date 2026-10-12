@@ -28,11 +28,11 @@
 .toy-rental-stats { display: flex; flex-wrap: wrap; gap: .75rem 1.5rem; font-size: .875rem; }
 .toy-rental-stats strong { margin-inline-start: .3rem; font-variant-numeric: tabular-nums; }
 .toy-rental-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: .75rem; }
-.toy-rental-car-card { display: flex; flex-direction: column; min-width: 0; padding: var(--fb-space-4); transition: border-color var(--fb-transition-base), box-shadow var(--fb-transition-base); }
+.toy-rental-grid .toy-rental-car-card { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; min-width: 0; padding: var(--fb-space-4); transition: border-color var(--fb-transition-base), box-shadow var(--fb-transition-base); }
 .toy-rental-card-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: .5rem; }
-.toy-rental-car-name { min-width: 0; line-height: 1.4; overflow-wrap: anywhere; }
-.toy-rental-prices { display: flex; flex-wrap: wrap; gap: .2rem .75rem; margin-top: .5rem; font-size: .75rem; }
-.toy-rental-start-actions { display: flex; justify-content: center; gap: 1.25rem; margin-top: auto; padding-top: .85rem; }
+.toy-rental-car-name { display: -webkit-box; min-width: 0; min-height: 2.8em; line-height: 1.4; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.toy-rental-prices { display: flex; flex-wrap: wrap; gap: .2rem .75rem; min-height: calc(2.8em + .2rem); margin-top: .5rem; font-size: .75rem; line-height: 1.4; }
+.toy-rental-start-actions { display: flex; justify-content: center; gap: 1.25rem; margin-top: 0; padding-top: .85rem; }
 .toy-rental-start-actions form { display: flex; flex-direction: column; align-items: center; gap: .5rem; min-width: 0; flex: 1; }
 .toy-rental-action { display: flex; flex-direction: column; align-items: center; gap: .3rem; text-align: center; }
 .toy-rental-action > span { color: var(--fb-color-text-secondary); font-size: .7rem; line-height: 1.2; overflow-wrap: anywhere; }
@@ -42,12 +42,18 @@
 .toy-rental-round-button.btn-outline-secondary { --cz-btn-color: var(--fb-color-text); --cz-btn-border-color: var(--fb-color-border-strong); --cz-btn-hover-color: var(--fb-color-primary); --cz-btn-hover-bg: var(--fb-color-primary-soft); --cz-btn-hover-border-color: var(--fb-color-primary); --cz-btn-active-color: var(--fb-color-primary); --cz-btn-active-bg: var(--fb-color-primary-soft); --cz-btn-active-border-color: var(--fb-color-primary); --cz-btn-disabled-color: var(--fb-color-text-secondary); --cz-btn-disabled-border-color: var(--fb-color-border-strong); }
 .toy-rental-round-button.btn-danger { --cz-btn-bg: var(--fb-color-danger); --cz-btn-border-color: var(--fb-color-danger); --cz-btn-hover-bg: color-mix(in srgb, var(--fb-color-danger) 88%, #000); --cz-btn-hover-border-color: var(--cz-btn-hover-bg); --cz-btn-active-bg: color-mix(in srgb, var(--fb-color-danger) 78%, #000); --cz-btn-active-border-color: var(--cz-btn-active-bg); --cz-btn-disabled-bg: var(--fb-color-danger); --cz-btn-disabled-border-color: var(--fb-color-danger); }
 .toy-rental-duration { width: auto; max-width: 100%; min-height: 32px; padding-block: .2rem; font-size: .75rem; }
-.toy-rental-ride-summary { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-top: auto; padding-top: 1rem; }
-.toy-rental-timer { color: var(--fb-color-text); font-variant-numeric: tabular-nums; font-size: 1.75rem; font-weight: 650; line-height: 1.2; }
+.toy-rental-ride-summary { display: grid; grid-template-columns: minmax(0, 1fr) max-content; align-items: start; gap: 1rem; margin-top: 0; padding-top: 1rem; }
+.toy-rental-ride-summary > div { min-width: 0; }
+.toy-rental-ride-summary .small { min-height: 2.7em; line-height: 1.35; }
+.toy-rental-ride-summary .toy-rental-action > span { white-space: nowrap; overflow-wrap: normal; }
+.toy-rental-timer { display: block; color: var(--fb-color-text); font-variant-numeric: tabular-nums; font-size: 1.75rem; font-weight: 650; line-height: 1.2; }
 .toy-rental-ride-note, .toy-rental-time-up { margin-top: .5rem; font-size: .75rem; }
+.toy-rental-car-card .toy-rental-ride-note { min-height: 4.2em; font-size: .75rem; line-height: 1.4; overflow-wrap: anywhere; }
 .toy-rental-unavailable { padding-block: 2rem; text-align: center; }
 .toy-rental-car-card.is-rented { border-color: color-mix(in srgb, var(--fb-color-warning) 35%, var(--fb-color-border)); }
 .toy-rental-car-card.is-overdue { border-color: color-mix(in srgb, var(--fb-color-danger) 55%, var(--fb-color-border)); }
+.fb-admin-body .fb-page-content .toy-rental-car-card.is-rented { border-color: color-mix(in srgb, var(--fb-color-warning) 35%, var(--fb-color-border)) !important; }
+.fb-admin-body .fb-page-content .toy-rental-car-card.is-overdue { border-color: color-mix(in srgb, var(--fb-color-danger) 55%, var(--fb-color-border)) !important; }
 .toy-rental-status-badge { align-self: flex-start; display: inline-flex; align-items: center; justify-content: center; padding: .25rem .45rem; border-radius: var(--fb-radius-pill); background: var(--fb-color-surface-secondary); color: var(--fb-color-text-secondary); font-size: .65rem; line-height: 1.1; white-space: nowrap; }
 .toy-rental-status-badge--success { background: var(--fb-color-success-soft); color: var(--fb-color-success); }
 .toy-rental-status-badge--warning { background: var(--fb-color-warning-soft); color: var(--fb-color-warning); }
@@ -55,4 +61,26 @@
 .toy-rental-car-card .text-danger { color: var(--fb-color-danger) !important; }
 .toy-rental-stat-value { font-size: clamp(1.5rem, 3vw, 2.35rem); line-height: 1; }
 .toy-rental-color-dot { display: inline-block; width: .85rem; height: .85rem; border-radius: 50%; border: 1px solid var(--cz-border-color); background: currentColor; }
-@media (max-width: 575.98px) { .toy-rental-tabs .btn { padding: .5rem .75rem; font-size: .8rem; } }
+@media (max-width: 575.98px) {
+    .toy-rental-tabs .btn { padding: .5rem .75rem; font-size: .8rem; }
+    .toy-rental-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+    .toy-rental-grid .toy-rental-car-card { display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; padding: .5rem; }
+    .toy-rental-card-heading { flex-direction: column; gap: .35rem; }
+    .toy-rental-car-card .toy-rental-car-name { display: -webkit-box; min-height: 2.8em; font-size: .8125rem; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+    .toy-rental-status-badge { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+    .toy-rental-prices { flex-direction: column; gap: .15rem; min-height: calc(2.8em + .15rem); font-size: .6875rem; line-height: 1.4; }
+    .toy-rental-start-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; margin-top: 0; padding-top: .65rem; }
+    .toy-rental-start-actions > form { display: contents; }
+    .toy-rental-start-actions > form:first-child .toy-rental-action { grid-column: 1; grid-row: 1; }
+    .toy-rental-start-actions > form:last-child .toy-rental-action { grid-column: 2; grid-row: 1; }
+    .toy-rental-billing-caption { display: none; }
+    .toy-rental-duration { grid-column: 1 / -1; grid-row: 2; width: 100%; min-height: 36px; }
+    .toy-rental-round-button { width: 44px; height: 44px; min-width: 44px; }
+    .toy-rental-ride-summary { display: grid; grid-template-columns: minmax(0, 1fr) 3.5rem; align-items: start; gap: .35rem; margin-top: .65rem; padding-top: 0; }
+    .toy-rental-ride-summary > div { min-width: 0; }
+    .toy-rental-ride-summary .small { min-height: 2.7em; font-size: .6875rem; line-height: 1.35; }
+    .toy-rental-ride-summary .toy-rental-action > span { font-size: .625rem; }
+    .toy-rental-timer { display: block; font-size: clamp(1rem, 5vw, 1.25rem); white-space: nowrap; }
+    .toy-rental-car-card .toy-rental-ride-note { min-height: 4.2em; line-height: 1.4; }
+    .toy-rental-car-card .toy-rental-ride-note, .toy-rental-car-card .toy-rental-time-up { font-size: .6875rem; overflow-wrap: anywhere; }
+}

@@ -13,6 +13,7 @@
     let refreshing = false;
     let epoch = 0;
     let audioContext;
+    let activeAudioCue;
 
     const format = (seconds) => {
         const value = Math.max(0, Math.floor(seconds));
@@ -42,29 +43,65 @@
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show, { once: true });
         else show();
     };
-    const unlockAudio = () => {
-        if (settings.soundEnabled === false) return;
+    const unlockAudio = (event) => {
+        if (settings.soundEnabled === false || !event.isTrusted) return;
         try {
             const Audio = window.AudioContext || window.webkitAudioContext;
-            if (Audio && !audioContext) audioContext = new Audio();
-            audioContext?.resume().catch(() => {});
+            if (Audio && (!audioContext || audioContext.state === 'closed')) {
+                audioContext = new Audio();
+                activeAudioCue = null;
+            }
+            if (audioContext?.state !== 'running') audioContext?.resume().catch(() => {});
         } catch { /* Audio may be unavailable. */ }
     };
-    document.addEventListener('pointerdown', unlockAudio, { once: true });
-    document.addEventListener('keydown', unlockAudio, { once: true });
+    // A real interaction prepares sound silently and can resume it after a browser interruption.
+    document.addEventListener('pointerdown', unlockAudio, { passive: true });
+    document.addEventListener('pointerup', unlockAudio, { passive: true });
+    document.addEventListener('keydown', unlockAudio);
     const playSound = () => {
-        if (settings.soundEnabled === false || !audioContext) return;
+        if (settings.soundEnabled === false || audioContext?.state !== 'running' || activeAudioCue) return;
+        const cue = new Set();
+        activeAudioCue = cue;
         try {
-            const oscillator = audioContext.createOscillator();
-            const gain = audioContext.createGain();
-            oscillator.frequency.value = 880;
-            gain.gain.value = 0.055;
-            oscillator.connect(gain);
-            gain.connect(audioContext.destination);
-            oscillator.start();
-            oscillator.stop(audioContext.currentTime + .18);
-            oscillator.onended = () => { oscillator.disconnect(); gain.disconnect(); };
-        } catch { /* Timer and notification still work without sound. */ }
+            const startedAt = audioContext.currentTime + .01;
+            const notes = [[0, 523.25], [.32, 659.25], [.64, 783.99], [1.26, 1046.5], [1.58, 783.99], [1.90, 659.25], [2.22, 523.25]];
+            // A three-second ascending and descending chime, with gentle attacks and fading tails.
+            for (const [offset, frequency] of notes) {
+                for (const [harmonic, volume] of [[1, .14], [2, .018]]) {
+                    const oscillator = audioContext.createOscillator();
+                    const gain = audioContext.createGain();
+                    const voice = { oscillator, gain };
+                    cue.add(voice);
+                    const start = startedAt + offset;
+                    const end = start + .8;
+                    oscillator.type = 'sine';
+                    oscillator.frequency.value = frequency * harmonic;
+                    gain.gain.value = 0;
+                    gain.gain.setValueAtTime(0, start);
+                    gain.gain.linearRampToValueAtTime(volume, start + .045);
+                    gain.gain.exponentialRampToValueAtTime(.0001, end);
+                    oscillator.connect(gain);
+                    gain.connect(audioContext.destination);
+                    oscillator.onended = () => {
+                        oscillator.disconnect();
+                        gain.disconnect();
+                        cue.delete(voice);
+                        if (!cue.size && activeAudioCue === cue) activeAudioCue = null;
+                    };
+                    oscillator.start(start);
+                    oscillator.stop(end);
+                }
+            }
+        } catch {
+            // Release partially created voices; timer and notification still work without sound.
+            for (const { oscillator, gain } of cue) {
+                try { oscillator.stop(); } catch { /* A voice may not have started. */ }
+                oscillator.disconnect();
+                gain.disconnect();
+            }
+            cue.clear();
+            if (activeAudioCue === cue) activeAudioCue = null;
+        }
     };
     const request = async (url, body) => {
         const response = await fetch(url, {
@@ -96,8 +133,14 @@
             template.innerHTML = item.html;
             const replacement = template.content.firstElementChild;
             if (replacement) {
-                if (card) card.replaceWith(replacement);
-                else grid.append(replacement);
+                if (card) {
+                    // Keep the mounted card so its status border can transition smoothly.
+                    for (const attribute of [...card.attributes]) {
+                        if (!replacement.hasAttribute(attribute.name)) card.removeAttribute(attribute.name);
+                    }
+                    for (const attribute of replacement.attributes) card.setAttribute(attribute.name, attribute.value);
+                    card.replaceChildren(...replacement.childNodes);
+                } else grid.append(replacement);
             }
         }
         if (!onlyCarId) {
@@ -135,10 +178,11 @@
         } catch { /* Retry while this ride remains expired. */ }
         finally { syncing.delete(rideId); }
     };
+    const billableMinutes = (elapsedMs) => Math.max(1, Math.ceil(Math.max(0, Math.floor(elapsedMs / 1000)) / 60));
     const updatePayment = () => {
         if (!modal?.dataset.startMs || modal.dataset.submitting === 'true') return;
         const elapsed = Math.min(Math.max(0, serverNow(modal) - Number(modal.dataset.startMs)), Number(settings.maxRideMinutes || 120) * 60000);
-        const minutes = Math.max(1, Math.ceil(elapsed / 60000));
+        const minutes = billableMinutes(elapsed);
         const amount = (minutes * Number(modal.dataset.pricePerMinute || 0)).toFixed(2);
         modal.querySelector('[data-toy-rental-modal-duration]').value = `${minutes} ${labels.minutes || 'min'}`;
         modal.querySelector('[data-toy-rental-modal-calculated]').value = `${amount} ${settings.currency || ''}`;
@@ -158,7 +202,7 @@
             timer.textContent = format(metered ? Math.min(elapsed, limit) / 1000 : Math.ceil(Math.max(0, end - now) / 1000));
             if (metered) {
                 const cost = card.querySelector('[data-toy-rental-live-cost]');
-                if (cost) cost.textContent = (Math.max(1, Math.ceil(Math.min(elapsed, limit) / 60000)) * Number(timer.dataset.pricePerMinute || 0)).toFixed(2);
+                if (cost) cost.textContent = (billableMinutes(Math.min(elapsed, limit)) * Number(timer.dataset.pricePerMinute || 0)).toFixed(2);
             }
             const expired = metered ? elapsed >= limit : now >= end;
             if (!expired) return;

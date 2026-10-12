@@ -36,6 +36,7 @@
                 <label class="form-label"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_default_minute_price')) ?></label>
                 <input class="form-control" type="number" name="default_minute_price" min="0" step="0.01" value="<?= htmlSC((string)$settings['default_minute_price']) ?>">
                 <div class="form-text"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_fixed_price_formula')) ?></div>
+                <div class="form-text"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_billing_rounding_hint')) ?></div>
             </div>
             <div class="col-md-4">
                 <label class="form-label"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_currency')) ?></label>

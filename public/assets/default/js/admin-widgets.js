@@ -4,6 +4,7 @@
     if (!root) return;
     const content = root.querySelector('[data-widget-content]');
     const status = root.querySelector('[data-widget-status]');
+    const deleteForm = root.querySelector('[data-widget-delete-form]');
     let busy = false;
     let dragging = null;
     let dragOrigin = null;
@@ -178,6 +179,17 @@
     };
     root.addEventListener('submit', event => {
         const form = event.target;
+        if (form === deleteForm) {
+            event.preventDefault();
+            // The shared CMS modal marks the second submission as confirmed.
+            if (!busy && form.dataset.deleteConfirmed === '1') {
+                request({ action: 'delete', id: Number(form.dataset.widgetDeleteId) });
+                const bootstrapApi = typeof bootstrap !== 'undefined' ? bootstrap : window.bootstrap;
+                const modalElement = document.querySelector('[data-admin-delete-modal]');
+                if (modalElement) bootstrapApi?.Modal.getInstance(modalElement)?.hide();
+            }
+            return;
+        }
         if (!form.matches('[data-widget-add], [data-widget-settings]')) return;
         event.preventDefault();
         if (busy) return;
@@ -201,7 +213,13 @@
         }
         const card = button.closest('[data-widget-id]');
         if (!card) return;
-        if (button.hasAttribute('data-widget-delete') && window.confirm(root.dataset.deleteMessage)) request({ action: 'delete', id: Number(card.dataset.widgetId) });
+        if (button.hasAttribute('data-widget-delete')) {
+            if (!deleteForm) return;
+            deleteForm.dataset.widgetDeleteId = card.dataset.widgetId;
+            deleteForm.dataset.deleteItem = card.querySelector('.widget-instance-title > .fw-semibold')?.textContent.trim() || '';
+            deleteForm.requestSubmit();
+            return;
+        }
         const previous = origin();
         if (button.hasAttribute('data-widget-up') && card.previousElementSibling) {
             card.parentElement.insertBefore(card, card.previousElementSibling); saveOrder(previous);

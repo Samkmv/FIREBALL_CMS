@@ -120,6 +120,37 @@ $router->post('/admin/toy-rental/rides/pay', static function () use ($toyRentalH
     $toyRentalHistoryRedirect();
 })->middleware(['auth', 'admin']);
 
+foreach (['delete', 'recalculate'] as $action) {
+    $router->post('/admin/toy-rental/rides/' . $action, static function () use ($action, $toyRentalHistoryRedirect): void {
+        try {
+            $id = (int)request()->post('id');
+            if ($action === 'delete') {
+                FireballPluginToyCarRental::deleteRideFromHistory($id);
+                $message = FireballPluginToyCarRental::t('toy_rental_flash_history_deleted');
+            } else {
+                FireballPluginToyCarRental::recalculateRide($id);
+                $message = FireballPluginToyCarRental::t('toy_rental_flash_ride_recalculated');
+            }
+            session()->setFlash('success', $message);
+        } catch (Throwable $exception) {
+            log_error_details('Toy rental history action failed', ['Action' => $action, 'Ride' => request()->post('id')], $exception);
+            session()->setFlash('error', $exception->getMessage());
+        }
+        $toyRentalHistoryRedirect();
+    })->middleware(['auth', 'admin']);
+}
+
+$router->post('/admin/toy-rental/rides/clear-history', static function () use ($toyRentalRedirect): void {
+    try {
+        $count = FireballPluginToyCarRental::clearRideHistory();
+        session()->setFlash('success', FireballPluginToyCarRental::t('toy_rental_flash_history_cleared', ['count' => $count]));
+    } catch (Throwable $exception) {
+        log_error_details('Toy rental history clear failed', [], $exception);
+        session()->setFlash('error', $exception->getMessage());
+    }
+    $toyRentalRedirect('/admin/toy-rental/rides?date_filter=all');
+})->middleware(['auth', 'admin']);
+
 $router->get('/admin/toy-rental/cars', static function (): string {
     return plugin_view('toy-car-rental', 'cars-list', FireballPluginToyCarRental::viewData('cars', [
         'title' => FireballPluginToyCarRental::t('toy_rental_cars_title'),

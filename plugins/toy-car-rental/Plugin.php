@@ -613,7 +613,7 @@ final class FireballPluginToyCarRental implements PluginInterface
             $endedAt = min(time(), $endedAtOverride ?? time());
             $startedAt = strtotime((string)$ride['started_at']) ?: $endedAt;
             $endedAt = max($startedAt, min($endedAt, $startedAt + self::settings()['max_ride_minutes'] * 60));
-            $duration = max(1, (int)ceil(($endedAt - $startedAt) / 60));
+            $duration = self::billableMinutes($endedAt - $startedAt);
             $billingType = self::billingType((string)($ride['billing_type'] ?? 'fixed'));
             $pricePerMinute = self::money($ride['price_per_minute'] ?? 0);
             $calculatedAmount = $billingType === 'metered'
@@ -675,6 +675,66 @@ final class FireballPluginToyCarRental implements PluginInterface
              WHERE id = ? AND status = 'completed' AND payment_status = 'unpaid'",
             [$amount, $method, date('Y-m-d H:i:s'), $rideId]
         );
+    }
+
+    public static function billableMinutes(int $elapsedSeconds): int
+    {
+        return max(1, (int)ceil(max(0, $elapsedSeconds) / 60));
+    }
+
+    public static function deleteRideFromHistory(int $rideId): void
+    {
+        $ride = db()->query('SELECT status FROM toy_rental_rides WHERE id = ? LIMIT 1', [$rideId])->getOne();
+        if (!$ride) throw new RuntimeException(self::t('toy_rental_error_history_ride_not_found'));
+        if (!in_array((string)$ride['status'], ['completed', 'cancelled'], true)) {
+            throw new RuntimeException(self::t('toy_rental_error_history_active_ride'));
+        }
+        db()->query("DELETE FROM toy_rental_rides WHERE id = ? AND status IN ('completed', 'cancelled')", [$rideId]);
+        if (db()->rowCount() === 0) throw new RuntimeException(self::t('toy_rental_error_history_ride_not_found'));
+    }
+
+    public static function clearRideHistory(): int
+    {
+        db()->query("DELETE FROM toy_rental_rides WHERE status IN ('completed', 'cancelled')");
+        return db()->rowCount();
+    }
+
+    public static function recalculateRide(int $rideId): void
+    {
+        db()->beginTransaction();
+        try {
+            $ride = db()->query('SELECT * FROM toy_rental_rides WHERE id = ? LIMIT 1 FOR UPDATE', [$rideId])->getOne();
+            if (!$ride) throw new RuntimeException(self::t('toy_rental_error_history_ride_not_found'));
+            if ((string)$ride['status'] !== 'completed') {
+                throw new RuntimeException(self::t('toy_rental_error_ride_recalculate'));
+            }
+            $startedAt = strtotime((string)$ride['started_at']);
+            $endedAt = strtotime((string)($ride['ended_at'] ?? ''));
+            if ($startedAt === false || $endedAt === false || $endedAt < $startedAt) {
+                throw new RuntimeException(self::t('toy_rental_error_ride_recalculate'));
+            }
+            $duration = self::billableMinutes($endedAt - $startedAt);
+            $chargedMinutes = $duration;
+            if (self::billingType((string)($ride['billing_type'] ?? 'fixed')) === 'fixed') {
+                $chargedMinutes = (int)($ride['estimated_minutes'] ?? 0);
+                if ($chargedMinutes <= 0) {
+                    $plannedAt = strtotime((string)($ride['planned_end_at'] ?? ''));
+                    if ($plannedAt === false || $plannedAt < $startedAt) {
+                        throw new RuntimeException(self::t('toy_rental_error_ride_recalculate'));
+                    }
+                    $chargedMinutes = self::billableMinutes($plannedAt - $startedAt);
+                }
+            }
+            $amount = self::money($chargedMinutes * self::money($ride['price_per_minute'] ?? 0));
+            db()->query(
+                "UPDATE toy_rental_rides SET duration_minutes = ?, final_amount = ?, payment_amount = ?, updated_at = ? WHERE id = ? AND status = 'completed'",
+                [$duration, $amount, $amount, date('Y-m-d H:i:s'), $rideId]
+            );
+            db()->commit();
+        } catch (Throwable $exception) {
+            if (db()->inTransaction()) db()->rollBack();
+            throw $exception;
+        }
     }
 
     public static function history(array $filters = []): array
