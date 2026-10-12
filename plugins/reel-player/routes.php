@@ -2,9 +2,9 @@
 use Fireball\ReelPlayer\Controllers\PlayerController;
 
 /** @var \FBL\Router $router */
-$router->get('/plugins/reel-player/assets/(?P<file>player\.(?:css|js)|preload\.js|meters\.js|chapters\.js|transport\.js|quality\.js|cover-(?:light|dark)\.png)', static function (): never {
+$router->get('/plugins/reel-player/assets/(?P<file>player\.(?:css|js)|preload\.js|meters\.js|chapters\.js|transport\.js|quality\.js|collections\.js|catalog\.js|cover-(?:light|dark)\.png)', static function (): never {
     $file = (string)get_route_param('file');
-    if (!in_array($file, ['player.css', 'player.js', 'preload.js', 'meters.js', 'chapters.js', 'transport.js', 'quality.js', 'cover-light.png', 'cover-dark.png'], true)) abort();
+    if (!in_array($file, ['player.css', 'player.js', 'preload.js', 'meters.js', 'chapters.js', 'transport.js', 'quality.js', 'collections.js', 'catalog.js', 'cover-light.png', 'cover-dark.png'], true)) abort();
     $path = __DIR__ . '/assets/' . $file;
     if (!is_file($path)) abort();
     $hash = hash_file('sha256', $path);
@@ -46,3 +46,9 @@ $router->get('/admin/reel-player/cover/(?P<id>\d+)', [PlayerController::class, '
 $router->get('/admin/reel-player/api/drive/status', [PlayerController::class, 'driveStatus'])->middleware($guard);
 $router->get('/admin/reel-player/api/drive/files', [PlayerController::class, 'driveFiles'])->middleware($guard);
 $router->get('/admin/reel-player/drive/callback', [PlayerController::class, 'driveCallback'])->middleware($guard);
+$router->get('/admin/reel-player/catalog/media/(?P<id>\d+)', [PlayerController::class, 'catalogMedia'])->middleware($guard);
+$router->get('/admin/reel-player/catalog/cover/(?P<id>\d+)', [PlayerController::class, 'catalogCover'])->middleware($guard);
+$router->get('/admin/reel-player/catalog/album-cover/(?P<id>\d+)', [PlayerController::class, 'albumCover'])->middleware($guard);
+$router->get('/admin/reel-player/api/catalog/quality/(?P<id>\d+)', [PlayerController::class, 'catalogQuality'])->middleware($guard);
+$router->post('/admin/reel-player/api/catalog/prepare', [PlayerController::class, 'catalogPrepare'])->middleware($guard);
+$router->post('/admin/reel-player/api/catalog/listen', [PlayerController::class, 'catalogListen'])->middleware($guard);

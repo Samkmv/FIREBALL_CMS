@@ -24,8 +24,14 @@
     let librarySort = ['new','old'].includes(saved.librarySort) ? saved.librarySort : 'new';
     let playlistSort = ['playlist','new','old'].includes(saved.playlistSort) ? saved.playlistSort : 'playlist';
     let queueSort = ['playlist','new','old'].includes(saved.queueSort) ? saved.queueSort : (queuePlaylist > 0 ? 'playlist' : librarySort);
+    const collections = window.TapeRoomCollections;
+    let libraryView = saved.libraryView && ['overview','albums','artists','new','popular','mine','songs','favorites','playlist','album','artist'].includes(saved.libraryView.type) ? saved.libraryView : {type:'overview'};
+    let queueSource = collections.descriptor(saved.queueSource, {type:queuePlaylist === -1 ? 'favorites' : queuePlaylist > 0 ? 'playlist' : 'songs', ...(queuePlaylist > 0 ? {id:queuePlaylist} : {})});
+    let trackPool = collections.tracks(data), trackMap = new Map(trackPool.map(t => [t.id,t]));
     let shuffle = Boolean(saved.shuffle), bag = [], history = [], seekActive = false, restoreTime = 0;
     let toastTimer, frameId = 0, frameTime = 0, frameInProgress = false, angles = [0, 0], graph, uploading = false, dialogHandler, dialogSubmitting = false;
+    let dialogScroll = null;
+    let listening = null;
     let loading = false, bufferVisible = false, bufferTimer, coverPreviewUrl, generation = 0, lastSave = 0, mutations = 0;
     let progressFrame = -Infinity, meterFrame = -Infinity, tapeFrame = -Infinity, packRadii = [174,78], positionKey = '';
     const transport = new window.TapeRoomTransport();
@@ -46,7 +52,8 @@
     const esc = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
     const icon = name => `<svg class="rp-icon" aria-hidden="true"><use href="#rp-i-${name}"></use></svg>`;
     const button = (action, title, name, id, extra = '') => `<button type="button" class="rp-icon-button ${extra}" data-action="${action}" data-id="${id}" title="${title}" aria-label="${title}">${icon(name)}</button>`;
-    const track = id => data.tracks.find(t => t.id === Number(id));
+    const track = id => trackMap.get(Number(id));
+    const album = id => collections.album(data,id);
     const playlist = id => data.playlists.find(p => p.id === Number(id));
     const activeTrack = () => track(current);
     const chapters = window.TapeRoomChapters;
@@ -56,14 +63,17 @@
     let chapterJob = null;
     const qualityCache = new Map();
     let qualityJob = null;
-    const collectionName = id => id === -1 ? 'Избранное' : playlist(id)?.name || 'Вся музыка';
-    const collectionTracks = id => id === -1 ? data.tracks.filter(t => t.favorite) : id > 0 ? (playlist(id)?.tracks || []).map(track).filter(Boolean) : data.tracks;
+    const descriptorForPlaylist = id => ({type:id === -1 ? 'favorites' : id > 0 ? 'playlist' : 'songs', ...(id > 0 ? {id} : {})});
+    const collectionName = id => collections.name(data,descriptorForPlaylist(id));
+    const collectionTracks = id => collections.collection(data,descriptorForPlaylist(id),'playlist');
     const sortedTracks = (tracks, mode) => mode === 'playlist' ? [...tracks] : [...tracks].sort((a,b) => mode === 'old' ? a.id - b.id : b.id - a.id);
     const selectedSort = () => selected > 0 ? playlistSort : librarySort;
-    const selectedTracks = () => sortedTracks(collectionTracks(selected), selectedSort());
+    const selectedSource = () => collections.descriptor(libraryView,descriptorForPlaylist(selected));
+    const selectedTracks = () => collections.collection(data,selectedSource(),selectedSort());
     const element = (tag, className, text) => { const node = document.createElement(tag); node.className = className; if (text !== undefined) node.textContent = text; return node; };
     const setIcon = (node, name) => node.querySelector('use').setAttribute('href', `#rp-i-${name}`);
     const rangeFill = (node, fraction) => node.style.setProperty('--fill', `${Math.max(0, Math.min(1, fraction)) * 100}%`);
+    const catalogUI = new window.TapeRoomCatalogUI({app,icon,escape:esc,defaultCover});
 
     function applyTheme() {
         const dark = theme === 'dark', control = $('[data-action="theme"]');
@@ -77,6 +87,7 @@
         try { localStorage.setItem(`${config.storageKey}:theme`, theme); } catch (_) {}
         app.querySelectorAll('[data-default-cover]').forEach(image => { image.src = defaultCover(); });
         updateNow();
+        catalogUI.render({data,view:libraryView,current,playing:!audio.paused,query:$('[data-search]').value,canPublish:Boolean(config.drive?.canManage)});
     }
 
     function toast(message, error = false) {
@@ -84,7 +95,7 @@
         clearTimeout(toastTimer); toastTimer = setTimeout(() => { node.hidden = true; }, error ? 7000 : 3500);
     }
     function save() {
-        try { localStorage.setItem(config.storageKey, JSON.stringify({playlist:selected, current, queue, queueName, queuePlaylist, queueSort, librarySort, playlistSort, time:playbackPosition(), volume:audio.volume, audibleVolume, muted:audio.muted, shuffle, repeat})); } catch (_) {}
+        try { localStorage.setItem(config.storageKey, JSON.stringify({playlist:selected, libraryView, queueSource, current, queue, queueName, queuePlaylist, queueSort, librarySort, playlistSort, time:playbackPosition(), volume:audio.volume, audibleVolume, muted:audio.muted, shuffle, repeat})); } catch (_) {}
     }
     function closeSort() {
         const options = $('[data-sort-options]'), restoreFocus = options.contains(document.activeElement);
@@ -113,24 +124,28 @@
     }
     function render() {
         if (selected > 0 && !playlist(selected)) selected = 0;
-        if (queuePlaylist > 0 && !playlist(queuePlaylist)) { queuePlaylist = 0; queueSort = librarySort; }
-        queue = sortedTracks(collectionTracks(queuePlaylist), queueSort).map(t => t.id);
-        queueName = collectionName(queuePlaylist);
+        if ((libraryView.type === 'album' && !album(libraryView.id)) || (libraryView.type === 'playlist' && !playlist(libraryView.id))) libraryView = {type:'mine'};
+        if ((queueSource.type === 'album' && !album(queueSource.id)) || (queueSource.type === 'playlist' && !playlist(queueSource.id))) { queueSource = {type:'songs'}; queuePlaylist = 0; queueSort = librarySort; }
+        queue = collections.collection(data,queueSource,queueSort).map(t => t.id);
+        queueName = collections.name(data,queueSource);
         bag = bag.filter(id => queue.includes(id)); futureBag = futureBag.filter(id => queue.includes(id)); history = history.filter(id => Boolean(track(id)));
         if (current && !activeTrack()) { audio.pause(); audio.removeAttribute('src'); audio.load(); current = 0; updateNow(); }
         const nav = $('[data-playlists]'); nav.replaceChildren();
-        for (const item of [{id:0, name:'Вся музыка', tracks:data.tracks}, {id:-1, name:'Избранное', tracks:collectionTracks(-1)}, ...data.playlists]) {
-            const node = element('button', `rp-playlist${item.id === selected ? ' is-selected' : ''}`);
+        for (const item of [{id:0, name:'Все мои песни', tracks:collections.myTracks(data)}, {id:-1, name:'Избранное', tracks:collectionTracks(-1)}, ...data.playlists]) {
+            const active = ['songs','favorites','playlist'].includes(libraryView.type) && item.id === selected;
+            const node = element('button', `rp-playlist${active ? ' is-selected' : ''}`);
             node.type = 'button'; node.dataset.action = 'select-playlist'; node.dataset.id = item.id;
-            node.setAttribute('aria-current', item.id === selected ? 'page' : 'false');
+            node.setAttribute('aria-current', active ? 'page' : 'false');
             node.innerHTML = icon(item.id === -1 ? 'heart' : item.id ? 'list' : 'music');
             node.append(element('span', 'rp-playlist-name', item.name), element('span', 'rp-playlist-count', item.tracks.length));
             nav.append(node);
         }
-        const list = selectedTracks(), query = $('[data-search]').value.trim().toLocaleLowerCase();
+        const query = $('[data-search]').value.trim().toLocaleLowerCase();
+        const catalog = catalogUI.render({data,view:libraryView,current,playing:!audio.paused,query,canPublish:Boolean(config.drive?.canManage)});
+        const list = libraryView.type === 'artist' ? selectedTracks() : catalog.tracks || selectedTracks();
         const visible = list.filter(t => `${t.title} ${t.artist} ${t.filename}`.toLocaleLowerCase().includes(query));
-        $('[data-list-title]').textContent = collectionName(selected);
-        $('[data-list-summary]').textContent = `${list.length} ${list.length % 10 === 1 && list.length % 100 !== 11 ? 'трек' : list.length % 10 >= 2 && list.length % 10 <= 4 && !(list.length % 100 >= 12 && list.length % 100 <= 14) ? 'трека' : 'треков'}${list.some(t => t.duration) ? ' · ' + formatTime(list.reduce((total, t) => total + t.duration, 0)) : ''}`;
+        $('[data-list-title]').textContent = catalog.title || collections.name(data,selectedSource());
+        $('[data-list-summary]').textContent = catalog.summary ?? `${list.length} ${list.length % 10 === 1 && list.length % 100 !== 11 ? 'трек' : list.length % 10 >= 2 && list.length % 10 <= 4 && !(list.length % 100 >= 12 && list.length % 100 <= 14) ? 'трека' : 'треков'}${list.some(t => t.duration) ? ' · ' + formatTime(list.reduce((total, t) => total + t.duration, 0)) : ''}`;
         $('[data-playlist-actions]').hidden = selected <= 0;
         renderSort();
         const rows = $('[data-tracks]'); rows.replaceChildren();
@@ -146,7 +161,7 @@
             info.append(element('span', 'rp-track-title', t.title), element('span', 'rp-track-artist', `${t.artist || 'Неизвестный исполнитель'}${t.source === 'drive' ? ' · Google Drive' : ''}`));
             const actions = element('div', 'rp-track-actions');
             const canReorder = selected > 0 && playlistSort === 'playlist';
-            actions.innerHTML = (canReorder ? button('move-up', 'Переместить выше', 'up', t.id, 'rp-reorder') + button('move-down', 'Переместить ниже', 'down', t.id, 'rp-reorder') : '') + button('favorite', t.favorite ? 'Убрать из избранного' : 'Добавить в избранное', 'heart', t.id, `rp-favorite${t.favorite ? ' is-active' : ''}`) + button('add-to-playlist', 'Добавить в плейлист', 'plus', t.id) + button('edit-track', 'Изменить трек', 'edit', t.id) + button(selected > 0 ? 'remove-track' : 'delete-track', selected > 0 ? 'Убрать из плейлиста' : 'Удалить из библиотеки', 'trash', t.id);
+            actions.innerHTML = (canReorder ? button('move-up', 'Переместить выше', 'up', t.id, 'rp-reorder') + button('move-down', 'Переместить ниже', 'down', t.id, 'rp-reorder') : '') + button('favorite', t.favorite ? 'Убрать из избранного' : 'Добавить в избранное', 'heart', t.id, `rp-favorite${t.favorite ? ' is-active' : ''}`) + button('add-to-playlist', 'Добавить в плейлист', 'plus', t.id) + (!t.shared ? button('edit-track', 'Изменить трек', 'edit', t.id) : '') + (selected > 0 ? button('remove-track','Убрать из плейлиста','trash',t.id) : !t.shared && libraryView.type === 'songs' ? button('delete-track','Удалить из библиотеки','trash',t.id) : '');
             actions.querySelector('[data-action="favorite"]').setAttribute('aria-pressed', String(t.favorite));
             if (canReorder) {
                 actions.querySelector('[data-action="move-up"]').disabled = index === 0;
@@ -154,13 +169,13 @@
             }
             row.append(play, cover, info, element('span', 'rp-track-duration', t.duration ? formatTime(t.duration) : '—'), actions); rows.append(row);
         }
-        $('[data-empty]').hidden = visible.length > 0;
-        $('[data-empty-title]').textContent = query ? 'Ничего не найдено' : selected === -1 ? 'Любимые песни будут здесь' : selected > 0 ? 'Эта лента пока пустая' : 'Здесь начинается ваша коллекция';
-        $('[data-empty-description]').textContent = query ? 'Попробуйте другое название или имя исполнителя.' : selected === -1 ? 'Нажмите сердечко рядом с песней, чтобы добавить её в избранное.' : selected > 0 ? 'Загрузите музыку сюда или добавьте треки из общей библиотеки.' : 'Перетащите аудиофайлы сюда или добавьте их кнопкой выше.';
+        $('[data-empty]').hidden = !catalog.listMode || visible.length > 0;
+        $('[data-empty-title]').textContent = query ? 'Ничего не найдено' : catalog.emptyTitle || (selected === -1 ? 'Любимые песни будут здесь' : selected > 0 ? 'Эта лента пока пустая' : 'Здесь начинается ваша коллекция');
+        $('[data-empty-description]').textContent = query ? 'Попробуйте другое название или имя исполнителя.' : catalog.emptyDescription || (selected === -1 ? 'Нажмите сердечко рядом с песней, чтобы добавить её в избранное.' : selected > 0 ? 'Загрузите музыку сюда или добавьте треки из общей библиотеки.' : 'Перетащите аудиофайлы сюда или добавьте их кнопкой выше.');
         $('[data-action="play"]').disabled = !current && list.length === 0;
         $('[data-action="prev"]').disabled = !current;
         $('[data-action="next"]').disabled = !current;
-        $('[data-action="edit-current"]').disabled = !current;
+        $('[data-action="edit-current"]').disabled = !current || Boolean(activeTrack()?.shared);
         updateNow(); updateButtons(); renderChapters(); prepareUpcoming();
     }
     function drawAudioQuality() {
@@ -183,7 +198,7 @@
         const job = {controller,timer:setTimeout(() => controller.abort(),9000)};
         qualityJob = job;
         try {
-            const result = await api(`quality/${id}`,undefined,controller.signal);
+            const result = await api(`${t.shared ? 'catalog/' : ''}quality/${id}`,undefined,controller.signal);
             if (generation !== version || current !== id || controller.signal.aborted) return;
             qualityCache.set(id,result.quality || {});
             if (qualityCache.size > 64) qualityCache.delete(qualityCache.keys().next().value);
@@ -196,11 +211,14 @@
         drawAudioQuality();
         $('[data-title]').textContent = t?.title || 'Ваша первая лента';
         $('[data-artist]').textContent = t?.artist || (t ? 'НЕИЗВЕСТНЫЙ ИСПОЛНИТЕЛЬ' : 'ДОБАВЬТЕ ЛЮБИМУЮ МУЗЫКУ');
-        const cover = t?.cover || defaultCover();
+        const albumArtwork = queueSource.type === 'album' ? album(queueSource.id)?.cover : '';
+        const customArtwork = t?.cover || albumArtwork || '';
+        const cover = customArtwork || defaultCover();
         if ($('[data-cover]').getAttribute('src') !== cover) $('[data-cover]').src = cover;
+        $('[data-cover]').closest('.rp-cover-button').classList.toggle('has-custom-cover',Boolean(customArtwork));
         $('[data-source]').textContent = current ? (queueName || 'Вся музыка') + (t?.source === 'drive' ? ' · GOOGLE DRIVE' : ' · STEREO') : 'ВАША МУЗЫКА. ВАШ РИТМ.';
         if (t && 'mediaSession' in navigator && 'MediaMetadata' in window) {
-            const artwork = t.cover ? {src:new URL(t.cover,location.href).href,...(t.cover_mime ? {type:t.cover_mime} : {})}
+            const artwork = customArtwork ? {src:new URL(customArtwork,location.href).href,...(t.cover_mime && t.cover ? {type:t.cover_mime} : {})}
                 : {src:new URL(config.defaultCovers?.[theme] || config.defaultArtwork || config.defaultCover,location.href).href,sizes:config.defaultArtworkSize || '512x512',type:'image/png'};
             const chapter = t.chapters?.length ? t.chapters[window.TapeRoomChapters.indexAt(t.chapters,playbackPosition())] : null;
             try { navigator.mediaSession.metadata = new MediaMetadata({title:chapter?.title || t.title, artist:chapter?.artist || t.artist, album:chapter ? t.title : queueName || 'Tape Room', artwork:[artwork]}); } catch (_) {}
@@ -482,9 +500,10 @@
         const allowed = !document.hidden && !audio.paused && !audio.ended && !audio.seeking && !loading && enough && !connection?.saveData && !['slow-2g','2g'].includes(connection?.effectiveType);
         preloader.schedule(upcoming(),allowed);
     }
-    function setQueue() { preloader.reset(); queue = selectedTracks().map(t => t.id); queuePlaylist = selected; queueSort = selectedSort(); queueName = collectionName(selected); bag = []; futureBag = []; shuffleCycleStarted = false; history = []; }
+    function setQueue(source = selectedSource()) { preloader.reset(); queueSource = collections.descriptor(source); queueSort = selectedSort(); queue = collections.collection(data,queueSource,queueSort).map(t => t.id); queuePlaylist = queueSource.type === 'playlist' ? queueSource.id : queueSource.type === 'favorites' ? -1 : 0; queueName = collections.name(data,queueSource); bag = []; futureBag = []; shuffleCycleStarted = false; history = []; }
     function load(id, time = 0) {
         const t = track(id); if (!t) return;
+        sampleListening(); listening = null;
         preloader.cancel(); generation++; audio.pause(); stopMeters('track-change'); current = t.id; restoreTime = time; setBuffering(false);
         chapterKey = ''; chapterIndex = -2; chapterDuration = -1;
         audio.src = t.url; audio.load(); render(); drawProgress(); save(); requestQuality();
@@ -517,7 +536,7 @@
         const id = shuffle && history.length ? history.pop() : queue[(Math.max(0, queue.indexOf(current)) - 1 + queue.length) % queue.length];
         if (id) { futureBag = []; load(id); play(origin,event); }
     }
-    function applyState(result) { data = {tracks:result.tracks, playlists:result.playlists}; render(); save(); }
+    function applyState(result) { data = {tracks:result.tracks, playlists:result.playlists,catalog:result.catalog || {albums:[],tracks:[]}}; trackPool = collections.tracks(data); trackMap = new Map(trackPool.map(t=>[t.id,t])); render(); save(); }
     function mutate(operation) {
         // Library snapshots must be applied in commit order. Metadata, uploads
         // and button actions share this queue so an older reply cannot erase rows.
@@ -533,6 +552,46 @@
         if (!response.ok || !result.status) throw new Error(result.message || (response.status === 419 ? 'Обновите страницу: срок действия сессии истёк.' : 'Не удалось выполнить действие.'));
         return result;
     }
+    async function listeningRequest(values) {
+        const form=new FormData(); form.set('needCSRFToken',config.csrf);
+        for (const [key,value] of Object.entries(values)) form.set(key,value);
+        const controller=new AbortController(), timer=setTimeout(()=>controller.abort(),10000);
+        try { return await api('catalog/listen',form,controller.signal); }
+        finally { clearTimeout(timer); }
+    }
+    function startListening() {
+        if (!current || listening?.generation===generation) return;
+        const job={id:current,generation,seconds:0,position:audio.currentTime,wall:performance.now(),token:'',threshold:Infinity,counted:false,busy:false,errors:0,retryTimer:null,deadline:Infinity};
+        listening=job;
+        listeningRequest({action:'start',id:job.id}).then(result=>{
+            job.token=result.token; job.threshold=Number(result.threshold) || 30;
+            finishListening(job);
+        }).catch(()=>{}); // Optional statistics must never interrupt playback.
+    }
+    function sampleListening(ended = false) {
+        const job=listening; if (!job || job.generation!==generation) return;
+        const now=performance.now(), wall=Math.max(0,(now-job.wall)/1000), delta=audio.currentTime-job.position;
+        const rate=Math.max(.25,audio.playbackRate || 1);
+        if ((!audio.paused || ended) && !audio.seeking && !audio.muted && audio.volume>0 && !audio.error && delta>0 && delta<=wall*rate+.5) job.seconds+=Math.min(delta/rate,wall+.1);
+        job.position=audio.currentTime; job.wall=now;
+        finishListening(job);
+    }
+    function finishListening(job) {
+        if (!job.token || job.counted || job.busy || job.retryTimer || job.seconds<job.threshold || job.errors>=3 || performance.now()>job.deadline) return;
+        if (!Number.isFinite(job.deadline)) job.deadline=performance.now()+60000;
+        job.busy=true;
+        listeningRequest({action:'finish',token:job.token,seconds:job.seconds}).then(result=>{
+            job.counted=Boolean(result.counted);
+            if (job.counted) {
+                for (const t of [...data.tracks,...(data.catalog?.tracks || [])]) if (t.id===job.id) t.listen_count=Number(result.listens) || 0;
+                const t=track(job.id); if (t) t.listen_count=Number(result.listens) || 0;
+                catalogUI.render({data,view:libraryView,current,playing:!audio.paused,query:$('[data-search]').value,canPublish:Boolean(config.drive?.canManage)});
+            }
+        }).catch(()=>{job.errors++;}).finally(()=>{
+            job.busy=false;
+            if (!job.counted && job.errors<3 && performance.now()<job.deadline) job.retryTimer=setTimeout(()=>{job.retryTimer=null;finishListening(job);},1200);
+        });
+    }
     async function action(name, values = {}, cover) {
         const form = new FormData(); form.set('action', name); form.set('needCSRFToken', config.csrf);
         for (const [key,value] of Object.entries(values)) {
@@ -546,13 +605,33 @@
         chapterJob?.abort(); chapterJob = null;
         if (coverPreviewUrl) { URL.revokeObjectURL(coverPreviewUrl); coverPreviewUrl = undefined; }
         dialogSubmitting = false;
-        dialog.classList.remove('rp-dialog--drive','rp-dialog--chapters');
+        dialog.classList.remove('rp-dialog--drive','rp-dialog--chapters','rp-dialog--album');
         $('[data-dialog-title]').textContent = title;
         $('[data-dialog-fields]').innerHTML = fields;
         $('[data-dialog-description]').textContent = description; $('[data-dialog-description]').hidden = !description;
         $('[data-dialog-error]').hidden = true;
         const control = $('[data-dialog-submit]'); control.textContent = submit; control.disabled = false; control.hidden = false; control.classList.toggle('rp-button--danger', danger);
-        dialogHandler = handler; syncDialogViewport(); dialog.showModal();
+        dialogHandler = handler;
+        lockDialogScroll(); syncDialogViewport();
+        try { dialog.showModal(); } catch (error) { unlockDialogScroll(); throw error; }
+    }
+    function lockDialogScroll() {
+        if (dialogScroll) return;
+        dialogScroll = {x:window.scrollX,y:window.scrollY,behavior:document.documentElement.style.scrollBehavior};
+        const padding = parseFloat(getComputedStyle(document.body).paddingRight) || 0;
+        document.body.style.setProperty('--rp-dialog-page-offset',`${-dialogScroll.y}px`);
+        document.body.style.setProperty('--rp-dialog-page-padding',`${padding+Math.max(0,window.innerWidth-document.documentElement.clientWidth)}px`);
+        document.body.classList.add('is-dialog-open');
+    }
+    function unlockDialogScroll() {
+        if (!dialogScroll) return;
+        const position=dialogScroll; dialogScroll=null;
+        document.documentElement.style.scrollBehavior='auto';
+        document.body.classList.remove('is-dialog-open');
+        document.body.style.removeProperty('--rp-dialog-page-offset');
+        document.body.style.removeProperty('--rp-dialog-page-padding');
+        window.scrollTo(position.x,position.y);
+        document.documentElement.style.scrollBehavior=position.behavior;
     }
     function syncDialogViewport() {
         const viewport = window.visualViewport;
@@ -576,10 +655,11 @@
             $('[data-chapter-search]').value = '';
         }
         panel.hidden = !items.length;
+        panel.querySelector('.rp-chapter-tools').hidden = Boolean(t?.shared);
         $('[data-chapter-source]').textContent = t?.filename || t?.title || '';
         const query = $('[data-chapter-search]').value.trim().toLocaleLowerCase();
         const visible = items.map((item,index) => ({item,index})).filter(({item}) => `${item.title} ${item.artist || ''}`.toLocaleLowerCase().includes(query));
-        $('[data-chapter-list]').innerHTML = visible.map(({item,index}) => `<article class="rp-chapter-row" data-chapter-row="${item.id}"><button type="button" class="rp-chapter-play" data-action="chapter-play" data-id="${item.id}" aria-label="Воспроизвести ${esc(item.title)} с ${chapters.formatTime(item.start)}"><span class="rp-chapter-number">${index+1}</span><span class="rp-chapter-info"><span class="rp-chapter-title">${esc(item.title)}</span>${item.artist ? `<span class="rp-chapter-artist">${esc(item.artist)}</span>` : ''}</span><span class="rp-chapter-start">${chapters.formatTime(item.start)}</span></button><div class="rp-chapter-actions">${button('chapter-edit','Изменить таймкод','edit',item.id)}${button('chapter-delete','Удалить таймкод','trash',item.id)}</div></article>`).join('');
+        $('[data-chapter-list]').innerHTML = visible.map(({item,index}) => `<article class="rp-chapter-row" data-chapter-row="${item.id}"><button type="button" class="rp-chapter-play" data-action="chapter-play" data-id="${item.id}" aria-label="Воспроизвести ${esc(item.title)} с ${chapters.formatTime(item.start)}"><span class="rp-chapter-number">${index+1}</span><span class="rp-chapter-info"><span class="rp-chapter-title">${esc(item.title)}</span>${item.artist ? `<span class="rp-chapter-artist">${esc(item.artist)}</span>` : ''}</span><span class="rp-chapter-start">${chapters.formatTime(item.start)}</span></button>${t?.shared ? '' : `<div class="rp-chapter-actions">${button('chapter-edit','Изменить таймкод','edit',item.id)}${button('chapter-delete','Удалить таймкод','trash',item.id)}</div>`}</article>`).join('');
         chapterRows = [...$('[data-chapter-list]').children];
         if ($('[data-chapter-empty]')) $('[data-chapter-empty]').hidden = visible.length !== 0;
         chapterIndex = -2;
@@ -706,10 +786,42 @@
         dialog.classList.add('rp-dialog--chapters'); syncDialogViewport();
     }
     function createPlaylist() {
-        openDialog('Новая лента', field('name','Название плейлиста','',160), async form => { const result = await action('playlist.create',{name:form.get('name')}); selected = result.id; render(); save(); });
+        openDialog('Новая лента', field('name','Название плейлиста','',160), async form => { const result = await action('playlist.create',{name:form.get('name')}); browse({type:'playlist',id:result.id}); });
+    }
+    function browse(view) {
+        libraryView = view;
+        selected = view.type === 'playlist' ? Number(view.id) : view.type === 'favorites' ? -1 : 0;
+        $('[data-search]').value = ''; render(); save();
+    }
+    function editAlbum(id = 0, preset = {}) {
+        const existing = id ? album(id) : null;
+        if (id && !existing?.editable) return;
+        const value = existing || preset;
+        const order = [...(value.tracks || []), ...data.tracks.map(t=>t.id).filter(trackId=>!(value.tracks || []).includes(trackId))];
+        const members = new Set(value.tracks || []);
+        const rows = order.map(track).filter(t=>t && !t.shared).map(t=>`<div class="rp-album-member" data-album-member="${t.id}"><label><input type="checkbox" name="album_tracks[]" value="${t.id}" ${members.has(t.id) ? 'checked' : ''}><span><strong>${esc(t.title)}</strong><small>${esc(t.artist || t.filename)}</small></span></label><div>${button('album-order-up','Переместить выше','up',t.id)}${button('album-order-down','Переместить ниже','down',t.id)}</div></div>`).join('');
+        const cover = value.cover || defaultCover();
+        const fields = field('title','Название альбома',value.title || '') + field('artist','Артист / исполнитель альбома',value.artist || '') + `<label class="rp-field">Дата релиза (если известна)<input type="date" name="release_date" value="${esc(value.release_date || '')}"></label><label class="rp-field">Описание<textarea name="description" maxlength="4000" rows="3">${esc(value.description || '')}</textarea></label><div class="rp-cover-field"><span class="rp-field-label">Обложка альбома</span><label class="rp-cover-picker"><input class="rp-file-input" type="file" name="cover" accept="image/jpeg,image/png,image/webp" aria-label="Выбрать обложку альбома"><img data-cover-preview src="${esc(cover)}" alt="Обложка альбома"><span class="rp-cover-picker-info"><span class="rp-cover-picker-button">${icon('upload')}Выбрать обложку</span><span data-cover-filename>JPG, PNG или WebP · до 8 МБ</span></span></label></div><div class="rp-album-members-heading"><h3>Песни и порядок</h3><small>Используются ваши исходные файлы</small></div><label class="rp-search">${icon('search')}<input type="search" data-album-track-search placeholder="Найти песню для альбома" aria-label="Найти песню для альбома"></label><div class="rp-album-members">${rows || '<p>Сначала добавьте музыку в CMS или из Google Drive.</p>'}</div>`;
+        openDialog(existing ? 'Редактировать альбом' : 'Новый альбом',fields+(existing ? `<button type="button" class="rp-button rp-button--danger" data-action="catalog-delete" data-id="${existing.id}">Удалить альбом</button>` : ''),async form => {
+            const ids = [...dialog.querySelectorAll('[data-album-member] input:checked')].map(input=>Number(input.value));
+            const result = await action(`catalog.album.${existing ? 'update' : 'create'}`,{id,title:form.get('title'),artist:form.get('artist'),release_date:form.get('release_date'),description:form.get('description'),tracks:JSON.stringify(ids)},form.get('cover'));
+            browse({type:'album',id:existing?.id || result.id}); toast(existing ? 'Альбом сохранён.' : 'Альбом добавлен в вашу коллекцию.');
+        },'Альбом объединяет песни и не создаёт копий аудио. Публикация в общий каталог выполняется отдельно.');
+        dialog.classList.add('rp-dialog--album');
+        dialog.querySelector('[data-album-track-search]').addEventListener('input',event => {
+            const query = event.target.value.trim().toLocaleLowerCase();
+            dialog.querySelectorAll('[data-album-member]').forEach(row=>{row.hidden=!row.querySelector('label').textContent.toLocaleLowerCase().includes(query);});
+        });
+        dialog.querySelector('[name="cover"]').addEventListener('change',event => {
+            const file = event.target.files[0]; if (!file) return;
+            if (file.size>8*1048576 || !/\.(jpe?g|png|webp)$/i.test(file.name)) { event.target.value=''; toast('Выберите JPG, PNG или WebP размером до 8 МБ.',true); return; }
+            if (coverPreviewUrl) URL.revokeObjectURL(coverPreviewUrl);
+            coverPreviewUrl=URL.createObjectURL(file); dialog.querySelector('[data-cover-preview]').src=coverPreviewUrl;
+            dialog.querySelector('[data-cover-filename]').textContent=file.name;
+        });
     }
     function editTrack(id) {
-        const t = track(id); if (!t) return;
+        const t = track(id); if (!t || t.shared) return;
         openDialog('О композиции', field('title','Название',t.title) + field('artist','Исполнитель',t.artist) + `<div class="rp-cover-field"><span class="rp-field-label">Обложка</span><label class="rp-cover-picker"><input class="rp-file-input" type="file" name="cover" accept="image/jpeg,image/png,image/webp" aria-label="Выбрать обложку"><img data-cover-preview ${t.cover ? '' : 'data-default-cover'} src="${esc(t.cover || defaultCover())}" alt="Предварительный просмотр обложки"><span class="rp-cover-picker-info"><span class="rp-cover-picker-button">${icon('upload')}Выбрать обложку</span><span data-cover-filename>JPG, PNG или WebP · до 8 МБ</span></span></label></div><div class="rp-chapter-editor-actions"><button type="button" class="rp-button" data-action="chapter-add" data-track-id="${t.id}">${icon('plus')}Добавить таймкод</button><button type="button" class="rp-button" data-action="chapter-tools" data-track-id="${t.id}">${icon('list')}CUE и автопоиск</button></div>`, form => action('track.update',{id,title:form.get('title'),artist:form.get('artist')},form.get('cover')));
         dialog.querySelector('[name="cover"]').addEventListener('change', event => {
             const file = event.target.files[0]; if (!file) return;
@@ -786,7 +898,7 @@
                 case 'play': if (audio.paused) await play('user',event); else audio.pause(); break;
                 case 'prev': previous('user',event); break;
                 case 'next': next(false,'user',event); break;
-                case 'play-track': setQueue(); if (current === id) { if (audio.paused) await play('user',event); else audio.pause(); } else { load(id); await play('user',event); } break;
+                case 'play-track': setQueue(control.dataset.source === 'popular' ? {type:'popular'} : selectedSource()); if (current === id) { if (audio.paused) await play('user',event); else audio.pause(); } else { load(id); await play('user',event); } break;
                 case 'shuffle': shuffle = !shuffle; bag = []; futureBag = []; shuffleCycleStarted = false; history = []; preloader.reset(); updateButtons(); prepareUpcoming(); save(); break;
                 case 'repeat': repeat = {off:'all',all:'one',one:'off'}[repeat]; preloader.cancel(); futureBag = []; updateButtons(); prepareUpcoming(); save(); break;
                 case 'mute': toggleMute(); break;
@@ -794,8 +906,30 @@
                 case 'meter-report': openMeterReport(); break;
                 case 'meter-report-download': downloadMeterReport(); break;
                 case 'theme': theme = theme === 'dark' ? 'light' : 'dark'; applyTheme(); break;
-                case 'select-playlist': selected = id; $('[data-search]').value = ''; render(); save(); break;
-                case 'favorite': control.disabled = true; await action('track.favorite',{id,favorite:track(id).favorite ? 0 : 1}); break;
+                case 'select-playlist': browse(descriptorForPlaylist(id)); break;
+                case 'catalog-view': browse({type:control.dataset.view}); break;
+                case 'catalog-album': browse({type:'album',id}); break;
+                case 'catalog-artist': browse({type:'artist',artist:control.dataset.artist}); break;
+                case 'catalog-play-album': {
+                    const item=album(id); if (!item?.tracks.length) break;
+                    setQueue({type:'album',id}); load(item.tracks[0]); await play('user',event); break;
+                }
+                case 'catalog-save': control.disabled=true; await action('catalog.album.save',{id,saved:album(id)?.saved ? 0 : 1}); toast(album(id)?.saved ? 'Альбом в вашей коллекции.' : 'Альбом убран из коллекции.'); break;
+                case 'catalog-create': editAlbum(); break;
+                case 'catalog-edit': editAlbum(id); break;
+                case 'catalog-publish': {
+                    const item=album(id); if (!item?.editable || !item.canPublish) break;
+                    openDialog(item.published ? 'Снять альбом с публикации?' : 'Опубликовать альбом?', '', () => action('catalog.album.publish',{id,published:item.published ? 0 : 1}),item.published ? 'Альбом останется в вашей библиотеке. Другие пользователи потеряют доступ к его песням через каталог.' : 'Пользователи с доступом к Tape Room смогут слушать песни этого альбома. Для Google Drive будет использоваться ваше подключение; файлы остаются на вашем диске.',item.published ? 'Снять с публикации' : 'Опубликовать'); break;
+                }
+                case 'catalog-delete': {
+                    const item=album(id); if (!item?.editable) break;
+                    openDialog('Удалить альбом?', '', () => action('catalog.album.delete',{id}),`«${item.title}» исчезнет из каталога и коллекций. Исходные песни останутся в вашей музыкальной библиотеке.`,'Удалить',true); break;
+                }
+                case 'album-order-up': case 'album-order-down': {
+                    const row=control.closest('[data-album-member]'), adjacent=name==='album-order-up' ? row.previousElementSibling : row.nextElementSibling;
+                    if (adjacent) name==='album-order-up' ? adjacent.before(row) : adjacent.after(row); break;
+                }
+                case 'favorite': control.disabled = true; await action(track(id)?.shared ? 'catalog.track.favorite' : 'track.favorite',{id,favorite:track(id).favorite ? 0 : 1}); break;
                 case 'upload': $('[data-audio-files]').click(); break;
                 case 'create-playlist': createPlaylist(); break;
                 case 'close-dialog': if (!dialogSubmitting) dialog.close(); break;
@@ -906,24 +1040,24 @@
         }
         drawProgress();
         const t = activeTrack();
-        if (t && Number.isFinite(audio.duration) && Math.abs(t.duration - audio.duration) > 1) {
+        if (t && !t.shared && Number.isFinite(audio.duration) && Math.abs(t.duration - audio.duration) > 1) {
             t.duration = audio.duration;
             action('track.duration',{id:t.id,duration:audio.duration}).catch(() => {});
         }
     });
     audio.addEventListener('play', () => { setBuffering(audio.readyState < 3); startAnimation(); });
-    audio.addEventListener('playing', () => { setBuffering(false); resumeMeters(); startAnimation(); });
+    audio.addEventListener('playing', () => { setBuffering(false); resumeMeters(); startAnimation(); startListening(); });
     audio.addEventListener('waiting', () => { setBuffering(true); });
     // stalled concerns downloading; only waiting proves playback is starved.
     audio.addEventListener('stalled', () => { drawProgress(); });
     audio.addEventListener('canplay', () => { if (audio.readyState >= 3) setBuffering(false); });
     audio.addEventListener('progress', () => { drawProgress(); prepareUpcoming(); });
-    audio.addEventListener('seeking', () => { preloader.cancel(); if (audio.readyState < 3) setBuffering(true); drawProgress(); });
+    audio.addEventListener('seeking', () => { if (listening) { listening.position=audio.currentTime; listening.wall=performance.now(); } preloader.cancel(); if (audio.readyState < 3) setBuffering(true); drawProgress(); });
     audio.addEventListener('pause', () => { preloader.cancel(); setBuffering(false); stopMeters(); save(); });
-    audio.addEventListener('timeupdate', () => { drawProgress(); prepareUpcoming(); if (Date.now() - lastSave > 3000) { save(); lastSave = Date.now(); } });
-    audio.addEventListener('seeked', () => { meterController.seek(); drawProgress(true); syncMirror(); });
+    audio.addEventListener('timeupdate', () => { sampleListening(); drawProgress(); prepareUpcoming(); if (Date.now() - lastSave > 3000) { save(); lastSave = Date.now(); } });
+    audio.addEventListener('seeked', () => { if (listening) { listening.position=audio.currentTime; listening.wall=performance.now(); } meterController.seek(); drawProgress(true); syncMirror(); });
     audio.addEventListener('ratechange', () => { drawProgress(true); syncMirror(); });
-    audio.addEventListener('ended', () => { setBuffering(false); stopMeters(); drawProgress(); next(true); });
+    audio.addEventListener('ended', () => { sampleListening(true); listening=null; setBuffering(false); stopMeters(); drawProgress(); next(true); });
     let errorProbe = -1;
     audio.addEventListener('error', async () => {
         if (!current) return; preloader.cancel(); setBuffering(false); stopMeters('native-error'); meterController.nativeFailure(audio.error?.code || 0);
@@ -943,7 +1077,7 @@
         } catch (_) {} finally { clearTimeout(timeout); }
         if (version === generation) toast(message,true);
     });
-    $('[data-cover]').addEventListener('error', event => { if (event.target.getAttribute('src') !== defaultCover()) event.target.src = defaultCover(); });
+    $('[data-cover]').addEventListener('error', event => { if (event.target.getAttribute('src') !== defaultCover()) { event.target.closest('.rp-cover-button').classList.remove('has-custom-cover'); event.target.src = defaultCover(); } });
     let dragDepth = 0;
     window.addEventListener('dragenter', event => { if ([...(event.dataTransfer?.types || [])].includes('Files')) { event.preventDefault(); dragDepth++; $('[data-drop-overlay]').hidden = false; } });
     window.addEventListener('dragover', event => { if ([...(event.dataTransfer?.types || [])].includes('Files')) event.preventDefault(); });
@@ -1074,11 +1208,12 @@
             return;
         }
         driveSelection = new Set(); drivePath = [{id:'root',name:'Мой Drive'}];
-        openDialog('Добавить музыку из Drive', '<div class="rp-drive-location"><nav class="rp-drive-path" data-drive-path aria-label="Папки Google Drive"></nav><button type="button" class="rp-drive-settings-link" data-action="drive-all">Вся музыка</button></div><div class="rp-drive-heading"><span>Папки и музыка</span><small data-drive-count>Загрузка…</small></div><button type="button" class="rp-button rp-drive-add-folder" data-action="drive-add-folder" hidden>Добавить эту папку целиком</button><div class="rp-drive-selection"><span data-drive-selected>Выбрано: 0</span><div class="rp-drive-selection-buttons"><button type="button" class="rp-drive-settings-link" data-action="drive-clear" hidden>Сбросить</button><button type="button" class="rp-button" data-action="drive-select-all" disabled>Выбрать показанные</button></div></div><div class="rp-drive-files" data-drive-files aria-live="polite">Загружаем папки и музыку…</div><label class="rp-field rp-drive-link-field">Или вставьте ссылку на песню / папку<input name="link" type="url" placeholder="https://drive.google.com/…" inputmode="url" autocomplete="off"><small>Ссылка на папку добавит все поддерживаемые песни из самой папки.</small></label><div class="rp-drive-account-actions"><button type="button" class="rp-drive-settings-link" data-action="drive-disconnect">Отключить аккаунт</button></div>', async form => {
+        openDialog('Добавить музыку из Drive', '<div class="rp-drive-location"><nav class="rp-drive-path" data-drive-path aria-label="Папки Google Drive"></nav><button type="button" class="rp-drive-settings-link" data-action="drive-all">Вся музыка</button></div><div class="rp-drive-heading"><span>Папки и музыка</span><small data-drive-count>Загрузка…</small></div><button type="button" class="rp-button rp-drive-add-folder" data-action="drive-add-folder" hidden>Добавить эту папку целиком</button><div class="rp-drive-selection"><span data-drive-selected>Выбрано: 0</span><div class="rp-drive-selection-buttons"><button type="button" class="rp-drive-settings-link" data-action="drive-clear" hidden>Сбросить</button><button type="button" class="rp-button" data-action="drive-select-all" disabled>Выбрать показанные</button></div></div><div class="rp-drive-files" data-drive-files aria-live="polite">Загружаем папки и музыку…</div><label class="rp-field rp-drive-link-field">Или вставьте ссылку на песню / папку<input name="link" type="url" placeholder="https://drive.google.com/…" inputmode="url" autocomplete="off"><small>Ссылка на папку добавит все поддерживаемые песни из самой папки.</small></label><label class="rp-album-import-choice"><input type="checkbox" name="as_album" value="1"><span>Собрать добавленные песни в альбом</span></label><div class="rp-drive-account-actions"><button type="button" class="rp-drive-settings-link" data-action="drive-disconnect">Отключить аккаунт</button></div>', async form => {
             if (!driveSelection.size && !form.get('link').trim()) throw new Error('Выберите хотя бы один трек или вставьте ссылку.');
             const result = await action('drive.import',{ids:[...driveSelection],link:form.get('link'),playlist_id:selected > 0 ? selected : 0});
-            if (selected === -1) { selected = 0; render(); save(); }
+            if (selected === -1) browse({type:'songs'});
             toast(`Добавлено треков из Google Drive: ${result.imported}`);
+            if (form.get('as_album') === '1' && result.imported_ids?.length) editAlbum(0,{title:drivePath.length>1 ? drivePath.at(-1).name : '',tracks:result.imported_ids});
         }, 'Откройте папку с музыкой, отметьте песни и нажмите «Добавить». Музыка останется на Google Drive.', 'Выберите песни');
         dialog.classList.add('rp-dialog--drive');
         dialog.querySelector('[name="link"]').addEventListener('input', updateDriveSelection);
@@ -1133,7 +1268,8 @@
         if (result.nextPageToken) { const next = element('button','rp-button rp-drive-more','Показать ещё'); next.type = 'button'; next.dataset.action = 'drive-more'; next.dataset.page = result.nextPageToken; list.append(next); }
         updateDriveSelection();
     }
-    dialog.addEventListener('close', () => { dialogRequest++; driveBrowseGeneration++; chapterJob?.abort(); chapterJob = null; $('[data-dialog-submit]').hidden = false; if (coverPreviewUrl) { URL.revokeObjectURL(coverPreviewUrl); coverPreviewUrl = undefined; } });
+    dialog.addEventListener('close', () => { unlockDialogScroll(); dialogRequest++; driveBrowseGeneration++; chapterJob?.abort(); chapterJob = null; $('[data-dialog-submit]').hidden = false; if (coverPreviewUrl) { URL.revokeObjectURL(coverPreviewUrl); coverPreviewUrl = undefined; } });
+    app.querySelectorAll('[data-theme-cover]').forEach(image=>{ image.decode?.().catch(()=>{}); });
     audio.volume = Number.isFinite(Number(saved.volume)) ? Math.max(0,Math.min(1,Number(saved.volume))) : .8;
     audio.muted = Boolean(saved.muted); syncVolume();
     $('[data-upload-limit]').textContent = `${(config.maxUpload / 1048576).toFixed(0)} МБ`;

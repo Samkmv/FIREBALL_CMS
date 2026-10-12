@@ -2,34 +2,37 @@
   "name": "Tape Room",
   "slug": "reel-player",
   "class": "FireballPluginReelPlayer",
-  "version": "1.3.3",
+  "version": "1.4.0",
   "type": "system",
-  "description": "Private reel-to-reel player with playlists, audio chapters and CUE import.",
+  "description": "Reel-to-reel player with a shared album catalogue, artists, personal collections, playlists and audio chapters.",
   "name_i18n": {
     "ru": "Tape Room · Аудиоплеер",
     "en": "Tape Room"
   },
   "description_i18n": {
-    "ru": "Личный катушечный аудиоплеер с плейлистами, таймкодами, главами и импортом CUE.",
-    "en": "Private reel-to-reel player with playlists, audio chapters and CUE import."
+    "ru": "Катушечный плеер с общим каталогом альбомов, артистами, личной коллекцией, плейлистами и таймкодами.",
+    "en": "Reel-to-reel player with a shared album catalogue, artists, personal collections, playlists and audio chapters."
   },
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
-    "Use theme-specific default covers in the player, library and system media artwork.",
-    "Cache versioned public assets and revalidate private uploaded covers without downloading unchanged images.",
-    "Slightly frost acrylic reels and separate header settings and theme buttons."
+    "Browse albums, artists, new releases and popular songs below the existing reel player.",
+    "Save explicitly published albums to a personal collection without copying audio; keep private libraries and Drive connections isolated.",
+    "Listen to albums in their original order and count real listening with bounded, idempotent sessions.",
+    "Lock page scrolling behind dialogs and switch prepared default theme covers immediately."
   ],
   "release_notes_i18n": {
     "en": [
-      "Use theme-specific default covers in the player, library and system media artwork.",
-      "Cache versioned public assets and revalidate private uploaded covers without downloading unchanged images.",
-      "Slightly frost acrylic reels and separate header settings and theme buttons."
+      "Browse albums, artists, new releases and popular songs below the existing reel player.",
+      "Save explicitly published albums to a personal collection without copying audio; keep private libraries and Drive connections isolated.",
+      "Listen to albums in their original order and count real listening with bounded, idempotent sessions.",
+      "Lock page scrolling behind dialogs and switch prepared default theme covers immediately."
     ],
     "ru": [
-      "Обложки по умолчанию для светлой и тёмной темы в плеере, библиотеке и системном управлении музыкой.",
-      "Кеширование версионных изображений и проверка обновлений личных обложек без повторной загрузки неизменных картинок.",
-      "Слегка матовые акриловые катушки и увеличенный промежуток между настройками и сменой темы."
+      "Альбомы, артисты, новинки и популярные песни под существующим катушечным плеером.",
+      "Сохранение опубликованных альбомов в личную коллекцию без копирования аудио; личные файлы и Drive-подключения защищены.",
+      "Прослушивание альбомов по порядку и ограниченная статистика реальных прослушиваний без повторного зачёта.",
+      "Блокировка прокрутки фона модальных окон и мгновенная смена подготовленной стандартной обложки по теме."
     ]
   },
   "update": {
