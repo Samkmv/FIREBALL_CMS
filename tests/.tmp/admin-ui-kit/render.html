@@ -1,0 +1,2560 @@
+<!doctype html><html lang="ru" data-bs-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Admin UI catalogue preview</title><script src="/assets/default/js/theme-switcher.js"></script><link rel="stylesheet" href="/assets/default/icons/cartzilla-icons.min.css"><link rel="stylesheet" href="/assets/default/vendor/choices.js/choices.min.css"><link rel="stylesheet" href="/assets/default/vendor/simplebar/simplebar.min.css"><link rel="stylesheet" href="/assets/default/css/theme.min.css"><link rel="stylesheet" href="/assets/default/css/style.css"><link rel="stylesheet" href="/assets/default/css/admin-ui.css"><link rel="stylesheet" href="/assets/default/css/admin-ui-kit.css"></head><body class="fb-admin-body">
+
+<a class="fb-skip-link" href="#fb-admin-content">Перейти к основному содержимому</a>
+
+<div class="fb-admin" data-fb-admin data-admin-shell>
+    <aside class="fb-sidebar d-none d-lg-flex" data-fb-sidebar aria-label="Меню админки">
+        
+<div class="fb-sidebar-inner">
+    <div class="fb-sidebar-head">
+        <a class="fb-brand" href="/admin" aria-label="Админ-панель">
+            <span class="fb-brand-mark" aria-hidden="true"><img src="/assets/default/icons/fireball-admin.svg" alt=""></span>
+            <span class="fb-brand-copy">
+                <strong>FIREBALL</strong>
+                <span>CMS</span>
+            </span>
+        </a>
+
+                    <button
+                type="button"
+                class="fb-icon-button fb-sidebar-collapse"
+                data-fb-sidebar-toggle
+                data-label-collapse="Свернуть боковое меню"
+                data-label-expand="Развернуть боковое меню"
+                aria-expanded="true"
+                aria-label="Свернуть боковое меню"
+                title="Свернуть боковое меню"
+            >
+                <i class="ci-chevron-left" aria-hidden="true"></i>
+            </button>
+            </div>
+
+    <div
+        class="fb-sidebar-scroll"
+        data-fb-sidebar-scroll
+        data-simplebar
+        data-simplebar-auto-hide="false"
+        data-simplebar-force-visible="y"
+        data-simplebar-scrollbar-min-size="44"
+        data-simplebar-scrollbar-max-size="180"
+    >
+        
+<nav class="fb-nav" data-admin-nav data-fb-nav-variant="desktop">
+                            <section class="fb-nav-group" aria-labelledby="fb-nav-1-dashboard">
+            <h2 class="fb-nav-group-title" id="fb-nav-1-dashboard">Панель управления</h2>
+            <div class="fb-nav-list">
+                                        <a
+        class="fb-nav-link"
+        href="/admin"
+        title="Обзор"
+                data-fb-command
+        data-fb-command-label="Обзор"
+        data-fb-command-category="Панель управления"
+        data-fb-command-icon="ci-home"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-home" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Обзор</span>
+            </a>
+                            <a
+        class="fb-nav-link"
+        href="/admin/analytics"
+        title="Аналитика"
+                data-fb-command
+        data-fb-command-label="Аналитика"
+        data-fb-command-category="Панель управления"
+        data-fb-command-icon="ci-activity"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-activity" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Аналитика</span>
+            </a>
+                </div>
+        </section>
+                            <section class="fb-nav-group" aria-labelledby="fb-nav-1-content">
+            <h2 class="fb-nav-group-title" id="fb-nav-1-content">Контент</h2>
+            <div class="fb-nav-list">
+                                        <a
+        class="fb-nav-link"
+        href="/admin/posts"
+        title="Записи"
+                data-fb-command
+        data-fb-command-label="Записи"
+        data-fb-command-category="Контент"
+        data-fb-command-icon="ci-file-text"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-file-text" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Записи</span>
+            </a>
+                            <a
+        class="fb-nav-link"
+        href="/admin/pages"
+        title="Страницы"
+                data-fb-command
+        data-fb-command-label="Страницы"
+        data-fb-command-category="Контент"
+        data-fb-command-icon="ci-file"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-file" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Страницы</span>
+            </a>
+                            <a
+        class="fb-nav-link"
+        href="/admin/categories"
+        title="Категории"
+                data-fb-command
+        data-fb-command-label="Категории"
+        data-fb-command-category="Контент"
+        data-fb-command-icon="ci-folder"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-folder" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Категории</span>
+            </a>
+                            <a
+        class="fb-nav-link"
+        href="/admin/files"
+        title="Файлы"
+                data-fb-command
+        data-fb-command-label="Файлы"
+        data-fb-command-category="Контент"
+        data-fb-command-icon="ci-hard-drive"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-hard-drive" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Файлы</span>
+            </a>
+                            <a
+        class="fb-nav-link"
+        href="/admin/support"
+        title="Заявки и поддержка"
+                data-fb-command
+        data-fb-command-label="Заявки и поддержка"
+        data-fb-command-category="Контент"
+        data-fb-command-icon="ci-inbox"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-inbox" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Заявки и поддержка</span>
+            </a>
+                </div>
+        </section>
+                            <section class="fb-nav-group" aria-labelledby="fb-nav-1-users">
+            <h2 class="fb-nav-group-title" id="fb-nav-1-users">Пользователи</h2>
+            <div class="fb-nav-list">
+                                        <a
+        class="fb-nav-link"
+        href="/admin/users"
+        title="Пользователи"
+                data-fb-command
+        data-fb-command-label="Пользователи"
+        data-fb-command-category="Пользователи"
+        data-fb-command-icon="ci-user"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-user" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Пользователи</span>
+            </a>
+                            <a
+        class="fb-nav-link"
+        href="/admin/roles"
+        title="Роли"
+                data-fb-command
+        data-fb-command-label="Роли"
+        data-fb-command-category="Пользователи"
+        data-fb-command-icon="ci-shield"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-shield" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Роли</span>
+            </a>
+                </div>
+        </section>
+                            <section class="fb-nav-group" aria-labelledby="fb-nav-1-appearance">
+            <h2 class="fb-nav-group-title" id="fb-nav-1-appearance">Внешний вид</h2>
+            <div class="fb-nav-list">
+                                        <a
+        class="fb-nav-link"
+        href="/admin/themes"
+        title="Внешний вид"
+                data-fb-command
+        data-fb-command-label="Внешний вид"
+        data-fb-command-category="Внешний вид"
+        data-fb-command-icon="ci-monitor"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-monitor" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Внешний вид</span>
+            </a>
+                            <a
+        class="fb-nav-link"
+        href="/admin/widgets"
+        title="Виджеты"
+                data-fb-command
+        data-fb-command-label="Виджеты"
+        data-fb-command-category="Внешний вид"
+        data-fb-command-icon="ci-grid"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-grid" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Виджеты</span>
+            </a>
+                            <a
+        class="fb-nav-link"
+        href="/admin/plugins"
+        title="Плагины"
+                data-fb-command
+        data-fb-command-label="Плагины"
+        data-fb-command-category="Внешний вид"
+        data-fb-command-icon="ci-box"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-box" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Плагины</span>
+            </a>
+                </div>
+        </section>
+                                    <section class="fb-nav-group" aria-labelledby="fb-nav-1-system">
+            <h2 class="fb-nav-group-title" id="fb-nav-1-system">Система</h2>
+            <div class="fb-nav-list">
+                                        <a
+        class="fb-nav-link"
+        href="/admin/updates"
+        title="Обновления"
+                data-fb-command
+        data-fb-command-label="Обновления"
+        data-fb-command-category="Система"
+        data-fb-command-icon="ci-refresh-cw"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-refresh-cw" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Обновления</span>
+            </a>
+                            <a
+        class="fb-nav-link"
+        href="/admin/settings"
+        title="Настройки сайта"
+                data-fb-command
+        data-fb-command-label="Настройки сайта"
+        data-fb-command-category="Система"
+        data-fb-command-icon="ci-settings"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-settings" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Настройки сайта</span>
+            </a>
+                            <a
+        class="fb-nav-link"
+        href="/admin/security/logs"
+        title="Журнал безопасности"
+                data-fb-command
+        data-fb-command-label="Журнал безопасности"
+        data-fb-command-category="Система"
+        data-fb-command-icon="ci-shield"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-shield" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Журнал безопасности</span>
+            </a>
+                </div>
+        </section>
+                            <section class="fb-nav-group" aria-labelledby="fb-nav-1-help">
+            <h2 class="fb-nav-group-title" id="fb-nav-1-help">Справка</h2>
+            <div class="fb-nav-list">
+                                        <a
+        class="fb-nav-link"
+        href="/admin/docs"
+        title="Документация"
+                data-fb-command
+        data-fb-command-label="Документация"
+        data-fb-command-category="Справка"
+        data-fb-command-icon="ci-book-open"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-book-open" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Документация</span>
+            </a>
+                </div>
+        </section>
+    </nav>
+    </div>
+
+    <div class="fb-sidebar-footer">
+        <a
+            class="fb-sidebar-user"
+            href="/profile"
+            aria-label="Профиль"
+            title="UI Preview"
+        >
+            <img
+                class="fb-sidebar-user-avatar"
+                src="/assets/img/avatar.jpg"
+                alt=""
+            >
+            <span class="fb-sidebar-user-copy">
+                <strong>UI Preview</strong>
+                <span>Demo</span>
+            </span>
+            <i class="ci-chevron-right fb-sidebar-user-arrow" aria-hidden="true"></i>
+        </a>
+
+        <div class="fb-sidebar-footer-actions">
+            <a
+                class="fb-sidebar-footer-link"
+                href="/"
+                aria-label="Главная"
+                title="Главная"
+            >
+                <i class="ci-home" aria-hidden="true"></i>
+                <span>Главная</span>
+            </a>
+            <form action="/logout" method="post">
+                                <button
+                    class="fb-sidebar-footer-link"
+                    type="submit"
+                    aria-label="Выйти"
+                    title="Выйти"
+                >
+                    <i class="ci-log-out" aria-hidden="true"></i>
+                    <span>Выйти</span>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+    </aside>
+
+    <div
+        class="offcanvas offcanvas-start fb-sidebar-drawer d-lg-none"
+        id="adminSidebar"
+        tabindex="-1"
+        aria-labelledby="adminSidebarLabel"
+        data-bs-theme="dark"
+    >
+        
+<div class="fb-sidebar-inner">
+    <div class="fb-sidebar-head">
+        <a class="fb-brand" href="/admin" aria-label="Админ-панель">
+            <span class="fb-brand-mark" aria-hidden="true"><img src="/assets/default/icons/fireball-admin.svg" alt=""></span>
+            <span class="fb-brand-copy">
+                <strong>FIREBALL</strong>
+                <span>CMS</span>
+            </span>
+        </a>
+
+                    <button
+                type="button"
+                class="fb-icon-button fb-sidebar-close"
+                data-bs-dismiss="offcanvas"
+                aria-label="Закрыть"
+            >
+                <i class="ci-close" aria-hidden="true"></i>
+            </button>
+            </div>
+
+    <div
+        class="fb-sidebar-scroll"
+        data-fb-sidebar-scroll
+        data-simplebar
+        data-simplebar-auto-hide="false"
+        data-simplebar-force-visible="y"
+        data-simplebar-scrollbar-min-size="44"
+        data-simplebar-scrollbar-max-size="180"
+    >
+        
+<nav class="fb-nav" data-admin-nav data-fb-nav-variant="mobile">
+                            <section class="fb-nav-group" aria-labelledby="fb-nav-1-dashboard">
+            <h2 class="fb-nav-group-title" id="fb-nav-1-dashboard">Панель управления</h2>
+            <div class="fb-nav-list">
+                                        <a
+        class="fb-nav-link"
+        href="/admin"
+        title="Обзор"
+                data-fb-command
+        data-fb-command-label="Обзор"
+        data-fb-command-category="Панель управления"
+        data-fb-command-icon="ci-home"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-home" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Обзор</span>
+            </a>
+                            <a
+        class="fb-nav-link"
+        href="/admin/analytics"
+        title="Аналитика"
+                data-fb-command
+        data-fb-command-label="Аналитика"
+        data-fb-command-category="Панель управления"
+        data-fb-command-icon="ci-activity"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-activity" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Аналитика</span>
+            </a>
+                </div>
+        </section>
+                            <section class="fb-nav-group" aria-labelledby="fb-nav-1-content">
+            <h2 class="fb-nav-group-title" id="fb-nav-1-content">Контент</h2>
+            <div class="fb-nav-list">
+                                        <a
+        class="fb-nav-link"
+        href="/admin/posts"
+        title="Записи"
+                data-fb-command
+        data-fb-command-label="Записи"
+        data-fb-command-category="Контент"
+        data-fb-command-icon="ci-file-text"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-file-text" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Записи</span>
+            </a>
+                            <a
+        class="fb-nav-link"
+        href="/admin/pages"
+        title="Страницы"
+                data-fb-command
+        data-fb-command-label="Страницы"
+        data-fb-command-category="Контент"
+        data-fb-command-icon="ci-file"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-file" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Страницы</span>
+            </a>
+                            <a
+        class="fb-nav-link"
+        href="/admin/categories"
+        title="Категории"
+                data-fb-command
+        data-fb-command-label="Категории"
+        data-fb-command-category="Контент"
+        data-fb-command-icon="ci-folder"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-folder" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Категории</span>
+            </a>
+                            <a
+        class="fb-nav-link"
+        href="/admin/files"
+        title="Файлы"
+                data-fb-command
+        data-fb-command-label="Файлы"
+        data-fb-command-category="Контент"
+        data-fb-command-icon="ci-hard-drive"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-hard-drive" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Файлы</span>
+            </a>
+                            <a
+        class="fb-nav-link"
+        href="/admin/support"
+        title="Заявки и поддержка"
+                data-fb-command
+        data-fb-command-label="Заявки и поддержка"
+        data-fb-command-category="Контент"
+        data-fb-command-icon="ci-inbox"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-inbox" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Заявки и поддержка</span>
+            </a>
+                </div>
+        </section>
+                            <section class="fb-nav-group" aria-labelledby="fb-nav-1-users">
+            <h2 class="fb-nav-group-title" id="fb-nav-1-users">Пользователи</h2>
+            <div class="fb-nav-list">
+                                        <a
+        class="fb-nav-link"
+        href="/admin/users"
+        title="Пользователи"
+                data-fb-command
+        data-fb-command-label="Пользователи"
+        data-fb-command-category="Пользователи"
+        data-fb-command-icon="ci-user"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-user" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Пользователи</span>
+            </a>
+                            <a
+        class="fb-nav-link"
+        href="/admin/roles"
+        title="Роли"
+                data-fb-command
+        data-fb-command-label="Роли"
+        data-fb-command-category="Пользователи"
+        data-fb-command-icon="ci-shield"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-shield" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Роли</span>
+            </a>
+                </div>
+        </section>
+                            <section class="fb-nav-group" aria-labelledby="fb-nav-1-appearance">
+            <h2 class="fb-nav-group-title" id="fb-nav-1-appearance">Внешний вид</h2>
+            <div class="fb-nav-list">
+                                        <a
+        class="fb-nav-link"
+        href="/admin/themes"
+        title="Внешний вид"
+                data-fb-command
+        data-fb-command-label="Внешний вид"
+        data-fb-command-category="Внешний вид"
+        data-fb-command-icon="ci-monitor"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-monitor" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Внешний вид</span>
+            </a>
+                            <a
+        class="fb-nav-link"
+        href="/admin/widgets"
+        title="Виджеты"
+                data-fb-command
+        data-fb-command-label="Виджеты"
+        data-fb-command-category="Внешний вид"
+        data-fb-command-icon="ci-grid"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-grid" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Виджеты</span>
+            </a>
+                            <a
+        class="fb-nav-link"
+        href="/admin/plugins"
+        title="Плагины"
+                data-fb-command
+        data-fb-command-label="Плагины"
+        data-fb-command-category="Внешний вид"
+        data-fb-command-icon="ci-box"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-box" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Плагины</span>
+            </a>
+                </div>
+        </section>
+                                    <section class="fb-nav-group" aria-labelledby="fb-nav-1-system">
+            <h2 class="fb-nav-group-title" id="fb-nav-1-system">Система</h2>
+            <div class="fb-nav-list">
+                                        <a
+        class="fb-nav-link"
+        href="/admin/updates"
+        title="Обновления"
+                data-fb-command
+        data-fb-command-label="Обновления"
+        data-fb-command-category="Система"
+        data-fb-command-icon="ci-refresh-cw"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-refresh-cw" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Обновления</span>
+            </a>
+                            <a
+        class="fb-nav-link"
+        href="/admin/settings"
+        title="Настройки сайта"
+                data-fb-command
+        data-fb-command-label="Настройки сайта"
+        data-fb-command-category="Система"
+        data-fb-command-icon="ci-settings"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-settings" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Настройки сайта</span>
+            </a>
+                            <a
+        class="fb-nav-link"
+        href="/admin/security/logs"
+        title="Журнал безопасности"
+                data-fb-command
+        data-fb-command-label="Журнал безопасности"
+        data-fb-command-category="Система"
+        data-fb-command-icon="ci-shield"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-shield" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Журнал безопасности</span>
+            </a>
+                </div>
+        </section>
+                            <section class="fb-nav-group" aria-labelledby="fb-nav-1-help">
+            <h2 class="fb-nav-group-title" id="fb-nav-1-help">Справка</h2>
+            <div class="fb-nav-list">
+                                        <a
+        class="fb-nav-link"
+        href="/admin/docs"
+        title="Документация"
+                data-fb-command
+        data-fb-command-label="Документация"
+        data-fb-command-category="Справка"
+        data-fb-command-icon="ci-book-open"
+        data-fb-command-kind="navigation"
+    >
+        <span class="fb-nav-icon"><i class="ci-book-open" aria-hidden="true"></i></span>
+        <span class="fb-nav-label">Документация</span>
+            </a>
+                </div>
+        </section>
+    </nav>
+    </div>
+
+    <div class="fb-sidebar-footer">
+        <a
+            class="fb-sidebar-user"
+            href="/profile"
+            aria-label="Профиль"
+            title="UI Preview"
+        >
+            <img
+                class="fb-sidebar-user-avatar"
+                src="/assets/img/avatar.jpg"
+                alt=""
+            >
+            <span class="fb-sidebar-user-copy">
+                <strong>UI Preview</strong>
+                <span>Demo</span>
+            </span>
+            <i class="ci-chevron-right fb-sidebar-user-arrow" aria-hidden="true"></i>
+        </a>
+
+        <div class="fb-sidebar-footer-actions">
+            <a
+                class="fb-sidebar-footer-link"
+                href="/"
+                aria-label="Главная"
+                title="Главная"
+            >
+                <i class="ci-home" aria-hidden="true"></i>
+                <span>Главная</span>
+            </a>
+            <form action="/logout" method="post">
+                                <button
+                    class="fb-sidebar-footer-link"
+                    type="submit"
+                    aria-label="Выйти"
+                    title="Выйти"
+                >
+                    <i class="ci-log-out" aria-hidden="true"></i>
+                    <span>Выйти</span>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+    </div>
+
+    <div class="fb-admin-main">
+        
+<header class="fb-topbar">
+    <div class="fb-topbar-left">
+        <button
+            type="button"
+            class="fb-icon-button fb-topbar-menu d-lg-none"
+            data-bs-toggle="offcanvas"
+            data-bs-target="#adminSidebar"
+            aria-controls="adminSidebar"
+            aria-label="Меню админки"
+        >
+            <i class="ci-menu" aria-hidden="true"></i>
+        </button>
+
+        <a class="fb-topbar-brand d-lg-none" href="/admin">
+            <span class="fb-brand-mark" aria-hidden="true"><img src="/assets/default/icons/fireball-admin.svg" alt=""></span>
+            <span>FIREBALL</span>
+        </a>
+    </div>
+
+    <button
+        type="button"
+        class="fb-global-search fb-topbar-action"
+        data-fb-command-open
+        aria-label="Поиск по всему CMS…"
+        aria-keyshortcuts="Control+K Meta+K"
+    >
+        <i class="ci-search" aria-hidden="true"></i>
+        <span>Поиск по всему CMS…</span>
+        <kbd>⌘K</kbd>
+    </button>
+
+    <div class="fb-topbar-actions">
+        <div class="dropdown theme-switcher" data-theme-label="Цветовая схема">
+            <button
+                type="button"
+                class="fb-icon-button fb-topbar-action theme-icon-active"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+                aria-label="Цветовая схема"
+            >
+                <i class="ci-sun" aria-hidden="true"></i>
+            </button>
+            <div class="dropdown-menu dropdown-menu-end fb-dropdown-menu">
+                <button class="dropdown-item d-flex align-items-center gap-2" type="button" data-bs-theme-value="light" aria-pressed="false">
+                    <span class="theme-icon"><i class="ci-sun" aria-hidden="true"></i></span>
+                    Светлая                </button>
+                <button class="dropdown-item d-flex align-items-center gap-2" type="button" data-bs-theme-value="dark" aria-pressed="false">
+                    <span class="theme-icon"><i class="ci-moon" aria-hidden="true"></i></span>
+                    Тёмная                </button>
+                <button class="dropdown-item d-flex align-items-center gap-2" type="button" data-bs-theme-value="auto" aria-pressed="false">
+                    <span class="theme-icon"><i class="ci-monitor" aria-hidden="true"></i></span>
+                    Системная                </button>
+            </div>
+        </div>
+
+        
+        <div
+            class="dropdown"
+            data-notifications-center
+            data-feed-url="/notifications/feed"
+            data-read-url="/notifications/read"
+            data-clear-url="/notifications/clear"
+            data-clear-confirm="Пометить все уведомления просмотренными?"
+            data-clear-success="Уведомления очищены."
+            data-empty-text="Новых уведомлений пока нет."
+            data-chat-source-label="Сообщения"
+            data-open-label="Открыть"
+            data-mark-read-label="Отметить прочитанным"
+            data-load-error="Не удалось загрузить уведомления. Попробуйте ещё раз."
+            data-retry-label="Повторить"
+        >
+            <button
+                type="button"
+                class="fb-icon-button fb-topbar-action position-relative"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+                aria-label="Уведомления"
+                data-fb-notifications-toggle
+            >
+                <i class="ci-bell" aria-hidden="true"></i>
+                <span class="fb-notification-badge d-none" data-notifications-badge>0</span>
+            </button>
+            <div class="dropdown-menu dropdown-menu-end fb-notifications-menu">
+                <div class="fb-dropdown-heading fb-notifications-heading">
+                    <strong>Уведомления</strong>
+                    <button type="button" class="fb-notifications-clear d-none" data-notifications-clear>
+                        <i class="ci-trash" aria-hidden="true"></i>
+                        <span>Очистить</span>
+                    </button>
+                </div>
+                <div class="list-group list-group-flush" data-notifications-list>
+                    <div class="px-3 py-3 text-body-secondary small">Загрузка уведомлений...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="dropdown fb-profile-dropdown">
+            <button
+                type="button"
+                class="fb-profile-trigger"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+                aria-label="Аккаунт"
+            >
+                <img src="/assets/img/avatar.jpg" alt="">
+                <span class="fb-profile-trigger-copy">
+                    <strong>UI Preview</strong>
+                    <span>Demo</span>
+                </span>
+                <i class="ci-chevron-down" aria-hidden="true"></i>
+            </button>
+            <div class="dropdown-menu dropdown-menu-end fb-dropdown-menu fb-profile-menu">
+                <div class="fb-profile-menu-head">
+                    <img src="/assets/img/avatar.jpg" alt="">
+                    <div>
+                        <strong>UI Preview</strong>
+                        <span>@demo</span>
+                    </div>
+                </div>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="/">
+                    <i class="ci-home" aria-hidden="true"></i>Главная                </a>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="/profile">
+                    <i class="ci-user" aria-hidden="true"></i>Профиль                </a>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="/chat">
+                    <i class="ci-chat" aria-hidden="true"></i>Сообщения                </a>
+                <a class="dropdown-item d-flex align-items-center gap-2" href="/admin/settings">
+                    <i class="ci-settings" aria-hidden="true"></i>Настройки сайта                </a>
+                <div class="dropdown-divider"></div>
+                <form action="/logout" method="post">
+                                        <button class="dropdown-item d-flex align-items-center gap-2 text-danger" type="submit">
+                        <i class="ci-log-out" aria-hidden="true"></i>Выйти                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</header>
+
+        <main class="fb-content " id="fb-admin-content" tabindex="-1">
+            <div class="fb-alert-root" data-fb-alert-root>
+                            </div>
+
+                            <header class="fb-page-header">
+                    <div class="fb-page-heading">
+                        <h1 class="fb-page-title">UI-компоненты</h1>
+                                                    <p class="fb-page-subtitle">Единый каталог для настройки интерфейса и новых страниц админки.</p>
+                                            </div>
+                                    </header>
+            
+            <div class="fb-page-content " data-fb-page-content>
+
+<div class="fb-ui-kit" data-ui-kit
+     data-count-label="Разделы: :visible из :total"
+     data-copied-label="Код скопирован."
+     data-copy-error-label="Не удалось скопировать. Выделите код и скопируйте вручную."
+     data-demo-message="Демонстрация выполнена. Данные сайта не изменены."
+     data-invalid-label="Заполните обязательное поле."
+     data-selection-label="Выбрано: :count">
+    <div class="fb-card">
+        <div class="fb-card-body">
+            <p class="mb-2">Примеры используют общие стили админки. Светлая и тёмная темы переключаются в верхней панели.</p>
+            <p class="small text-body-secondary mb-4">Демонстрационные данные. Формы и действия на этой странице не изменяют сайт.</p>
+            <div class="fb-ui-toolbar">
+                <div class="fb-ui-search position-relative">
+                    <label class="visually-hidden" for="ui-search">Найти компонент</label>
+                    <i class="ci-search" aria-hidden="true"></i>
+                    <input class="form-control" id="ui-search" type="search" placeholder="Кнопка, modal, form-control…" data-ui-search aria-controls="ui-foundations ui-geometry ui-buttons ui-forms ui-choices ui-validation ui-cards ui-tables ui-navigation ui-feedback ui-overlays ui-loading ui-icons ui-reuse">
+                </div>
+                <button type="button" class="btn btn-outline-secondary" data-ui-reset>Сбросить поиск</button>
+                <span class="small text-body-secondary" data-ui-count role="status" aria-live="polite"></span>
+            </div>
+            <nav aria-label="Разделы каталога">
+                <ul class="fb-ui-index">
+                                            <li data-ui-index="ui-foundations"><a href="#ui-foundations">Цвета и типографика</a></li>
+                                            <li data-ui-index="ui-geometry"><a href="#ui-geometry">Отступы, скругления и тени</a></li>
+                                            <li data-ui-index="ui-buttons"><a href="#ui-buttons">Кнопки</a></li>
+                                            <li data-ui-index="ui-forms"><a href="#ui-forms">Поля формы</a></li>
+                                            <li data-ui-index="ui-choices"><a href="#ui-choices">Выбор и переключатели</a></li>
+                                            <li data-ui-index="ui-validation"><a href="#ui-validation">Состояния и валидация</a></li>
+                                            <li data-ui-index="ui-cards"><a href="#ui-cards">Карточки и показатели</a></li>
+                                            <li data-ui-index="ui-tables"><a href="#ui-tables">Таблицы и списки</a></li>
+                                            <li data-ui-index="ui-navigation"><a href="#ui-navigation">Навигация</a></li>
+                                            <li data-ui-index="ui-feedback"><a href="#ui-feedback">Статусы и уведомления</a></li>
+                                            <li data-ui-index="ui-overlays"><a href="#ui-overlays">Окна и подсказки</a></li>
+                                            <li data-ui-index="ui-loading"><a href="#ui-loading">Пустые состояния и загрузка</a></li>
+                                            <li data-ui-index="ui-icons"><a href="#ui-icons">Иконки</a></li>
+                                            <li data-ui-index="ui-reuse"><a href="#ui-reuse">Использование на новых страницах</a></li>
+                                    </ul>
+            </nav>
+        </div>
+    </div>
+    <div class="fb-ui-status" data-ui-status role="status" aria-live="polite" aria-atomic="true"></div>
+    <div class="fb-card fb-empty-state" data-ui-empty hidden>
+        <span class="fb-empty-state-icon"><i class="ci-search" aria-hidden="true"></i></span>
+        <p class="mb-0">По этому запросу компонентов нет. Попробуйте другое название или CSS-класс.</p>
+    </div>
+
+    <section class="fb-ui-section" id="ui-foundations" data-ui-section data-ui-keywords="tokens colors typography палитра цвета шрифт theme"><h2>Цвета и типографика</h2><div class="fb-ui-grid">    <div class="fb-ui-wide">
+        <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Цветовая палитра</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="fb-ui-tokens">
+                            <div class="fb-ui-token">
+                    <div class="fb-ui-token-swatch" style="background: var(--fb-color-primary)"></div>
+                    <code>--fb-color-primary</code>
+                    <span class="fb-ui-token-value" data-ui-token-value="--fb-color-primary"></span>
+                </div>
+                            <div class="fb-ui-token">
+                    <div class="fb-ui-token-swatch" style="background: var(--fb-color-primary-hover)"></div>
+                    <code>--fb-color-primary-hover</code>
+                    <span class="fb-ui-token-value" data-ui-token-value="--fb-color-primary-hover"></span>
+                </div>
+                            <div class="fb-ui-token">
+                    <div class="fb-ui-token-swatch" style="background: var(--fb-color-primary-active)"></div>
+                    <code>--fb-color-primary-active</code>
+                    <span class="fb-ui-token-value" data-ui-token-value="--fb-color-primary-active"></span>
+                </div>
+                            <div class="fb-ui-token">
+                    <div class="fb-ui-token-swatch" style="background: var(--fb-color-primary-soft)"></div>
+                    <code>--fb-color-primary-soft</code>
+                    <span class="fb-ui-token-value" data-ui-token-value="--fb-color-primary-soft"></span>
+                </div>
+                            <div class="fb-ui-token">
+                    <div class="fb-ui-token-swatch" style="background: var(--fb-color-success)"></div>
+                    <code>--fb-color-success</code>
+                    <span class="fb-ui-token-value" data-ui-token-value="--fb-color-success"></span>
+                </div>
+                            <div class="fb-ui-token">
+                    <div class="fb-ui-token-swatch" style="background: var(--fb-color-success-soft)"></div>
+                    <code>--fb-color-success-soft</code>
+                    <span class="fb-ui-token-value" data-ui-token-value="--fb-color-success-soft"></span>
+                </div>
+                            <div class="fb-ui-token">
+                    <div class="fb-ui-token-swatch" style="background: var(--fb-color-warning)"></div>
+                    <code>--fb-color-warning</code>
+                    <span class="fb-ui-token-value" data-ui-token-value="--fb-color-warning"></span>
+                </div>
+                            <div class="fb-ui-token">
+                    <div class="fb-ui-token-swatch" style="background: var(--fb-color-warning-soft)"></div>
+                    <code>--fb-color-warning-soft</code>
+                    <span class="fb-ui-token-value" data-ui-token-value="--fb-color-warning-soft"></span>
+                </div>
+                            <div class="fb-ui-token">
+                    <div class="fb-ui-token-swatch" style="background: var(--fb-color-danger)"></div>
+                    <code>--fb-color-danger</code>
+                    <span class="fb-ui-token-value" data-ui-token-value="--fb-color-danger"></span>
+                </div>
+                            <div class="fb-ui-token">
+                    <div class="fb-ui-token-swatch" style="background: var(--fb-color-danger-soft)"></div>
+                    <code>--fb-color-danger-soft</code>
+                    <span class="fb-ui-token-value" data-ui-token-value="--fb-color-danger-soft"></span>
+                </div>
+                            <div class="fb-ui-token">
+                    <div class="fb-ui-token-swatch" style="background: var(--fb-color-info)"></div>
+                    <code>--fb-color-info</code>
+                    <span class="fb-ui-token-value" data-ui-token-value="--fb-color-info"></span>
+                </div>
+                            <div class="fb-ui-token">
+                    <div class="fb-ui-token-swatch" style="background: var(--fb-color-info-soft)"></div>
+                    <code>--fb-color-info-soft</code>
+                    <span class="fb-ui-token-value" data-ui-token-value="--fb-color-info-soft"></span>
+                </div>
+                            <div class="fb-ui-token">
+                    <div class="fb-ui-token-swatch" style="background: var(--fb-color-purple)"></div>
+                    <code>--fb-color-purple</code>
+                    <span class="fb-ui-token-value" data-ui-token-value="--fb-color-purple"></span>
+                </div>
+                            <div class="fb-ui-token">
+                    <div class="fb-ui-token-swatch" style="background: var(--fb-color-purple-soft)"></div>
+                    <code>--fb-color-purple-soft</code>
+                    <span class="fb-ui-token-value" data-ui-token-value="--fb-color-purple-soft"></span>
+                </div>
+                            <div class="fb-ui-token">
+                    <div class="fb-ui-token-swatch" style="background: var(--fb-color-pink)"></div>
+                    <code>--fb-color-pink</code>
+                    <span class="fb-ui-token-value" data-ui-token-value="--fb-color-pink"></span>
+                </div>
+                            <div class="fb-ui-token">
+                    <div class="fb-ui-token-swatch" style="background: var(--fb-color-pink-soft)"></div>
+                    <code>--fb-color-pink-soft</code>
+                    <span class="fb-ui-token-value" data-ui-token-value="--fb-color-pink-soft"></span>
+                </div>
+                    </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-colors">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Цветовая палитра"><code id="ui-code-colors">.my-component { color: var(--fb-color-primary); background: var(--fb-color-primary-soft); }</code></pre>
+    </details>
+</article>
+    </div>
+    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Поверхности и текст</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="fb-ui-tokens">
+                    <div class="fb-ui-token">
+                <div class="fb-ui-token-swatch" style="background: var(--fb-color-background)"></div>
+                <code>--fb-color-background</code>
+                <span class="fb-ui-token-value" data-ui-token-value="--fb-color-background"></span>
+            </div>
+                    <div class="fb-ui-token">
+                <div class="fb-ui-token-swatch" style="background: var(--fb-color-surface)"></div>
+                <code>--fb-color-surface</code>
+                <span class="fb-ui-token-value" data-ui-token-value="--fb-color-surface"></span>
+            </div>
+                    <div class="fb-ui-token">
+                <div class="fb-ui-token-swatch" style="background: var(--fb-color-surface-secondary)"></div>
+                <code>--fb-color-surface-secondary</code>
+                <span class="fb-ui-token-value" data-ui-token-value="--fb-color-surface-secondary"></span>
+            </div>
+                    <div class="fb-ui-token">
+                <div class="fb-ui-token-swatch" style="background: var(--fb-color-surface-elevated)"></div>
+                <code>--fb-color-surface-elevated</code>
+                <span class="fb-ui-token-value" data-ui-token-value="--fb-color-surface-elevated"></span>
+            </div>
+                    <div class="fb-ui-token">
+                <div class="fb-ui-token-swatch" style="background: var(--fb-color-text)"></div>
+                <code>--fb-color-text</code>
+                <span class="fb-ui-token-value" data-ui-token-value="--fb-color-text"></span>
+            </div>
+                    <div class="fb-ui-token">
+                <div class="fb-ui-token-swatch" style="background: var(--fb-color-text-secondary)"></div>
+                <code>--fb-color-text-secondary</code>
+                <span class="fb-ui-token-value" data-ui-token-value="--fb-color-text-secondary"></span>
+            </div>
+                    <div class="fb-ui-token">
+                <div class="fb-ui-token-swatch" style="background: var(--fb-color-text-tertiary)"></div>
+                <code>--fb-color-text-tertiary</code>
+                <span class="fb-ui-token-value" data-ui-token-value="--fb-color-text-tertiary"></span>
+            </div>
+                    <div class="fb-ui-token">
+                <div class="fb-ui-token-swatch" style="background: var(--fb-color-border)"></div>
+                <code>--fb-color-border</code>
+                <span class="fb-ui-token-value" data-ui-token-value="--fb-color-border"></span>
+            </div>
+                    <div class="fb-ui-token">
+                <div class="fb-ui-token-swatch" style="background: var(--fb-color-border-strong)"></div>
+                <code>--fb-color-border-strong</code>
+                <span class="fb-ui-token-value" data-ui-token-value="--fb-color-border-strong"></span>
+            </div>
+            </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-surfaces">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Поверхности и текст"><code id="ui-code-surfaces">.my-component { background: var(--fb-color-surface); color: var(--fb-color-text); border: 1px solid var(--fb-color-border); }</code></pre>
+    </details>
+</article>
+    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Текст и заголовки</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="d-grid gap-3">
+        <h2 class="h3 mb-0">Заголовок раздела</h2>
+        <h3 class="h5 mb-0">Настройки раздела</h3>
+        <p class="mb-0">Основной текст объясняет действие и помогает принять решение.</p>
+        <p class="text-body-secondary mb-0">Дополнительное описание и подпись к элементу.</p>
+        <small>Краткая подсказка под полем.</small>
+        <a href="#ui-reuse">Открыть раздел <i class="ci-arrow-right" aria-hidden="true"></i></a>
+        <code>--fb-font-family</code>
+    </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-typography">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Текст и заголовки"><code id="ui-code-typography">&lt;div class=&quot;d-grid gap-3&quot;&gt;
+        &lt;h2 class=&quot;h3 mb-0&quot;&gt;Заголовок раздела&lt;/h2&gt;
+        &lt;h3 class=&quot;h5 mb-0&quot;&gt;Настройки раздела&lt;/h3&gt;
+        &lt;p class=&quot;mb-0&quot;&gt;Основной текст объясняет действие и помогает принять решение.&lt;/p&gt;
+        &lt;p class=&quot;text-body-secondary mb-0&quot;&gt;Дополнительное описание и подпись к элементу.&lt;/p&gt;
+        &lt;small&gt;Краткая подсказка под полем.&lt;/small&gt;
+        &lt;a href=&quot;#ui-reuse&quot;&gt;Открыть раздел &lt;i class=&quot;ci-arrow-right&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/a&gt;
+        &lt;code&gt;--fb-font-family&lt;/code&gt;
+    &lt;/div&gt;</code></pre>
+    </details>
+</article>
+    </div></section>
+    <section class="fb-ui-section" id="ui-geometry" data-ui-section data-ui-keywords="space radius shadow отступы скругления тени"><h2>Отступы, скругления и тени</h2><div class="fb-ui-grid">    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Шкала отступов</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="d-grid gap-2">
+                    <div class="fb-ui-metric"><span class="fb-ui-space" style="width: var(--fb-space-1)"></span><code>--fb-space-1</code><span data-ui-token-value="--fb-space-1"></span></div>
+                    <div class="fb-ui-metric"><span class="fb-ui-space" style="width: var(--fb-space-2)"></span><code>--fb-space-2</code><span data-ui-token-value="--fb-space-2"></span></div>
+                    <div class="fb-ui-metric"><span class="fb-ui-space" style="width: var(--fb-space-3)"></span><code>--fb-space-3</code><span data-ui-token-value="--fb-space-3"></span></div>
+                    <div class="fb-ui-metric"><span class="fb-ui-space" style="width: var(--fb-space-4)"></span><code>--fb-space-4</code><span data-ui-token-value="--fb-space-4"></span></div>
+                    <div class="fb-ui-metric"><span class="fb-ui-space" style="width: var(--fb-space-5)"></span><code>--fb-space-5</code><span data-ui-token-value="--fb-space-5"></span></div>
+                    <div class="fb-ui-metric"><span class="fb-ui-space" style="width: var(--fb-space-6)"></span><code>--fb-space-6</code><span data-ui-token-value="--fb-space-6"></span></div>
+                    <div class="fb-ui-metric"><span class="fb-ui-space" style="width: var(--fb-space-7)"></span><code>--fb-space-7</code><span data-ui-token-value="--fb-space-7"></span></div>
+                    <div class="fb-ui-metric"><span class="fb-ui-space" style="width: var(--fb-space-8)"></span><code>--fb-space-8</code><span data-ui-token-value="--fb-space-8"></span></div>
+            </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-spacing">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Шкала отступов"><code id="ui-code-spacing">.my-component { padding: var(--fb-space-5); gap: var(--fb-space-4); }</code></pre>
+    </details>
+</article>
+    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Скругления</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="d-grid gap-2">
+                    <div class="fb-ui-metric"><span class="fb-ui-radius" style="border-radius: var(--fb-radius-sm)"></span><code>--fb-radius-sm</code><span data-ui-token-value="--fb-radius-sm"></span></div>
+                    <div class="fb-ui-metric"><span class="fb-ui-radius" style="border-radius: var(--fb-radius-md)"></span><code>--fb-radius-md</code><span data-ui-token-value="--fb-radius-md"></span></div>
+                    <div class="fb-ui-metric"><span class="fb-ui-radius" style="border-radius: var(--fb-radius-lg)"></span><code>--fb-radius-lg</code><span data-ui-token-value="--fb-radius-lg"></span></div>
+                    <div class="fb-ui-metric"><span class="fb-ui-radius" style="border-radius: var(--fb-radius-xl)"></span><code>--fb-radius-xl</code><span data-ui-token-value="--fb-radius-xl"></span></div>
+                    <div class="fb-ui-metric"><span class="fb-ui-radius" style="border-radius: var(--fb-radius-pill)"></span><code>--fb-radius-pill</code><span data-ui-token-value="--fb-radius-pill"></span></div>
+            </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-radii">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Скругления"><code id="ui-code-radii">.my-component { border-radius: var(--fb-radius-lg); }</code></pre>
+    </details>
+</article>
+    <div class="fb-ui-wide">
+        <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Тени поверхностей</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="row g-4">
+                            <div class="col-md-4"><div class="fb-ui-shadow" style="box-shadow: var(--fb-shadow-sm)"><code>--fb-shadow-sm</code></div></div>
+                            <div class="col-md-4"><div class="fb-ui-shadow" style="box-shadow: var(--fb-shadow-md)"><code>--fb-shadow-md</code></div></div>
+                            <div class="col-md-4"><div class="fb-ui-shadow" style="box-shadow: var(--fb-shadow-lg)"><code>--fb-shadow-lg</code></div></div>
+                    </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-shadows">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Тени поверхностей"><code id="ui-code-shadows">.my-component { box-shadow: var(--fb-shadow-md); transition: box-shadow var(--fb-transition-base); }</code></pre>
+    </details>
+</article>
+    </div>
+    </div></section>
+    <section class="fb-ui-section" id="ui-buttons" data-ui-section data-ui-keywords="btn primary secondary outline size active disabled loading кнопки"><h2>Кнопки</h2><div class="fb-ui-grid">    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Основные варианты</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-primary">Основная</button>
+                    <button type="button" class="btn btn-secondary">Вторичная</button>
+                    <button type="button" class="btn btn-success">Успех</button>
+                    <button type="button" class="btn btn-danger">Ошибка</button>
+                    <button type="button" class="btn btn-warning">Внимание</button>
+                    <button type="button" class="btn btn-info">Информация</button>
+                <button type="button" class="btn btn-light">Light</button>
+        <button type="button" class="btn btn-dark">Dark</button>
+        <button type="button" class="btn btn-link">Link</button>
+    </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-buttons-solid">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Основные варианты"><code id="ui-code-buttons-solid">&lt;div class=&quot;d-flex flex-wrap gap-2&quot;&gt;
+                    &lt;button type=&quot;button&quot; class=&quot;btn btn-primary&quot;&gt;Основная&lt;/button&gt;
+                    &lt;button type=&quot;button&quot; class=&quot;btn btn-secondary&quot;&gt;Вторичная&lt;/button&gt;
+                    &lt;button type=&quot;button&quot; class=&quot;btn btn-success&quot;&gt;Успех&lt;/button&gt;
+                    &lt;button type=&quot;button&quot; class=&quot;btn btn-danger&quot;&gt;Ошибка&lt;/button&gt;
+                    &lt;button type=&quot;button&quot; class=&quot;btn btn-warning&quot;&gt;Внимание&lt;/button&gt;
+                    &lt;button type=&quot;button&quot; class=&quot;btn btn-info&quot;&gt;Информация&lt;/button&gt;
+                &lt;button type=&quot;button&quot; class=&quot;btn btn-light&quot;&gt;Light&lt;/button&gt;
+        &lt;button type=&quot;button&quot; class=&quot;btn btn-dark&quot;&gt;Dark&lt;/button&gt;
+        &lt;button type=&quot;button&quot; class=&quot;btn btn-link&quot;&gt;Link&lt;/button&gt;
+    &lt;/div&gt;</code></pre>
+    </details>
+</article>
+    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Контурные варианты</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-outline-primary">Основная</button>
+                    <button type="button" class="btn btn-outline-secondary">Вторичная</button>
+                    <button type="button" class="btn btn-outline-success">Успех</button>
+                    <button type="button" class="btn btn-outline-danger">Ошибка</button>
+                    <button type="button" class="btn btn-outline-warning">Внимание</button>
+                    <button type="button" class="btn btn-outline-info">Информация</button>
+            </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-buttons-outline">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Контурные варианты"><code id="ui-code-buttons-outline">&lt;div class=&quot;d-flex flex-wrap gap-2&quot;&gt;
+                    &lt;button type=&quot;button&quot; class=&quot;btn btn-outline-primary&quot;&gt;Основная&lt;/button&gt;
+                    &lt;button type=&quot;button&quot; class=&quot;btn btn-outline-secondary&quot;&gt;Вторичная&lt;/button&gt;
+                    &lt;button type=&quot;button&quot; class=&quot;btn btn-outline-success&quot;&gt;Успех&lt;/button&gt;
+                    &lt;button type=&quot;button&quot; class=&quot;btn btn-outline-danger&quot;&gt;Ошибка&lt;/button&gt;
+                    &lt;button type=&quot;button&quot; class=&quot;btn btn-outline-warning&quot;&gt;Внимание&lt;/button&gt;
+                    &lt;button type=&quot;button&quot; class=&quot;btn btn-outline-info&quot;&gt;Информация&lt;/button&gt;
+            &lt;/div&gt;</code></pre>
+    </details>
+</article>
+    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Размеры и состояния</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="d-grid gap-3">
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <button type="button" class="btn btn-primary btn-sm">Маленькая</button>
+            <button type="button" class="btn btn-primary">Обычная</button>
+            <button type="button" class="btn btn-primary btn-lg">Большая</button>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-primary active" aria-pressed="true">Активная</button>
+            <button type="button" class="btn btn-primary" disabled>Недоступно</button>
+            <button type="button" class="btn btn-outline-secondary" disabled>Недоступно</button>
+            <button type="button" class="btn btn-primary" disabled aria-busy="true"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Загрузка…</button>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-primary"><i class="ci-plus me-2" aria-hidden="true"></i>Создать</button>
+            <button type="button" class="btn btn-icon btn-outline-secondary" aria-label="Редактировать"><i class="ci-edit" aria-hidden="true"></i></button>
+            <button type="button" class="btn btn-icon btn-outline-danger" aria-label="Удалить"><i class="ci-trash" aria-hidden="true"></i></button>
+        </div>
+    </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-buttons-sizes">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Размеры и состояния"><code id="ui-code-buttons-sizes">&lt;div class=&quot;d-grid gap-3&quot;&gt;
+        &lt;div class=&quot;d-flex flex-wrap align-items-center gap-2&quot;&gt;
+            &lt;button type=&quot;button&quot; class=&quot;btn btn-primary btn-sm&quot;&gt;Маленькая&lt;/button&gt;
+            &lt;button type=&quot;button&quot; class=&quot;btn btn-primary&quot;&gt;Обычная&lt;/button&gt;
+            &lt;button type=&quot;button&quot; class=&quot;btn btn-primary btn-lg&quot;&gt;Большая&lt;/button&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;d-flex flex-wrap gap-2&quot;&gt;
+            &lt;button type=&quot;button&quot; class=&quot;btn btn-primary active&quot; aria-pressed=&quot;true&quot;&gt;Активная&lt;/button&gt;
+            &lt;button type=&quot;button&quot; class=&quot;btn btn-primary&quot; disabled&gt;Недоступно&lt;/button&gt;
+            &lt;button type=&quot;button&quot; class=&quot;btn btn-outline-secondary&quot; disabled&gt;Недоступно&lt;/button&gt;
+            &lt;button type=&quot;button&quot; class=&quot;btn btn-primary&quot; disabled aria-busy=&quot;true&quot;&gt;&lt;span class=&quot;spinner-border spinner-border-sm me-2&quot; aria-hidden=&quot;true&quot;&gt;&lt;/span&gt;Загрузка…&lt;/button&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;d-flex flex-wrap gap-2&quot;&gt;
+            &lt;button type=&quot;button&quot; class=&quot;btn btn-primary&quot;&gt;&lt;i class=&quot;ci-plus me-2&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;Создать&lt;/button&gt;
+            &lt;button type=&quot;button&quot; class=&quot;btn btn-icon btn-outline-secondary&quot; aria-label=&quot;Редактировать&quot;&gt;&lt;i class=&quot;ci-edit&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+            &lt;button type=&quot;button&quot; class=&quot;btn btn-icon btn-outline-danger&quot; aria-label=&quot;Удалить&quot;&gt;&lt;i class=&quot;ci-trash&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;</code></pre>
+    </details>
+</article>
+    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Группы и меню действий</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="d-grid gap-3">
+        <div class="btn-group" role="group" aria-label="Действия">
+            <button type="button" class="btn btn-outline-secondary"><i class="ci-edit me-1" aria-hidden="true"></i>Редактировать</button>
+            <button type="button" class="btn btn-outline-secondary"><i class="ci-copy me-1" aria-hidden="true"></i>Копировать</button>
+        </div>
+        <div class="dropdown">
+            <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">Действия</button>
+            <ul class="dropdown-menu">
+                <li><button type="button" class="dropdown-item"><i class="ci-edit me-2" aria-hidden="true"></i>Редактировать</button></li>
+                <li><button type="button" class="dropdown-item"><i class="ci-download me-2" aria-hidden="true"></i>Скачать</button></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><button type="button" class="dropdown-item text-danger" data-bs-toggle="modal" data-bs-target="#ui-confirm-modal">Удалить</button></li>
+            </ul>
+        </div>
+    </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-buttons-groups">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Группы и меню действий"><code id="ui-code-buttons-groups">&lt;div class=&quot;d-grid gap-3&quot;&gt;
+        &lt;div class=&quot;btn-group&quot; role=&quot;group&quot; aria-label=&quot;Действия&quot;&gt;
+            &lt;button type=&quot;button&quot; class=&quot;btn btn-outline-secondary&quot;&gt;&lt;i class=&quot;ci-edit me-1&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;Редактировать&lt;/button&gt;
+            &lt;button type=&quot;button&quot; class=&quot;btn btn-outline-secondary&quot;&gt;&lt;i class=&quot;ci-copy me-1&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;Копировать&lt;/button&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;dropdown&quot;&gt;
+            &lt;button type=&quot;button&quot; class=&quot;btn btn-outline-secondary dropdown-toggle&quot; data-bs-toggle=&quot;dropdown&quot; aria-expanded=&quot;false&quot;&gt;Действия&lt;/button&gt;
+            &lt;ul class=&quot;dropdown-menu&quot;&gt;
+                &lt;li&gt;&lt;button type=&quot;button&quot; class=&quot;dropdown-item&quot;&gt;&lt;i class=&quot;ci-edit me-2&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;Редактировать&lt;/button&gt;&lt;/li&gt;
+                &lt;li&gt;&lt;button type=&quot;button&quot; class=&quot;dropdown-item&quot;&gt;&lt;i class=&quot;ci-download me-2&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;Скачать&lt;/button&gt;&lt;/li&gt;
+                &lt;li&gt;&lt;hr class=&quot;dropdown-divider&quot;&gt;&lt;/li&gt;
+                &lt;li&gt;&lt;button type=&quot;button&quot; class=&quot;dropdown-item text-danger&quot; data-bs-toggle=&quot;modal&quot; data-bs-target=&quot;#ui-confirm-modal&quot;&gt;Удалить&lt;/button&gt;&lt;/li&gt;
+            &lt;/ul&gt;
+        &lt;/div&gt;
+    &lt;/div&gt;</code></pre>
+    </details>
+</article>
+    </div></section>
+    <section class="fb-ui-section" id="ui-forms" data-ui-section data-ui-keywords="input textarea password email number date time input-group upload color range"><h2>Поля формы</h2><div class="fb-ui-grid">    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Текстовые поля</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="row g-3">
+        <div class="col-sm-6"><label class="form-label" for="ui-name">Название</label><input class="form-control" id="ui-name" placeholder="Введите название" aria-describedby="ui-name-hint"><div class="form-text" id="ui-name-hint">Краткая подсказка под полем.</div></div>
+        <div class="col-sm-6"><label class="form-label" for="ui-email">Email</label><input class="form-control" type="email" id="ui-email" placeholder="demo@example.test"></div>
+        <div class="col-sm-6">
+            <div class="password-field">
+            <label class="form-label" for="ui-password">Пароль</label>
+        <div class="password-toggle password-field__control" data-password-toggle>
+        <input
+            id="ui-password"
+            type="password"
+            name="ui_demo_password"
+            class="form-control password-field__input"
+                        placeholder="••••••••"            autocomplete="off"
+                                                                                >
+        <label
+            class="password-toggle-button fs-lg"
+            aria-label="Показать или скрыть пароль"
+        >
+            <input
+                type="checkbox"
+                class="btn-check"
+                aria-controls="ui-password"
+                            >
+        </label>
+    </div>
+        </div>
+        </div>
+        <div class="col-sm-6"><label class="form-label" for="ui-url">URL</label><input class="form-control" type="url" id="ui-url" placeholder="https://example.test"></div>
+        <div class="col-12"><label class="form-label" for="ui-description">Описание</label><textarea class="form-control" id="ui-description" rows="3" placeholder="Дополнительное описание и подпись к элементу."></textarea></div>
+    </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-form-text">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Текстовые поля"><code id="ui-code-form-text">&lt;div class=&quot;row g-3&quot;&gt;
+        &lt;div class=&quot;col-sm-6&quot;&gt;&lt;label class=&quot;form-label&quot; for=&quot;ui-name&quot;&gt;Название&lt;/label&gt;&lt;input class=&quot;form-control&quot; id=&quot;ui-name&quot; placeholder=&quot;Введите название&quot; aria-describedby=&quot;ui-name-hint&quot;&gt;&lt;div class=&quot;form-text&quot; id=&quot;ui-name-hint&quot;&gt;Краткая подсказка под полем.&lt;/div&gt;&lt;/div&gt;
+        &lt;div class=&quot;col-sm-6&quot;&gt;&lt;label class=&quot;form-label&quot; for=&quot;ui-email&quot;&gt;Email&lt;/label&gt;&lt;input class=&quot;form-control&quot; type=&quot;email&quot; id=&quot;ui-email&quot; placeholder=&quot;demo@example.test&quot;&gt;&lt;/div&gt;
+        &lt;div class=&quot;col-sm-6&quot;&gt;
+            &lt;div class=&quot;password-field&quot;&gt;
+            &lt;label class=&quot;form-label&quot; for=&quot;ui-password&quot;&gt;Пароль&lt;/label&gt;
+        &lt;div class=&quot;password-toggle password-field__control&quot; data-password-toggle&gt;
+        &lt;input
+            id=&quot;ui-password&quot;
+            type=&quot;password&quot;
+            name=&quot;ui_demo_password&quot;
+            class=&quot;form-control password-field__input&quot;
+                        placeholder=&quot;••••••••&quot;            autocomplete=&quot;off&quot;
+                                                                                &gt;
+        &lt;label
+            class=&quot;password-toggle-button fs-lg&quot;
+            aria-label=&quot;Показать или скрыть пароль&quot;
+        &gt;
+            &lt;input
+                type=&quot;checkbox&quot;
+                class=&quot;btn-check&quot;
+                aria-controls=&quot;ui-password&quot;
+                            &gt;
+        &lt;/label&gt;
+    &lt;/div&gt;
+        &lt;/div&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;col-sm-6&quot;&gt;&lt;label class=&quot;form-label&quot; for=&quot;ui-url&quot;&gt;URL&lt;/label&gt;&lt;input class=&quot;form-control&quot; type=&quot;url&quot; id=&quot;ui-url&quot; placeholder=&quot;https://example.test&quot;&gt;&lt;/div&gt;
+        &lt;div class=&quot;col-12&quot;&gt;&lt;label class=&quot;form-label&quot; for=&quot;ui-description&quot;&gt;Описание&lt;/label&gt;&lt;textarea class=&quot;form-control&quot; id=&quot;ui-description&quot; rows=&quot;3&quot; placeholder=&quot;Дополнительное описание и подпись к элементу.&quot;&gt;&lt;/textarea&gt;&lt;/div&gt;
+    &lt;/div&gt;</code></pre>
+    </details>
+</article>
+    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Числа, даты и время</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="row g-3">
+        <div class="col-sm-6"><label class="form-label" for="ui-number">Количество</label><input class="form-control" type="number" id="ui-number" min="0" max="100" value="10"></div>
+        <div class="col-sm-6"><label class="form-label" for="ui-date">Дата</label><input class="form-control" type="date" id="ui-date" value="2026-10-11"></div>
+        <div class="col-sm-6"><label class="form-label" for="ui-time">Время</label><input class="form-control" type="time" id="ui-time" value="12:30"></div>
+        <div class="col-sm-6"><label class="form-label" for="ui-datetime">Дата и время</label><input class="form-control" type="datetime-local" id="ui-datetime" value="2026-10-11T12:30"></div>
+    </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-form-special">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Числа, даты и время"><code id="ui-code-form-special">&lt;div class=&quot;row g-3&quot;&gt;
+        &lt;div class=&quot;col-sm-6&quot;&gt;&lt;label class=&quot;form-label&quot; for=&quot;ui-number&quot;&gt;Количество&lt;/label&gt;&lt;input class=&quot;form-control&quot; type=&quot;number&quot; id=&quot;ui-number&quot; min=&quot;0&quot; max=&quot;100&quot; value=&quot;10&quot;&gt;&lt;/div&gt;
+        &lt;div class=&quot;col-sm-6&quot;&gt;&lt;label class=&quot;form-label&quot; for=&quot;ui-date&quot;&gt;Дата&lt;/label&gt;&lt;input class=&quot;form-control&quot; type=&quot;date&quot; id=&quot;ui-date&quot; value=&quot;2026-10-11&quot;&gt;&lt;/div&gt;
+        &lt;div class=&quot;col-sm-6&quot;&gt;&lt;label class=&quot;form-label&quot; for=&quot;ui-time&quot;&gt;Время&lt;/label&gt;&lt;input class=&quot;form-control&quot; type=&quot;time&quot; id=&quot;ui-time&quot; value=&quot;12:30&quot;&gt;&lt;/div&gt;
+        &lt;div class=&quot;col-sm-6&quot;&gt;&lt;label class=&quot;form-label&quot; for=&quot;ui-datetime&quot;&gt;Дата и время&lt;/label&gt;&lt;input class=&quot;form-control&quot; type=&quot;datetime-local&quot; id=&quot;ui-datetime&quot; value=&quot;2026-10-11T12:30&quot;&gt;&lt;/div&gt;
+    &lt;/div&gt;</code></pre>
+    </details>
+</article>
+    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Группы полей</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="d-grid gap-3">
+        <div><label class="form-label" for="ui-group-email">Email</label><div class="input-group"><span class="input-group-text" id="ui-email-prefix">@</span><input class="form-control" id="ui-group-email" aria-describedby="ui-email-prefix" placeholder="demo"></div></div>
+        <div><label class="form-label" for="ui-group-search">Найти компонент</label><div class="input-group"><input class="form-control" type="search" id="ui-group-search" placeholder="Введите название"><button type="button" class="btn btn-primary" aria-label="Найти компонент"><i class="ci-search" aria-hidden="true"></i></button></div></div>
+        <div><label class="form-label" for="ui-group-number">Количество</label><div class="input-group"><input class="form-control" type="number" id="ui-group-number" value="25" aria-describedby="ui-number-unit"><span class="input-group-text" id="ui-number-unit">%</span></div></div>
+    </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-form-groups">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Группы полей"><code id="ui-code-form-groups">&lt;div class=&quot;d-grid gap-3&quot;&gt;
+        &lt;div&gt;&lt;label class=&quot;form-label&quot; for=&quot;ui-group-email&quot;&gt;Email&lt;/label&gt;&lt;div class=&quot;input-group&quot;&gt;&lt;span class=&quot;input-group-text&quot; id=&quot;ui-email-prefix&quot;&gt;@&lt;/span&gt;&lt;input class=&quot;form-control&quot; id=&quot;ui-group-email&quot; aria-describedby=&quot;ui-email-prefix&quot; placeholder=&quot;demo&quot;&gt;&lt;/div&gt;&lt;/div&gt;
+        &lt;div&gt;&lt;label class=&quot;form-label&quot; for=&quot;ui-group-search&quot;&gt;Найти компонент&lt;/label&gt;&lt;div class=&quot;input-group&quot;&gt;&lt;input class=&quot;form-control&quot; type=&quot;search&quot; id=&quot;ui-group-search&quot; placeholder=&quot;Введите название&quot;&gt;&lt;button type=&quot;button&quot; class=&quot;btn btn-primary&quot; aria-label=&quot;Найти компонент&quot;&gt;&lt;i class=&quot;ci-search&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;
+        &lt;div&gt;&lt;label class=&quot;form-label&quot; for=&quot;ui-group-number&quot;&gt;Количество&lt;/label&gt;&lt;div class=&quot;input-group&quot;&gt;&lt;input class=&quot;form-control&quot; type=&quot;number&quot; id=&quot;ui-group-number&quot; value=&quot;25&quot; aria-describedby=&quot;ui-number-unit&quot;&gt;&lt;span class=&quot;input-group-text&quot; id=&quot;ui-number-unit&quot;&gt;%&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;
+    &lt;/div&gt;</code></pre>
+    </details>
+</article>
+    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Файл, цвет и диапазон</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="d-grid gap-3">
+        <div><label class="form-label" for="ui-file">Выберите файл</label><input class="form-control" type="file" id="ui-file"></div>
+        <div><label class="form-label" for="ui-color">Цвет</label><input class="form-control form-control-color" type="color" id="ui-color" value="#ff5a3c"></div>
+        <div><label class="form-label" for="ui-range">Диапазон: <output for="ui-range" data-ui-range-value>60</output></label><input class="form-range" type="range" id="ui-range" min="0" max="100" value="60" data-ui-range></div>
+    </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-form-files">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Файл, цвет и диапазон"><code id="ui-code-form-files">&lt;div class=&quot;d-grid gap-3&quot;&gt;
+        &lt;div&gt;&lt;label class=&quot;form-label&quot; for=&quot;ui-file&quot;&gt;Выберите файл&lt;/label&gt;&lt;input class=&quot;form-control&quot; type=&quot;file&quot; id=&quot;ui-file&quot;&gt;&lt;/div&gt;
+        &lt;div&gt;&lt;label class=&quot;form-label&quot; for=&quot;ui-color&quot;&gt;Цвет&lt;/label&gt;&lt;input class=&quot;form-control form-control-color&quot; type=&quot;color&quot; id=&quot;ui-color&quot; value=&quot;#ff5a3c&quot;&gt;&lt;/div&gt;
+        &lt;div&gt;&lt;label class=&quot;form-label&quot; for=&quot;ui-range&quot;&gt;Диапазон: &lt;output for=&quot;ui-range&quot; data-ui-range-value&gt;60&lt;/output&gt;&lt;/label&gt;&lt;input class=&quot;form-range&quot; type=&quot;range&quot; id=&quot;ui-range&quot; min=&quot;0&quot; max=&quot;100&quot; value=&quot;60&quot; data-ui-range&gt;&lt;/div&gt;
+    &lt;/div&gt;</code></pre>
+    </details>
+</article>
+    </div></section>
+    <section class="fb-ui-section" id="ui-choices" data-ui-section data-ui-keywords="select choices multiselect checkbox radio switch form-check"><h2>Выбор и переключатели</h2><div class="fb-ui-grid">    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Обычный список</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="d-grid gap-3">
+        <div><label class="form-label" for="ui-native-select">Обычный список</label><select class="form-select" id="ui-native-select"><option value="">Выберите вариант</option><option value="published">Опубликовано</option><option value="draft">Черновик</option><option value="archived">В архиве</option></select></div>
+        <div><label class="form-label" for="ui-select-small">Маленькая</label><select class="form-select form-select-sm" id="ui-select-small"><option>Опубликовано</option><option>Черновик</option></select></div>
+        <div><label class="form-label" for="ui-select-disabled">Недоступно</label><select class="form-select" id="ui-select-disabled" disabled><option>Опубликовано</option></select></div>
+    </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-select-native">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Обычный список"><code id="ui-code-select-native">&lt;div class=&quot;d-grid gap-3&quot;&gt;
+        &lt;div&gt;&lt;label class=&quot;form-label&quot; for=&quot;ui-native-select&quot;&gt;Обычный список&lt;/label&gt;&lt;select class=&quot;form-select&quot; id=&quot;ui-native-select&quot;&gt;&lt;option value=&quot;&quot;&gt;Выберите вариант&lt;/option&gt;&lt;option value=&quot;published&quot;&gt;Опубликовано&lt;/option&gt;&lt;option value=&quot;draft&quot;&gt;Черновик&lt;/option&gt;&lt;option value=&quot;archived&quot;&gt;В архиве&lt;/option&gt;&lt;/select&gt;&lt;/div&gt;
+        &lt;div&gt;&lt;label class=&quot;form-label&quot; for=&quot;ui-select-small&quot;&gt;Маленькая&lt;/label&gt;&lt;select class=&quot;form-select form-select-sm&quot; id=&quot;ui-select-small&quot;&gt;&lt;option&gt;Опубликовано&lt;/option&gt;&lt;option&gt;Черновик&lt;/option&gt;&lt;/select&gt;&lt;/div&gt;
+        &lt;div&gt;&lt;label class=&quot;form-label&quot; for=&quot;ui-select-disabled&quot;&gt;Недоступно&lt;/label&gt;&lt;select class=&quot;form-select&quot; id=&quot;ui-select-disabled&quot; disabled&gt;&lt;option&gt;Опубликовано&lt;/option&gt;&lt;/select&gt;&lt;/div&gt;
+    &lt;/div&gt;</code></pre>
+    </details>
+</article>
+    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Список с поиском</h3>
+                            <p class="fb-card-subtitle">Choices.js — тот же список с поиском, что в админке.</p>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="d-grid gap-3">
+        <div><label class="form-label" for="ui-search-select">Список с поиском</label><select class="form-select" id="ui-search-select" data-select='{"searchEnabled":true}' data-select-floating><option value="published">Опубликовано</option><option value="draft">Черновик</option><option value="archived">В архиве</option></select></div>
+        <div><label class="form-label" for="ui-multi-select">Множественный выбор</label><select class="form-select" id="ui-multi-select" multiple data-select='{"removeItemButton":true,"searchEnabled":true}' data-select-floating><option value="posts" selected>Публикации</option><option value="users" selected>Пользователи</option><option value="plugins" >Плагины</option><option value="requests" >Заявки</option></select></div>
+    </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-select-enhanced">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Список с поиском"><code id="ui-code-select-enhanced">&lt;div class=&quot;d-grid gap-3&quot;&gt;
+        &lt;div&gt;&lt;label class=&quot;form-label&quot; for=&quot;ui-search-select&quot;&gt;Список с поиском&lt;/label&gt;&lt;select class=&quot;form-select&quot; id=&quot;ui-search-select&quot; data-select=&#039;{&quot;searchEnabled&quot;:true}&#039; data-select-floating&gt;&lt;option value=&quot;published&quot;&gt;Опубликовано&lt;/option&gt;&lt;option value=&quot;draft&quot;&gt;Черновик&lt;/option&gt;&lt;option value=&quot;archived&quot;&gt;В архиве&lt;/option&gt;&lt;/select&gt;&lt;/div&gt;
+        &lt;div&gt;&lt;label class=&quot;form-label&quot; for=&quot;ui-multi-select&quot;&gt;Множественный выбор&lt;/label&gt;&lt;select class=&quot;form-select&quot; id=&quot;ui-multi-select&quot; multiple data-select=&#039;{&quot;removeItemButton&quot;:true,&quot;searchEnabled&quot;:true}&#039; data-select-floating&gt;&lt;option value=&quot;posts&quot; selected&gt;Публикации&lt;/option&gt;&lt;option value=&quot;users&quot; selected&gt;Пользователи&lt;/option&gt;&lt;option value=&quot;plugins&quot; &gt;Плагины&lt;/option&gt;&lt;option value=&quot;requests&quot; &gt;Заявки&lt;/option&gt;&lt;/select&gt;&lt;/div&gt;
+    &lt;/div&gt;</code></pre>
+    </details>
+</article>
+    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Флажки и радиокнопки</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="d-grid gap-4">
+        <div class="d-grid gap-2">
+            <div class="form-check"><input class="form-check-input" type="checkbox" id="ui-check" checked><label class="form-check-label" for="ui-check">Показывать на сайте</label></div>
+            <div class="form-check"><input class="form-check-input" type="checkbox" id="ui-check-disabled" disabled><label class="form-check-label" for="ui-check-disabled">Недоступно</label></div>
+        </div>
+        <fieldset class="d-grid gap-2"><legend class="form-label">Выбор и переключатели</legend>
+            <div class="form-check"><input class="form-check-input" type="radio" name="ui-demo-access" id="ui-radio-public" checked><label class="form-check-label" for="ui-radio-public">Публичный доступ</label></div>
+            <div class="form-check"><input class="form-check-input" type="radio" name="ui-demo-access" id="ui-radio-private"><label class="form-check-label" for="ui-radio-private">Только для участников</label></div>
+        </fieldset>
+    </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-checks">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Флажки и радиокнопки"><code id="ui-code-checks">&lt;div class=&quot;d-grid gap-4&quot;&gt;
+        &lt;div class=&quot;d-grid gap-2&quot;&gt;
+            &lt;div class=&quot;form-check&quot;&gt;&lt;input class=&quot;form-check-input&quot; type=&quot;checkbox&quot; id=&quot;ui-check&quot; checked&gt;&lt;label class=&quot;form-check-label&quot; for=&quot;ui-check&quot;&gt;Показывать на сайте&lt;/label&gt;&lt;/div&gt;
+            &lt;div class=&quot;form-check&quot;&gt;&lt;input class=&quot;form-check-input&quot; type=&quot;checkbox&quot; id=&quot;ui-check-disabled&quot; disabled&gt;&lt;label class=&quot;form-check-label&quot; for=&quot;ui-check-disabled&quot;&gt;Недоступно&lt;/label&gt;&lt;/div&gt;
+        &lt;/div&gt;
+        &lt;fieldset class=&quot;d-grid gap-2&quot;&gt;&lt;legend class=&quot;form-label&quot;&gt;Выбор и переключатели&lt;/legend&gt;
+            &lt;div class=&quot;form-check&quot;&gt;&lt;input class=&quot;form-check-input&quot; type=&quot;radio&quot; name=&quot;ui-demo-access&quot; id=&quot;ui-radio-public&quot; checked&gt;&lt;label class=&quot;form-check-label&quot; for=&quot;ui-radio-public&quot;&gt;Публичный доступ&lt;/label&gt;&lt;/div&gt;
+            &lt;div class=&quot;form-check&quot;&gt;&lt;input class=&quot;form-check-input&quot; type=&quot;radio&quot; name=&quot;ui-demo-access&quot; id=&quot;ui-radio-private&quot;&gt;&lt;label class=&quot;form-check-label&quot; for=&quot;ui-radio-private&quot;&gt;Только для участников&lt;/label&gt;&lt;/div&gt;
+        &lt;/fieldset&gt;
+    &lt;/div&gt;</code></pre>
+    </details>
+</article>
+    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Переключатели</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="d-grid gap-3">
+        <div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="ui-switch-notifications" checked><label class="form-check-label" for="ui-switch-notifications">Уведомления</label></div>
+        <div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="ui-switch-autosave"><label class="form-check-label" for="ui-switch-autosave">Автосохранение</label></div>
+        <div class="form-check form-switch"><input class="form-check-input" type="checkbox" role="switch" id="ui-switch-disabled" checked disabled><label class="form-check-label" for="ui-switch-disabled">Недоступно</label></div>
+    </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-switches">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Переключатели"><code id="ui-code-switches">&lt;div class=&quot;d-grid gap-3&quot;&gt;
+        &lt;div class=&quot;form-check form-switch&quot;&gt;&lt;input class=&quot;form-check-input&quot; type=&quot;checkbox&quot; role=&quot;switch&quot; id=&quot;ui-switch-notifications&quot; checked&gt;&lt;label class=&quot;form-check-label&quot; for=&quot;ui-switch-notifications&quot;&gt;Уведомления&lt;/label&gt;&lt;/div&gt;
+        &lt;div class=&quot;form-check form-switch&quot;&gt;&lt;input class=&quot;form-check-input&quot; type=&quot;checkbox&quot; role=&quot;switch&quot; id=&quot;ui-switch-autosave&quot;&gt;&lt;label class=&quot;form-check-label&quot; for=&quot;ui-switch-autosave&quot;&gt;Автосохранение&lt;/label&gt;&lt;/div&gt;
+        &lt;div class=&quot;form-check form-switch&quot;&gt;&lt;input class=&quot;form-check-input&quot; type=&quot;checkbox&quot; role=&quot;switch&quot; id=&quot;ui-switch-disabled&quot; checked disabled&gt;&lt;label class=&quot;form-check-label&quot; for=&quot;ui-switch-disabled&quot;&gt;Недоступно&lt;/label&gt;&lt;/div&gt;
+    &lt;/div&gt;</code></pre>
+    </details>
+</article>
+    </div></section>
+    <section class="fb-ui-section" id="ui-validation" data-ui-section data-ui-keywords="is-valid is-invalid feedback readonly disabled required форма валидация ошибки"><h2>Состояния и валидация</h2><div class="fb-ui-grid">    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Состояния полей</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="d-grid gap-3">
+        <div><label class="form-label" for="ui-valid">Корректное значение</label><input class="form-control is-valid" id="ui-valid" value="FIREBALL" aria-describedby="ui-valid-feedback"><div class="valid-feedback" id="ui-valid-feedback">Корректное значение</div></div>
+        <div><label class="form-label" for="ui-invalid">Название</label><input class="form-control is-invalid" id="ui-invalid" aria-invalid="true" aria-describedby="ui-invalid-feedback"><div class="invalid-feedback" id="ui-invalid-feedback">Заполните обязательное поле.</div></div>
+        <div><label class="form-label" for="ui-readonly">Только чтение</label><input class="form-control" id="ui-readonly" value="FIREBALL CMS" readonly></div>
+        <div><label class="form-label" for="ui-disabled">Недоступно</label><input class="form-control" id="ui-disabled" value="FIREBALL CMS" disabled></div>
+    </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-field-states">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Состояния полей"><code id="ui-code-field-states">&lt;div class=&quot;d-grid gap-3&quot;&gt;
+        &lt;div&gt;&lt;label class=&quot;form-label&quot; for=&quot;ui-valid&quot;&gt;Корректное значение&lt;/label&gt;&lt;input class=&quot;form-control is-valid&quot; id=&quot;ui-valid&quot; value=&quot;FIREBALL&quot; aria-describedby=&quot;ui-valid-feedback&quot;&gt;&lt;div class=&quot;valid-feedback&quot; id=&quot;ui-valid-feedback&quot;&gt;Корректное значение&lt;/div&gt;&lt;/div&gt;
+        &lt;div&gt;&lt;label class=&quot;form-label&quot; for=&quot;ui-invalid&quot;&gt;Название&lt;/label&gt;&lt;input class=&quot;form-control is-invalid&quot; id=&quot;ui-invalid&quot; aria-invalid=&quot;true&quot; aria-describedby=&quot;ui-invalid-feedback&quot;&gt;&lt;div class=&quot;invalid-feedback&quot; id=&quot;ui-invalid-feedback&quot;&gt;Заполните обязательное поле.&lt;/div&gt;&lt;/div&gt;
+        &lt;div&gt;&lt;label class=&quot;form-label&quot; for=&quot;ui-readonly&quot;&gt;Только чтение&lt;/label&gt;&lt;input class=&quot;form-control&quot; id=&quot;ui-readonly&quot; value=&quot;FIREBALL CMS&quot; readonly&gt;&lt;/div&gt;
+        &lt;div&gt;&lt;label class=&quot;form-label&quot; for=&quot;ui-disabled&quot;&gt;Недоступно&lt;/label&gt;&lt;input class=&quot;form-control&quot; id=&quot;ui-disabled&quot; value=&quot;FIREBALL CMS&quot; disabled&gt;&lt;/div&gt;
+    &lt;/div&gt;</code></pre>
+    </details>
+</article>
+    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Проверка формы</h3>
+                            <p class="fb-card-subtitle">Нажмите «Сохранить», чтобы проверить обязательные поля.</p>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <form data-ui-demo-form novalidate>
+        <div class="mb-3"><label class="form-label" for="ui-required-name">Название *</label><input class="form-control" id="ui-required-name" required aria-describedby="ui-required-name-feedback"><div class="invalid-feedback" id="ui-required-name-feedback">Заполните обязательное поле.</div></div>
+        <div class="mb-3"><label class="form-label" for="ui-required-email">Email *</label><input class="form-control" type="email" id="ui-required-email" required aria-describedby="ui-required-email-feedback"><div class="invalid-feedback" id="ui-required-email-feedback">Заполните обязательное поле.</div></div>
+        <div class="mb-4"><label class="form-label" for="ui-required-status">Статус *</label><select class="form-select" id="ui-required-status" required aria-describedby="ui-required-status-feedback"><option value="">Выберите вариант</option><option value="published">Опубликовано</option><option value="draft">Черновик</option></select><div class="invalid-feedback" id="ui-required-status-feedback">Заполните обязательное поле.</div></div>
+        <div class="d-flex flex-wrap gap-2"><button type="submit" class="btn btn-primary">Сохранить</button><button type="reset" class="btn btn-outline-secondary">Сбросить</button></div>
+    </form>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-live-validation">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Проверка формы"><code id="ui-code-live-validation">&lt;form data-ui-demo-form novalidate&gt;
+        &lt;div class=&quot;mb-3&quot;&gt;&lt;label class=&quot;form-label&quot; for=&quot;ui-required-name&quot;&gt;Название *&lt;/label&gt;&lt;input class=&quot;form-control&quot; id=&quot;ui-required-name&quot; required aria-describedby=&quot;ui-required-name-feedback&quot;&gt;&lt;div class=&quot;invalid-feedback&quot; id=&quot;ui-required-name-feedback&quot;&gt;Заполните обязательное поле.&lt;/div&gt;&lt;/div&gt;
+        &lt;div class=&quot;mb-3&quot;&gt;&lt;label class=&quot;form-label&quot; for=&quot;ui-required-email&quot;&gt;Email *&lt;/label&gt;&lt;input class=&quot;form-control&quot; type=&quot;email&quot; id=&quot;ui-required-email&quot; required aria-describedby=&quot;ui-required-email-feedback&quot;&gt;&lt;div class=&quot;invalid-feedback&quot; id=&quot;ui-required-email-feedback&quot;&gt;Заполните обязательное поле.&lt;/div&gt;&lt;/div&gt;
+        &lt;div class=&quot;mb-4&quot;&gt;&lt;label class=&quot;form-label&quot; for=&quot;ui-required-status&quot;&gt;Статус *&lt;/label&gt;&lt;select class=&quot;form-select&quot; id=&quot;ui-required-status&quot; required aria-describedby=&quot;ui-required-status-feedback&quot;&gt;&lt;option value=&quot;&quot;&gt;Выберите вариант&lt;/option&gt;&lt;option value=&quot;published&quot;&gt;Опубликовано&lt;/option&gt;&lt;option value=&quot;draft&quot;&gt;Черновик&lt;/option&gt;&lt;/select&gt;&lt;div class=&quot;invalid-feedback&quot; id=&quot;ui-required-status-feedback&quot;&gt;Заполните обязательное поле.&lt;/div&gt;&lt;/div&gt;
+        &lt;div class=&quot;d-flex flex-wrap gap-2&quot;&gt;&lt;button type=&quot;submit&quot; class=&quot;btn btn-primary&quot;&gt;Сохранить&lt;/button&gt;&lt;button type=&quot;reset&quot; class=&quot;btn btn-outline-secondary&quot;&gt;Сбросить&lt;/button&gt;&lt;/div&gt;
+    &lt;/form&gt;</code></pre>
+    </details>
+</article>
+    </div></section>
+    <section class="fb-ui-section" id="ui-cards" data-ui-section data-ui-keywords="card stat statistics quick actions dashboard activity system"><h2>Карточки и показатели</h2><div class="fb-ui-grid">    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Карточка с заголовком и действиями</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="fb-card">
+        <div class="fb-card-header"><div><h4 class="fb-card-title">Настройки раздела</h4><p class="fb-card-subtitle">Краткое описание содержимого карточки.</p></div><button type="button" class="btn btn-sm btn-outline-secondary" aria-label="Редактировать"><i class="ci-edit" aria-hidden="true"></i></button></div>
+        <div class="fb-card-body"><p class="mb-0">Карточка объединяет связанные поля, данные или действия.</p></div>
+        <div class="fb-card-footer"><button type="button" class="btn btn-primary">Сохранить</button></div>
+    </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-basic-card">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Карточка с заголовком и действиями"><code id="ui-code-basic-card">&lt;div class=&quot;fb-card&quot;&gt;
+        &lt;div class=&quot;fb-card-header&quot;&gt;&lt;div&gt;&lt;h4 class=&quot;fb-card-title&quot;&gt;Настройки раздела&lt;/h4&gt;&lt;p class=&quot;fb-card-subtitle&quot;&gt;Краткое описание содержимого карточки.&lt;/p&gt;&lt;/div&gt;&lt;button type=&quot;button&quot; class=&quot;btn btn-sm btn-outline-secondary&quot; aria-label=&quot;Редактировать&quot;&gt;&lt;i class=&quot;ci-edit&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;&lt;/div&gt;
+        &lt;div class=&quot;fb-card-body&quot;&gt;&lt;p class=&quot;mb-0&quot;&gt;Карточка объединяет связанные поля, данные или действия.&lt;/p&gt;&lt;/div&gt;
+        &lt;div class=&quot;fb-card-footer&quot;&gt;&lt;button type=&quot;button&quot; class=&quot;btn btn-primary&quot;&gt;Сохранить&lt;/button&gt;&lt;/div&gt;
+    &lt;/div&gt;</code></pre>
+    </details>
+</article>
+    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Быстрые действия</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="fb-quick-actions">
+                    <a href="#ui-reuse" class="fb-quick-action" style="--fb-action-color: var(--fb-color-primary); --fb-action-soft: var(--fb-color-primary-soft)"><span class="fb-quick-action-icon"><i class="ci-file-text" aria-hidden="true"></i></span><span>Публикации</span><i class="ci-chevron-right ms-auto" aria-hidden="true"></i></a>
+                    <a href="#ui-reuse" class="fb-quick-action" style="--fb-action-color: var(--fb-color-primary); --fb-action-soft: var(--fb-color-primary-soft)"><span class="fb-quick-action-icon"><i class="ci-user" aria-hidden="true"></i></span><span>Пользователи</span><i class="ci-chevron-right ms-auto" aria-hidden="true"></i></a>
+                    <a href="#ui-reuse" class="fb-quick-action" style="--fb-action-color: var(--fb-color-primary); --fb-action-soft: var(--fb-color-primary-soft)"><span class="fb-quick-action-icon"><i class="ci-settings" aria-hidden="true"></i></span><span>Настройки</span><i class="ci-chevron-right ms-auto" aria-hidden="true"></i></a>
+            </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-quick-actions">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Быстрые действия"><code id="ui-code-quick-actions">&lt;div class=&quot;fb-quick-actions&quot;&gt;
+                    &lt;a href=&quot;#ui-reuse&quot; class=&quot;fb-quick-action&quot; style=&quot;--fb-action-color: var(--fb-color-primary); --fb-action-soft: var(--fb-color-primary-soft)&quot;&gt;&lt;span class=&quot;fb-quick-action-icon&quot;&gt;&lt;i class=&quot;ci-file-text&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/span&gt;&lt;span&gt;Публикации&lt;/span&gt;&lt;i class=&quot;ci-chevron-right ms-auto&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/a&gt;
+                    &lt;a href=&quot;#ui-reuse&quot; class=&quot;fb-quick-action&quot; style=&quot;--fb-action-color: var(--fb-color-primary); --fb-action-soft: var(--fb-color-primary-soft)&quot;&gt;&lt;span class=&quot;fb-quick-action-icon&quot;&gt;&lt;i class=&quot;ci-user&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/span&gt;&lt;span&gt;Пользователи&lt;/span&gt;&lt;i class=&quot;ci-chevron-right ms-auto&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/a&gt;
+                    &lt;a href=&quot;#ui-reuse&quot; class=&quot;fb-quick-action&quot; style=&quot;--fb-action-color: var(--fb-color-primary); --fb-action-soft: var(--fb-color-primary-soft)&quot;&gt;&lt;span class=&quot;fb-quick-action-icon&quot;&gt;&lt;i class=&quot;ci-settings&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/span&gt;&lt;span&gt;Настройки&lt;/span&gt;&lt;i class=&quot;ci-chevron-right ms-auto&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/a&gt;
+            &lt;/div&gt;</code></pre>
+    </details>
+</article>
+    <div class="fb-ui-wide">
+        <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Карточки статистики</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="fb-stat-grid">
+                            <a class="fb-stat-card " href="#ui-reuse"><span class="fb-stat-icon"><i class="ci-file-text" aria-hidden="true"></i></span><span class="fb-stat-copy"><span class="fb-stat-value">128</span><span class="fb-stat-label">Публикации</span><span class="fb-stat-meta">Demo</span></span></a>
+                            <a class="fb-stat-card is-blue" href="#ui-reuse"><span class="fb-stat-icon"><i class="ci-user" aria-hidden="true"></i></span><span class="fb-stat-copy"><span class="fb-stat-value">64</span><span class="fb-stat-label">Пользователи</span><span class="fb-stat-meta">Demo</span></span></a>
+                            <a class="fb-stat-card is-purple" href="#ui-reuse"><span class="fb-stat-icon"><i class="ci-box" aria-hidden="true"></i></span><span class="fb-stat-copy"><span class="fb-stat-value">8</span><span class="fb-stat-label">Плагины</span><span class="fb-stat-meta">Demo</span></span></a>
+                            <a class="fb-stat-card is-green" href="#ui-reuse"><span class="fb-stat-icon"><i class="ci-inbox" aria-hidden="true"></i></span><span class="fb-stat-copy"><span class="fb-stat-value">12</span><span class="fb-stat-label">Заявки</span><span class="fb-stat-meta">Demo</span></span></a>
+                    </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-stat-cards">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Карточки статистики"><code id="ui-code-stat-cards">&lt;div class=&quot;fb-stat-grid&quot;&gt;
+                            &lt;a class=&quot;fb-stat-card &quot; href=&quot;#ui-reuse&quot;&gt;&lt;span class=&quot;fb-stat-icon&quot;&gt;&lt;i class=&quot;ci-file-text&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/span&gt;&lt;span class=&quot;fb-stat-copy&quot;&gt;&lt;span class=&quot;fb-stat-value&quot;&gt;128&lt;/span&gt;&lt;span class=&quot;fb-stat-label&quot;&gt;Публикации&lt;/span&gt;&lt;span class=&quot;fb-stat-meta&quot;&gt;Demo&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;
+                            &lt;a class=&quot;fb-stat-card is-blue&quot; href=&quot;#ui-reuse&quot;&gt;&lt;span class=&quot;fb-stat-icon&quot;&gt;&lt;i class=&quot;ci-user&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/span&gt;&lt;span class=&quot;fb-stat-copy&quot;&gt;&lt;span class=&quot;fb-stat-value&quot;&gt;64&lt;/span&gt;&lt;span class=&quot;fb-stat-label&quot;&gt;Пользователи&lt;/span&gt;&lt;span class=&quot;fb-stat-meta&quot;&gt;Demo&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;
+                            &lt;a class=&quot;fb-stat-card is-purple&quot; href=&quot;#ui-reuse&quot;&gt;&lt;span class=&quot;fb-stat-icon&quot;&gt;&lt;i class=&quot;ci-box&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/span&gt;&lt;span class=&quot;fb-stat-copy&quot;&gt;&lt;span class=&quot;fb-stat-value&quot;&gt;8&lt;/span&gt;&lt;span class=&quot;fb-stat-label&quot;&gt;Плагины&lt;/span&gt;&lt;span class=&quot;fb-stat-meta&quot;&gt;Demo&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;
+                            &lt;a class=&quot;fb-stat-card is-green&quot; href=&quot;#ui-reuse&quot;&gt;&lt;span class=&quot;fb-stat-icon&quot;&gt;&lt;i class=&quot;ci-inbox&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/span&gt;&lt;span class=&quot;fb-stat-copy&quot;&gt;&lt;span class=&quot;fb-stat-value&quot;&gt;12&lt;/span&gt;&lt;span class=&quot;fb-stat-label&quot;&gt;Заявки&lt;/span&gt;&lt;span class=&quot;fb-stat-meta&quot;&gt;Demo&lt;/span&gt;&lt;/span&gt;&lt;/a&gt;
+                    &lt;/div&gt;</code></pre>
+    </details>
+</article>
+    </div>
+    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Лента активности</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <ul class="fb-activity-list">
+                    <li class="fb-activity-item"><span class="fb-activity-icon"><i class="ci-file" aria-hidden="true"></i></span><div class="fb-activity-copy"><div class="fb-activity-title">Создана новая страница</div><div class="fb-activity-meta">Сегодня, 12:30 · Демо</div></div></li>
+                    <li class="fb-activity-item"><span class="fb-activity-icon"><i class="ci-settings" aria-hidden="true"></i></span><div class="fb-activity-copy"><div class="fb-activity-title">Обновлены настройки</div><div class="fb-activity-meta">Сегодня, 12:30 · Демо</div></div></li>
+            </ul>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-activity-feed">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Лента активности"><code id="ui-code-activity-feed">&lt;ul class=&quot;fb-activity-list&quot;&gt;
+                    &lt;li class=&quot;fb-activity-item&quot;&gt;&lt;span class=&quot;fb-activity-icon&quot;&gt;&lt;i class=&quot;ci-file&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/span&gt;&lt;div class=&quot;fb-activity-copy&quot;&gt;&lt;div class=&quot;fb-activity-title&quot;&gt;Создана новая страница&lt;/div&gt;&lt;div class=&quot;fb-activity-meta&quot;&gt;Сегодня, 12:30 · Демо&lt;/div&gt;&lt;/div&gt;&lt;/li&gt;
+                    &lt;li class=&quot;fb-activity-item&quot;&gt;&lt;span class=&quot;fb-activity-icon&quot;&gt;&lt;i class=&quot;ci-settings&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/span&gt;&lt;div class=&quot;fb-activity-copy&quot;&gt;&lt;div class=&quot;fb-activity-title&quot;&gt;Обновлены настройки&lt;/div&gt;&lt;div class=&quot;fb-activity-meta&quot;&gt;Сегодня, 12:30 · Демо&lt;/div&gt;&lt;/div&gt;&lt;/li&gt;
+            &lt;/ul&gt;</code></pre>
+    </details>
+</article>
+    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Состояние системы</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="d-grid">
+                    <div class="fb-system-row"><i class="ci-check-circle fb-system-status" aria-hidden="true"></i><span class="fb-system-label">FIREBALL CMS</span><span class="fb-system-value">2.0 · Demo</span></div>
+                    <div class="fb-system-row"><i class="ci-check-circle fb-system-status" aria-hidden="true"></i><span class="fb-system-label">PHP</span><span class="fb-system-value">8.2 · Demo</span></div>
+                    <div class="fb-system-row"><i class="ci-check-circle fb-system-status" aria-hidden="true"></i><span class="fb-system-label">Состояние системы</span><span class="fb-system-value">Подключено</span></div>
+            </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-system-status">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Состояние системы"><code id="ui-code-system-status">&lt;div class=&quot;d-grid&quot;&gt;
+                    &lt;div class=&quot;fb-system-row&quot;&gt;&lt;i class=&quot;ci-check-circle fb-system-status&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span class=&quot;fb-system-label&quot;&gt;FIREBALL CMS&lt;/span&gt;&lt;span class=&quot;fb-system-value&quot;&gt;2.0 · Demo&lt;/span&gt;&lt;/div&gt;
+                    &lt;div class=&quot;fb-system-row&quot;&gt;&lt;i class=&quot;ci-check-circle fb-system-status&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span class=&quot;fb-system-label&quot;&gt;PHP&lt;/span&gt;&lt;span class=&quot;fb-system-value&quot;&gt;8.2 · Demo&lt;/span&gt;&lt;/div&gt;
+                    &lt;div class=&quot;fb-system-row&quot;&gt;&lt;i class=&quot;ci-check-circle fb-system-status&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;span class=&quot;fb-system-label&quot;&gt;Состояние системы&lt;/span&gt;&lt;span class=&quot;fb-system-value&quot;&gt;Подключено&lt;/span&gt;&lt;/div&gt;
+            &lt;/div&gt;</code></pre>
+    </details>
+</article>
+    </div></section>
+    <section class="fb-ui-section" id="ui-tables" data-ui-section data-ui-keywords="table responsive mobile cards checkbox selection list таблица список"><h2>Таблицы и списки</h2><div class="fb-ui-grid">    <div class="fb-ui-wide">
+        <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Адаптивная таблица</h3>
+                            <p class="fb-card-subtitle">На телефоне строки превращаются в карточки через общий table partial.</p>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="table-responsive admin-table-component__scroll d-none d-md-block">
+    <table class="table align-middle mb-0 admin-table-component__table">
+                    <caption class="visually-hidden">Адаптивная таблица</caption>
+        
+                    <thead class="position-sticky top-0">
+            <tr>
+                                                        <th scope="col">ID</th>
+                                                        <th scope="col">Название</th>
+                                                        <th scope="col">Статус</th>
+                                                        <th scope="col">Обновлено</th>
+                                                        <th scope="col">Действия</th>
+                            </tr>
+            </thead>
+            <tbody>
+                                                                    <tr>
+                                                    <td data-label="ID">#101</td>                                                    <td data-label="Название"><a href="#ui-reuse">Демонстрационная страница 1</a></td>                                                    <td data-label="Статус"><span class="badge bg-success-subtle text-success">Опубликовано</span></td>                                                    <td data-label="Обновлено">11.10.2026</td>                                                    <td data-label="Действия"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#ui-example-modal"><i class="ci-edit me-1" aria-hidden="true"></i>Редактировать</button></td>                                            </tr>
+                                                        <tr>
+                                                    <td data-label="ID">#102</td>                                                    <td data-label="Название"><a href="#ui-reuse">Демонстрационная страница 2</a></td>                                                    <td data-label="Статус"><span class="badge bg-warning-subtle text-warning">Черновик</span></td>                                                    <td data-label="Обновлено">11.10.2026</td>                                                    <td data-label="Действия"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#ui-example-modal"><i class="ci-edit me-1" aria-hidden="true"></i>Редактировать</button></td>                                            </tr>
+                                                        <tr>
+                                                    <td data-label="ID">#103</td>                                                    <td data-label="Название"><a href="#ui-reuse">Демонстрационная страница 3</a></td>                                                    <td data-label="Статус"><span class="badge bg-secondary-subtle text-secondary">В архиве</span></td>                                                    <td data-label="Обновлено">11.10.2026</td>                                                    <td data-label="Действия"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#ui-example-modal"><i class="ci-edit me-1" aria-hidden="true"></i>Редактировать</button></td>                                            </tr>
+                                        </tbody>
+            </table>
+</div>
+    <div class="admin-mobile-table-cards d-md-none" data-admin-mobile-table-cards>
+                            <article class="card admin-mobile-table-card shadow-sm">
+            <div class="card-body p-3">
+                <div class="d-flex align-items-start gap-3">
+                                        <div class="min-w-0 flex-grow-1">
+                        <div class="d-flex align-items-start justify-content-between gap-2">
+                            <div class="min-w-0 d-flex align-items-baseline gap-2 flex-wrap">
+                                                                                                    <span class="small text-body-secondary text-nowrap">ID: <span class="fw-semibold text-body">#101</span></span>
+                                                                                                    <h3 class="h6 mb-0 admin-mobile-table-card__title"><a href="#ui-reuse">Демонстрационная страница 1</a></h3>
+                                                            </div>
+                                                            <div class="flex-shrink-0"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#ui-example-modal"><i class="ci-edit me-1" aria-hidden="true"></i>Редактировать</button></div>
+                                                    </div>
+                    </div>
+                </div>
+            </div>
+
+            <ul class="list-group list-group-flush">
+                                                
+                                        <li class="list-group-item px-3 py-2 ">
+        <div class="d-flex align-items-start justify-content-between gap-3">
+            <span class="small text-body-secondary flex-shrink-0">Обновлено</span>
+            <span class="fw-medium text-body-emphasis text-break text-end min-w-0">11.10.2026</span>
+        </div>
+    </li>
+                    
+                
+                                    <li class="list-group-item px-3 py-2">
+                        <div class="d-flex align-items-start justify-content-between gap-3">
+                            <span class="small text-body-secondary flex-shrink-0">Статус</span>
+                            <span class="d-flex flex-wrap justify-content-end gap-1 min-w-0"><span class="badge bg-success-subtle text-success">Опубликовано</span></span>
+                        </div>
+                    </li>
+                
+                            </ul>
+        </article>
+                        <article class="card admin-mobile-table-card shadow-sm">
+            <div class="card-body p-3">
+                <div class="d-flex align-items-start gap-3">
+                                        <div class="min-w-0 flex-grow-1">
+                        <div class="d-flex align-items-start justify-content-between gap-2">
+                            <div class="min-w-0 d-flex align-items-baseline gap-2 flex-wrap">
+                                                                                                    <span class="small text-body-secondary text-nowrap">ID: <span class="fw-semibold text-body">#102</span></span>
+                                                                                                    <h3 class="h6 mb-0 admin-mobile-table-card__title"><a href="#ui-reuse">Демонстрационная страница 2</a></h3>
+                                                            </div>
+                                                            <div class="flex-shrink-0"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#ui-example-modal"><i class="ci-edit me-1" aria-hidden="true"></i>Редактировать</button></div>
+                                                    </div>
+                    </div>
+                </div>
+            </div>
+
+            <ul class="list-group list-group-flush">
+                                                
+                                        <li class="list-group-item px-3 py-2 ">
+        <div class="d-flex align-items-start justify-content-between gap-3">
+            <span class="small text-body-secondary flex-shrink-0">Обновлено</span>
+            <span class="fw-medium text-body-emphasis text-break text-end min-w-0">11.10.2026</span>
+        </div>
+    </li>
+                    
+                
+                                    <li class="list-group-item px-3 py-2">
+                        <div class="d-flex align-items-start justify-content-between gap-3">
+                            <span class="small text-body-secondary flex-shrink-0">Статус</span>
+                            <span class="d-flex flex-wrap justify-content-end gap-1 min-w-0"><span class="badge bg-warning-subtle text-warning">Черновик</span></span>
+                        </div>
+                    </li>
+                
+                            </ul>
+        </article>
+                        <article class="card admin-mobile-table-card shadow-sm">
+            <div class="card-body p-3">
+                <div class="d-flex align-items-start gap-3">
+                                        <div class="min-w-0 flex-grow-1">
+                        <div class="d-flex align-items-start justify-content-between gap-2">
+                            <div class="min-w-0 d-flex align-items-baseline gap-2 flex-wrap">
+                                                                                                    <span class="small text-body-secondary text-nowrap">ID: <span class="fw-semibold text-body">#103</span></span>
+                                                                                                    <h3 class="h6 mb-0 admin-mobile-table-card__title"><a href="#ui-reuse">Демонстрационная страница 3</a></h3>
+                                                            </div>
+                                                            <div class="flex-shrink-0"><button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#ui-example-modal"><i class="ci-edit me-1" aria-hidden="true"></i>Редактировать</button></div>
+                                                    </div>
+                    </div>
+                </div>
+            </div>
+
+            <ul class="list-group list-group-flush">
+                                                
+                                        <li class="list-group-item px-3 py-2 ">
+        <div class="d-flex align-items-start justify-content-between gap-3">
+            <span class="small text-body-secondary flex-shrink-0">Обновлено</span>
+            <span class="fw-medium text-body-emphasis text-break text-end min-w-0">11.10.2026</span>
+        </div>
+    </li>
+                    
+                
+                                    <li class="list-group-item px-3 py-2">
+                        <div class="d-flex align-items-start justify-content-between gap-3">
+                            <span class="small text-body-secondary flex-shrink-0">Статус</span>
+                            <span class="d-flex flex-wrap justify-content-end gap-1 min-w-0"><span class="badge bg-secondary-subtle text-secondary">В архиве</span></span>
+                        </div>
+                    </li>
+                
+                            </ul>
+        </article>
+            </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-responsive-table">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Адаптивная таблица"><code id="ui-code-responsive-table">&lt;?= view()-&gt;renderPartial(&#039;admin/partials/table&#039;, [
+    &#039;caption&#039; =&gt; return_translation(&#039;admin_pages_title&#039;),
+    &#039;columns&#039; =&gt; [
+        [&#039;label&#039; =&gt; &#039;ID&#039;],
+        [&#039;label&#039; =&gt; return_translation(&#039;admin_pages_form_title&#039;)],
+        [&#039;label&#039; =&gt; return_translation(&#039;admin_pages_status&#039;)],
+    ],
+    &#039;rows&#039; =&gt; [
+        [&#039;cells&#039; =&gt; [
+            [&#039;value&#039; =&gt; $page[&#039;id&#039;]],
+            [&#039;value&#039; =&gt; $page[&#039;title&#039;]],
+            [&#039;value&#039; =&gt; $page[&#039;status&#039;]],
+        ]],
+    ],
+]) ?&gt;</code></pre>
+    </details>
+</article>
+    </div>
+    <div class="fb-ui-wide">
+        <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Панель таблицы и выбор строк</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+            <div class="flex-grow-1"><label class="visually-hidden" for="ui-table-search">Найти компонент</label><input class="form-control" type="search" id="ui-table-search" placeholder="Найти компонент" data-ui-table-search></div>
+            <span class="small text-body-secondary" data-ui-selection role="status" aria-live="polite"></span>
+        </div>
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <caption class="visually-hidden">Панель таблицы и выбор строк</caption>
+                <thead><tr><th scope="col"><input class="form-check-input" type="checkbox" aria-label="Выбрать все строки" data-ui-check-all></th><th scope="col">Название</th><th scope="col">Статус</th></tr></thead>
+                <tbody>
+                                    <tr data-ui-selectable-row><td><input class="form-check-input" type="checkbox" aria-label="Выбрать строку 1" data-ui-row-check></td><th scope="row">Демонстрационная страница 1</th><td><span class="badge bg-secondary-subtle text-body-secondary">Опубликовано</span></td></tr>
+                                    <tr data-ui-selectable-row><td><input class="form-check-input" type="checkbox" aria-label="Выбрать строку 2" data-ui-row-check></td><th scope="row">Демонстрационная страница 2</th><td><span class="badge bg-secondary-subtle text-body-secondary">Черновик</span></td></tr>
+                                    <tr data-ui-selectable-row><td><input class="form-check-input" type="checkbox" aria-label="Выбрать строку 3" data-ui-row-check></td><th scope="row">Демонстрационная страница 3</th><td><span class="badge bg-secondary-subtle text-body-secondary">В архиве</span></td></tr>
+                                </tbody>
+            </table>
+        </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-table-selection">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Панель таблицы и выбор строк"><code id="ui-code-table-selection">&lt;div class=&quot;d-flex flex-wrap align-items-center gap-3 mb-3&quot;&gt;
+            &lt;div class=&quot;flex-grow-1&quot;&gt;&lt;label class=&quot;visually-hidden&quot; for=&quot;ui-table-search&quot;&gt;Найти компонент&lt;/label&gt;&lt;input class=&quot;form-control&quot; type=&quot;search&quot; id=&quot;ui-table-search&quot; placeholder=&quot;Найти компонент&quot; data-ui-table-search&gt;&lt;/div&gt;
+            &lt;span class=&quot;small text-body-secondary&quot; data-ui-selection role=&quot;status&quot; aria-live=&quot;polite&quot;&gt;&lt;/span&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;table-responsive&quot;&gt;
+            &lt;table class=&quot;table align-middle mb-0&quot;&gt;
+                &lt;caption class=&quot;visually-hidden&quot;&gt;Панель таблицы и выбор строк&lt;/caption&gt;
+                &lt;thead&gt;&lt;tr&gt;&lt;th scope=&quot;col&quot;&gt;&lt;input class=&quot;form-check-input&quot; type=&quot;checkbox&quot; aria-label=&quot;Выбрать все строки&quot; data-ui-check-all&gt;&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Название&lt;/th&gt;&lt;th scope=&quot;col&quot;&gt;Статус&lt;/th&gt;&lt;/tr&gt;&lt;/thead&gt;
+                &lt;tbody&gt;
+                                    &lt;tr data-ui-selectable-row&gt;&lt;td&gt;&lt;input class=&quot;form-check-input&quot; type=&quot;checkbox&quot; aria-label=&quot;Выбрать строку 1&quot; data-ui-row-check&gt;&lt;/td&gt;&lt;th scope=&quot;row&quot;&gt;Демонстрационная страница 1&lt;/th&gt;&lt;td&gt;&lt;span class=&quot;badge bg-secondary-subtle text-body-secondary&quot;&gt;Опубликовано&lt;/span&gt;&lt;/td&gt;&lt;/tr&gt;
+                                    &lt;tr data-ui-selectable-row&gt;&lt;td&gt;&lt;input class=&quot;form-check-input&quot; type=&quot;checkbox&quot; aria-label=&quot;Выбрать строку 2&quot; data-ui-row-check&gt;&lt;/td&gt;&lt;th scope=&quot;row&quot;&gt;Демонстрационная страница 2&lt;/th&gt;&lt;td&gt;&lt;span class=&quot;badge bg-secondary-subtle text-body-secondary&quot;&gt;Черновик&lt;/span&gt;&lt;/td&gt;&lt;/tr&gt;
+                                    &lt;tr data-ui-selectable-row&gt;&lt;td&gt;&lt;input class=&quot;form-check-input&quot; type=&quot;checkbox&quot; aria-label=&quot;Выбрать строку 3&quot; data-ui-row-check&gt;&lt;/td&gt;&lt;th scope=&quot;row&quot;&gt;Демонстрационная страница 3&lt;/th&gt;&lt;td&gt;&lt;span class=&quot;badge bg-secondary-subtle text-body-secondary&quot;&gt;В архиве&lt;/span&gt;&lt;/td&gt;&lt;/tr&gt;
+                                &lt;/tbody&gt;
+            &lt;/table&gt;
+        &lt;/div&gt;</code></pre>
+    </details>
+</article>
+    </div>
+    </div></section>
+    <section class="fb-ui-section" id="ui-navigation" data-ui-section data-ui-keywords="breadcrumb nav tabs pills pagination accordion collapse навигация вкладки"><h2>Навигация</h2><div class="fb-ui-grid">    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Навигационная цепочка</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <nav aria-label="Навигационная цепочка"><ol class="breadcrumb mb-0"><li class="breadcrumb-item"><a href="/admin/docs">Документация</a></li><li class="breadcrumb-item active" aria-current="page">UI-компоненты</li></ol></nav>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-breadcrumb">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Навигационная цепочка"><code id="ui-code-breadcrumb">&lt;nav aria-label=&quot;Навигационная цепочка&quot;&gt;&lt;ol class=&quot;breadcrumb mb-0&quot;&gt;&lt;li class=&quot;breadcrumb-item&quot;&gt;&lt;a href=&quot;/admin/docs&quot;&gt;Документация&lt;/a&gt;&lt;/li&gt;&lt;li class=&quot;breadcrumb-item active&quot; aria-current=&quot;page&quot;&gt;UI-компоненты&lt;/li&gt;&lt;/ol&gt;&lt;/nav&gt;</code></pre>
+    </details>
+</article>
+    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Постраничная навигация</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <nav aria-label="Постраничная навигация"><ul class="pagination mb-0"><li class="page-item disabled"><span class="page-link" aria-disabled="true"><i class="ci-chevron-left" aria-hidden="true"></i></span></li><li class="page-item active"><button type="button" class="page-link" data-ui-page aria-current="page">1</button></li><li class="page-item "><button type="button" class="page-link" data-ui-page >2</button></li><li class="page-item "><button type="button" class="page-link" data-ui-page >3</button></li></ul></nav>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-pagination">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Постраничная навигация"><code id="ui-code-pagination">&lt;nav aria-label=&quot;Постраничная навигация&quot;&gt;&lt;ul class=&quot;pagination mb-0&quot;&gt;&lt;li class=&quot;page-item disabled&quot;&gt;&lt;span class=&quot;page-link&quot; aria-disabled=&quot;true&quot;&gt;&lt;i class=&quot;ci-chevron-left&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/span&gt;&lt;/li&gt;&lt;li class=&quot;page-item active&quot;&gt;&lt;button type=&quot;button&quot; class=&quot;page-link&quot; data-ui-page aria-current=&quot;page&quot;&gt;1&lt;/button&gt;&lt;/li&gt;&lt;li class=&quot;page-item &quot;&gt;&lt;button type=&quot;button&quot; class=&quot;page-link&quot; data-ui-page &gt;2&lt;/button&gt;&lt;/li&gt;&lt;li class=&quot;page-item &quot;&gt;&lt;button type=&quot;button&quot; class=&quot;page-link&quot; data-ui-page &gt;3&lt;/button&gt;&lt;/li&gt;&lt;/ul&gt;&lt;/nav&gt;</code></pre>
+    </details>
+</article>
+    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Вкладки</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <ul class="nav nav-tabs mb-3" role="tablist"><li class="nav-item" role="presentation"><button class="nav-link active" id="ui-tab-overview" type="button" data-bs-toggle="tab" data-bs-target="#ui-pane-overview" role="tab" aria-controls="ui-pane-overview" aria-selected="true">Обзор</button></li><li class="nav-item" role="presentation"><button class="nav-link" id="ui-tab-settings" type="button" data-bs-toggle="tab" data-bs-target="#ui-pane-settings" role="tab" aria-controls="ui-pane-settings" aria-selected="false">Настройки</button></li><li class="nav-item" role="presentation"><button class="nav-link" type="button" role="tab" aria-selected="false" disabled>Недоступно</button></li></ul>
+    <div class="tab-content"><div class="tab-pane fade show active" id="ui-pane-overview" role="tabpanel" aria-labelledby="ui-tab-overview" tabindex="0">Содержимое первой вкладки.</div><div class="tab-pane fade" id="ui-pane-settings" role="tabpanel" aria-labelledby="ui-tab-settings" tabindex="0">Содержимое вкладки настроек.</div></div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-tabs">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Вкладки"><code id="ui-code-tabs">&lt;ul class=&quot;nav nav-tabs mb-3&quot; role=&quot;tablist&quot;&gt;&lt;li class=&quot;nav-item&quot; role=&quot;presentation&quot;&gt;&lt;button class=&quot;nav-link active&quot; id=&quot;ui-tab-overview&quot; type=&quot;button&quot; data-bs-toggle=&quot;tab&quot; data-bs-target=&quot;#ui-pane-overview&quot; role=&quot;tab&quot; aria-controls=&quot;ui-pane-overview&quot; aria-selected=&quot;true&quot;&gt;Обзор&lt;/button&gt;&lt;/li&gt;&lt;li class=&quot;nav-item&quot; role=&quot;presentation&quot;&gt;&lt;button class=&quot;nav-link&quot; id=&quot;ui-tab-settings&quot; type=&quot;button&quot; data-bs-toggle=&quot;tab&quot; data-bs-target=&quot;#ui-pane-settings&quot; role=&quot;tab&quot; aria-controls=&quot;ui-pane-settings&quot; aria-selected=&quot;false&quot;&gt;Настройки&lt;/button&gt;&lt;/li&gt;&lt;li class=&quot;nav-item&quot; role=&quot;presentation&quot;&gt;&lt;button class=&quot;nav-link&quot; type=&quot;button&quot; role=&quot;tab&quot; aria-selected=&quot;false&quot; disabled&gt;Недоступно&lt;/button&gt;&lt;/li&gt;&lt;/ul&gt;
+    &lt;div class=&quot;tab-content&quot;&gt;&lt;div class=&quot;tab-pane fade show active&quot; id=&quot;ui-pane-overview&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;ui-tab-overview&quot; tabindex=&quot;0&quot;&gt;Содержимое первой вкладки.&lt;/div&gt;&lt;div class=&quot;tab-pane fade&quot; id=&quot;ui-pane-settings&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;ui-tab-settings&quot; tabindex=&quot;0&quot;&gt;Содержимое вкладки настроек.&lt;/div&gt;&lt;/div&gt;</code></pre>
+    </details>
+</article>
+    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Навигация pills</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <ul class="nav nav-pills mb-3" role="tablist"><li class="nav-item" role="presentation"><button class="nav-link active" id="ui-pill-overview" type="button" data-bs-toggle="pill" data-bs-target="#ui-pill-pane-overview" role="tab" aria-controls="ui-pill-pane-overview" aria-selected="true">Обзор</button></li><li class="nav-item" role="presentation"><button class="nav-link" id="ui-pill-settings" type="button" data-bs-toggle="pill" data-bs-target="#ui-pill-pane-settings" role="tab" aria-controls="ui-pill-pane-settings" aria-selected="false">Настройки</button></li></ul>
+    <div class="tab-content"><div class="tab-pane fade show active" id="ui-pill-pane-overview" role="tabpanel" aria-labelledby="ui-pill-overview" tabindex="0">Содержимое первой вкладки.</div><div class="tab-pane fade" id="ui-pill-pane-settings" role="tabpanel" aria-labelledby="ui-pill-settings" tabindex="0">Содержимое вкладки настроек.</div></div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-pills">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Навигация pills"><code id="ui-code-pills">&lt;ul class=&quot;nav nav-pills mb-3&quot; role=&quot;tablist&quot;&gt;&lt;li class=&quot;nav-item&quot; role=&quot;presentation&quot;&gt;&lt;button class=&quot;nav-link active&quot; id=&quot;ui-pill-overview&quot; type=&quot;button&quot; data-bs-toggle=&quot;pill&quot; data-bs-target=&quot;#ui-pill-pane-overview&quot; role=&quot;tab&quot; aria-controls=&quot;ui-pill-pane-overview&quot; aria-selected=&quot;true&quot;&gt;Обзор&lt;/button&gt;&lt;/li&gt;&lt;li class=&quot;nav-item&quot; role=&quot;presentation&quot;&gt;&lt;button class=&quot;nav-link&quot; id=&quot;ui-pill-settings&quot; type=&quot;button&quot; data-bs-toggle=&quot;pill&quot; data-bs-target=&quot;#ui-pill-pane-settings&quot; role=&quot;tab&quot; aria-controls=&quot;ui-pill-pane-settings&quot; aria-selected=&quot;false&quot;&gt;Настройки&lt;/button&gt;&lt;/li&gt;&lt;/ul&gt;
+    &lt;div class=&quot;tab-content&quot;&gt;&lt;div class=&quot;tab-pane fade show active&quot; id=&quot;ui-pill-pane-overview&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;ui-pill-overview&quot; tabindex=&quot;0&quot;&gt;Содержимое первой вкладки.&lt;/div&gt;&lt;div class=&quot;tab-pane fade&quot; id=&quot;ui-pill-pane-settings&quot; role=&quot;tabpanel&quot; aria-labelledby=&quot;ui-pill-settings&quot; tabindex=&quot;0&quot;&gt;Содержимое вкладки настроек.&lt;/div&gt;&lt;/div&gt;</code></pre>
+    </details>
+</article>
+    <div class="fb-ui-wide">
+        <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Раскрывающиеся блоки</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="accordion" id="ui-accordion">
+            <div class="accordion-item"><h3 class="accordion-header"><button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#ui-accordion-first" aria-expanded="true" aria-controls="ui-accordion-first">Как использовать компонент?</button></h3><div id="ui-accordion-first" class="accordion-collapse collapse show" data-bs-parent="#ui-accordion"><div class="accordion-body">Раскройте код под примером и скопируйте его на нужную страницу.</div></div></div>
+            <div class="accordion-item"><h3 class="accordion-header"><button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#ui-accordion-second" aria-expanded="false" aria-controls="ui-accordion-second">Где менять общий дизайн?</button></h3><div id="ui-accordion-second" class="accordion-collapse collapse" data-bs-parent="#ui-accordion"><div class="accordion-body">Общий внешний вид меняйте в admin-ui.css; поведение оболочки — в admin-ui.js. Стили каталога находятся отдельно.</div></div></div>
+        </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-accordion">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Раскрывающиеся блоки"><code id="ui-code-accordion">&lt;div class=&quot;accordion&quot; id=&quot;ui-accordion&quot;&gt;
+            &lt;div class=&quot;accordion-item&quot;&gt;&lt;h3 class=&quot;accordion-header&quot;&gt;&lt;button class=&quot;accordion-button&quot; type=&quot;button&quot; data-bs-toggle=&quot;collapse&quot; data-bs-target=&quot;#ui-accordion-first&quot; aria-expanded=&quot;true&quot; aria-controls=&quot;ui-accordion-first&quot;&gt;Как использовать компонент?&lt;/button&gt;&lt;/h3&gt;&lt;div id=&quot;ui-accordion-first&quot; class=&quot;accordion-collapse collapse show&quot; data-bs-parent=&quot;#ui-accordion&quot;&gt;&lt;div class=&quot;accordion-body&quot;&gt;Раскройте код под примером и скопируйте его на нужную страницу.&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;
+            &lt;div class=&quot;accordion-item&quot;&gt;&lt;h3 class=&quot;accordion-header&quot;&gt;&lt;button class=&quot;accordion-button collapsed&quot; type=&quot;button&quot; data-bs-toggle=&quot;collapse&quot; data-bs-target=&quot;#ui-accordion-second&quot; aria-expanded=&quot;false&quot; aria-controls=&quot;ui-accordion-second&quot;&gt;Где менять общий дизайн?&lt;/button&gt;&lt;/h3&gt;&lt;div id=&quot;ui-accordion-second&quot; class=&quot;accordion-collapse collapse&quot; data-bs-parent=&quot;#ui-accordion&quot;&gt;&lt;div class=&quot;accordion-body&quot;&gt;Общий внешний вид меняйте в admin-ui.css; поведение оболочки — в admin-ui.js. Стили каталога находятся отдельно.&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;
+        &lt;/div&gt;</code></pre>
+    </details>
+</article>
+    </div>
+    </div></section>
+    <section class="fb-ui-section" id="ui-feedback" data-ui-section data-ui-keywords="badge alert toast status уведомления сообщения метки"><h2>Статусы и уведомления</h2><div class="fb-ui-grid">    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Метки и статусы</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="d-grid gap-3">
+        <div class="d-flex flex-wrap gap-2"><span class="badge bg-primary">Основная</span><span class="badge bg-secondary">Вторичная</span><span class="badge bg-success">Успех</span><span class="badge bg-danger">Ошибка</span><span class="badge bg-warning">Внимание</span><span class="badge bg-info">Информация</span></div>
+        <div class="d-flex flex-wrap gap-2"><span class="badge fb-badge bg-success-subtle text-success">Опубликовано</span><span class="badge fb-badge bg-warning-subtle text-warning">Черновик</span><span class="badge fb-badge bg-secondary-subtle text-secondary">В архиве</span></div>
+        <div><span class="fb-list-status">Подключено</span></div>
+    </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-badges">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Метки и статусы"><code id="ui-code-badges">&lt;div class=&quot;d-grid gap-3&quot;&gt;
+        &lt;div class=&quot;d-flex flex-wrap gap-2&quot;&gt;&lt;span class=&quot;badge bg-primary&quot;&gt;Основная&lt;/span&gt;&lt;span class=&quot;badge bg-secondary&quot;&gt;Вторичная&lt;/span&gt;&lt;span class=&quot;badge bg-success&quot;&gt;Успех&lt;/span&gt;&lt;span class=&quot;badge bg-danger&quot;&gt;Ошибка&lt;/span&gt;&lt;span class=&quot;badge bg-warning&quot;&gt;Внимание&lt;/span&gt;&lt;span class=&quot;badge bg-info&quot;&gt;Информация&lt;/span&gt;&lt;/div&gt;
+        &lt;div class=&quot;d-flex flex-wrap gap-2&quot;&gt;&lt;span class=&quot;badge fb-badge bg-success-subtle text-success&quot;&gt;Опубликовано&lt;/span&gt;&lt;span class=&quot;badge fb-badge bg-warning-subtle text-warning&quot;&gt;Черновик&lt;/span&gt;&lt;span class=&quot;badge fb-badge bg-secondary-subtle text-secondary&quot;&gt;В архиве&lt;/span&gt;&lt;/div&gt;
+        &lt;div&gt;&lt;span class=&quot;fb-list-status&quot;&gt;Подключено&lt;/span&gt;&lt;/div&gt;
+    &lt;/div&gt;</code></pre>
+    </details>
+</article>
+    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Сообщения</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="d-grid gap-3">
+                    <div class="alert alert-success mb-0" role="alert"><i class="ci-check-circle me-2" aria-hidden="true"></i>Изменения успешно сохранены.</div>
+                    <div class="alert alert-danger mb-0" role="alert"><i class="ci-alert-triangle me-2" aria-hidden="true"></i>Не удалось выполнить действие.</div>
+                    <div class="alert alert-warning mb-0" role="alert"><i class="ci-alert-triangle me-2" aria-hidden="true"></i>Проверьте данные перед продолжением.</div>
+                    <div class="alert alert-info mb-0" role="alert"><i class="ci-info me-2" aria-hidden="true"></i>Доступна дополнительная информация.</div>
+            </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-alerts">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Сообщения"><code id="ui-code-alerts">&lt;div class=&quot;d-grid gap-3&quot;&gt;
+                    &lt;div class=&quot;alert alert-success mb-0&quot; role=&quot;alert&quot;&gt;&lt;i class=&quot;ci-check-circle me-2&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;Изменения успешно сохранены.&lt;/div&gt;
+                    &lt;div class=&quot;alert alert-danger mb-0&quot; role=&quot;alert&quot;&gt;&lt;i class=&quot;ci-alert-triangle me-2&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;Не удалось выполнить действие.&lt;/div&gt;
+                    &lt;div class=&quot;alert alert-warning mb-0&quot; role=&quot;alert&quot;&gt;&lt;i class=&quot;ci-alert-triangle me-2&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;Проверьте данные перед продолжением.&lt;/div&gt;
+                    &lt;div class=&quot;alert alert-info mb-0&quot; role=&quot;alert&quot;&gt;&lt;i class=&quot;ci-info me-2&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;Доступна дополнительная информация.&lt;/div&gt;
+            &lt;/div&gt;</code></pre>
+    </details>
+</article>
+    <div class="fb-ui-wide">
+        <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Всплывающие уведомления</h3>
+                            <p class="fb-card-subtitle">Работают через общий API уведомлений админки.</p>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="d-flex flex-wrap gap-2"><button type="button" class="btn btn-outline-success" data-ui-toast="success">Успех</button><button type="button" class="btn btn-outline-danger" data-ui-toast="error">Ошибка</button><button type="button" class="btn btn-outline-warning" data-ui-toast="warning">Внимание</button><button type="button" class="btn btn-outline-info" data-ui-toast="info">Информация</button></div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-toasts">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Всплывающие уведомления"><code id="ui-code-toasts">// Client-side notification
+window.toastr.success(message);
+window.toastr.error(message);
+window.toastr.warning(message);
+window.toastr.info(message);
+
+// Server operation: keep the existing flash + redirect flow.
+session()-&gt;setFlash(&#039;success&#039;, return_translation(&#039;admin_settings_saved&#039;));</code></pre>
+    </details>
+</article>
+    </div>
+    </div></section>
+    <section class="fb-ui-section" id="ui-overlays" data-ui-section data-ui-keywords="modal dialog confirmation offcanvas tooltip popover dropdown окно подсказка панель"><h2>Окна и подсказки</h2><div class="fb-ui-grid">    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Модальное окно</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#ui-example-modal">Открыть окно</button>
+    <div class="modal fade" id="ui-example-modal" tabindex="-1" aria-labelledby="ui-example-modal-title" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h4 class="modal-title" id="ui-example-modal-title">Пример модального окна</h4><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button></div><div class="modal-body"><p class="mb-0">Здесь можно разместить форму, описание или подтверждение действия.</p></div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button><button type="button" class="btn btn-primary" data-bs-dismiss="modal">Сохранить</button></div></div></div></div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-modal">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Модальное окно"><code id="ui-code-modal">&lt;button type=&quot;button&quot; class=&quot;btn btn-primary&quot; data-bs-toggle=&quot;modal&quot; data-bs-target=&quot;#ui-example-modal&quot;&gt;Открыть окно&lt;/button&gt;
+    &lt;div class=&quot;modal fade&quot; id=&quot;ui-example-modal&quot; tabindex=&quot;-1&quot; aria-labelledby=&quot;ui-example-modal-title&quot; aria-hidden=&quot;true&quot;&gt;&lt;div class=&quot;modal-dialog modal-dialog-centered&quot;&gt;&lt;div class=&quot;modal-content&quot;&gt;&lt;div class=&quot;modal-header&quot;&gt;&lt;h4 class=&quot;modal-title&quot; id=&quot;ui-example-modal-title&quot;&gt;Пример модального окна&lt;/h4&gt;&lt;button type=&quot;button&quot; class=&quot;btn-close&quot; data-bs-dismiss=&quot;modal&quot; aria-label=&quot;Закрыть&quot;&gt;&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;modal-body&quot;&gt;&lt;p class=&quot;mb-0&quot;&gt;Здесь можно разместить форму, описание или подтверждение действия.&lt;/p&gt;&lt;/div&gt;&lt;div class=&quot;modal-footer&quot;&gt;&lt;button type=&quot;button&quot; class=&quot;btn btn-outline-secondary&quot; data-bs-dismiss=&quot;modal&quot;&gt;Отмена&lt;/button&gt;&lt;button type=&quot;button&quot; class=&quot;btn btn-primary&quot; data-bs-dismiss=&quot;modal&quot;&gt;Сохранить&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;</code></pre>
+    </details>
+</article>
+    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Подтверждение действия</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#ui-confirm-modal"><i class="ci-trash me-2" aria-hidden="true"></i>Подтверждение действия</button>
+    <div class="modal fade" id="ui-confirm-modal" tabindex="-1" aria-labelledby="ui-confirm-modal-title" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h4 class="modal-title" id="ui-confirm-modal-title">Подтверждение действия</h4><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button></div><div class="modal-body">Это пример подтверждения удаления. Кнопка только закрывает окно.</div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Отмена</button><button type="button" class="btn btn-danger" data-bs-dismiss="modal">Удалить</button></div></div></div></div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-confirm">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Подтверждение действия"><code id="ui-code-confirm">&lt;button type=&quot;button&quot; class=&quot;btn btn-outline-danger&quot; data-bs-toggle=&quot;modal&quot; data-bs-target=&quot;#ui-confirm-modal&quot;&gt;&lt;i class=&quot;ci-trash me-2&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;Подтверждение действия&lt;/button&gt;
+    &lt;div class=&quot;modal fade&quot; id=&quot;ui-confirm-modal&quot; tabindex=&quot;-1&quot; aria-labelledby=&quot;ui-confirm-modal-title&quot; aria-hidden=&quot;true&quot;&gt;&lt;div class=&quot;modal-dialog modal-dialog-centered&quot;&gt;&lt;div class=&quot;modal-content&quot;&gt;&lt;div class=&quot;modal-header&quot;&gt;&lt;h4 class=&quot;modal-title&quot; id=&quot;ui-confirm-modal-title&quot;&gt;Подтверждение действия&lt;/h4&gt;&lt;button type=&quot;button&quot; class=&quot;btn-close&quot; data-bs-dismiss=&quot;modal&quot; aria-label=&quot;Закрыть&quot;&gt;&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;modal-body&quot;&gt;Это пример подтверждения удаления. Кнопка только закрывает окно.&lt;/div&gt;&lt;div class=&quot;modal-footer&quot;&gt;&lt;button type=&quot;button&quot; class=&quot;btn btn-outline-secondary&quot; data-bs-dismiss=&quot;modal&quot;&gt;Отмена&lt;/button&gt;&lt;button type=&quot;button&quot; class=&quot;btn btn-danger&quot; data-bs-dismiss=&quot;modal&quot;&gt;Удалить&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;</code></pre>
+    </details>
+</article>
+    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Выдвижная панель</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="offcanvas" data-bs-target="#ui-example-panel" aria-controls="ui-example-panel">Открыть панель</button>
+    <div class="offcanvas offcanvas-end" tabindex="-1" id="ui-example-panel" aria-labelledby="ui-panel-title"><div class="offcanvas-header"><h4 class="offcanvas-title" id="ui-panel-title">Выдвижная панель</h4><button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Закрыть"></button></div><div class="offcanvas-body"><p>Здесь можно разместить форму, описание или подтверждение действия.</p><label class="form-label" for="ui-panel-name">Название</label><input class="form-control mb-3" id="ui-panel-name"><button type="button" class="btn btn-primary" data-bs-dismiss="offcanvas">Сохранить</button></div></div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-offcanvas">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Выдвижная панель"><code id="ui-code-offcanvas">&lt;button type=&quot;button&quot; class=&quot;btn btn-outline-secondary&quot; data-bs-toggle=&quot;offcanvas&quot; data-bs-target=&quot;#ui-example-panel&quot; aria-controls=&quot;ui-example-panel&quot;&gt;Открыть панель&lt;/button&gt;
+    &lt;div class=&quot;offcanvas offcanvas-end&quot; tabindex=&quot;-1&quot; id=&quot;ui-example-panel&quot; aria-labelledby=&quot;ui-panel-title&quot;&gt;&lt;div class=&quot;offcanvas-header&quot;&gt;&lt;h4 class=&quot;offcanvas-title&quot; id=&quot;ui-panel-title&quot;&gt;Выдвижная панель&lt;/h4&gt;&lt;button type=&quot;button&quot; class=&quot;btn-close&quot; data-bs-dismiss=&quot;offcanvas&quot; aria-label=&quot;Закрыть&quot;&gt;&lt;/button&gt;&lt;/div&gt;&lt;div class=&quot;offcanvas-body&quot;&gt;&lt;p&gt;Здесь можно разместить форму, описание или подтверждение действия.&lt;/p&gt;&lt;label class=&quot;form-label&quot; for=&quot;ui-panel-name&quot;&gt;Название&lt;/label&gt;&lt;input class=&quot;form-control mb-3&quot; id=&quot;ui-panel-name&quot;&gt;&lt;button type=&quot;button&quot; class=&quot;btn btn-primary&quot; data-bs-dismiss=&quot;offcanvas&quot;&gt;Сохранить&lt;/button&gt;&lt;/div&gt;&lt;/div&gt;</code></pre>
+    </details>
+</article>
+    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Подсказки и popover</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="d-flex flex-wrap gap-2"><button type="button" class="btn btn-outline-secondary" data-bs-toggle="tooltip" data-bs-title="Короткая подсказка для действия">Подсказка</button><button type="button" class="btn btn-outline-secondary" data-bs-toggle="popover" data-bs-trigger="focus" data-bs-title="Информация" data-bs-content="Дополнительная информация рядом с элементом.">Подробнее</button></div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-hints">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Подсказки и popover"><code id="ui-code-hints">&lt;div class=&quot;d-flex flex-wrap gap-2&quot;&gt;&lt;button type=&quot;button&quot; class=&quot;btn btn-outline-secondary&quot; data-bs-toggle=&quot;tooltip&quot; data-bs-title=&quot;Короткая подсказка для действия&quot;&gt;Подсказка&lt;/button&gt;&lt;button type=&quot;button&quot; class=&quot;btn btn-outline-secondary&quot; data-bs-toggle=&quot;popover&quot; data-bs-trigger=&quot;focus&quot; data-bs-title=&quot;Информация&quot; data-bs-content=&quot;Дополнительная информация рядом с элементом.&quot;&gt;Подробнее&lt;/button&gt;&lt;/div&gt;</code></pre>
+    </details>
+</article>
+    </div></section>
+    <section class="fb-ui-section" id="ui-loading" data-ui-section data-ui-keywords="empty state skeleton progress spinner loading загрузка пусто"><h2>Пустые состояния и загрузка</h2><div class="fb-ui-grid">    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Пустое состояние</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="fb-empty-state"><span class="fb-empty-state-icon"><i class="ci-inbox" aria-hidden="true"></i></span><h4 class="h6">Пока ничего нет</h4><p class="small mb-3">Добавьте первый элемент, чтобы начать работу.</p><button type="button" class="btn btn-primary"><i class="ci-plus me-2" aria-hidden="true"></i>Создать</button></div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-empty">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Пустое состояние"><code id="ui-code-empty">&lt;div class=&quot;fb-empty-state&quot;&gt;&lt;span class=&quot;fb-empty-state-icon&quot;&gt;&lt;i class=&quot;ci-inbox&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/span&gt;&lt;h4 class=&quot;h6&quot;&gt;Пока ничего нет&lt;/h4&gt;&lt;p class=&quot;small mb-3&quot;&gt;Добавьте первый элемент, чтобы начать работу.&lt;/p&gt;&lt;button type=&quot;button&quot; class=&quot;btn btn-primary&quot;&gt;&lt;i class=&quot;ci-plus me-2&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;Создать&lt;/button&gt;&lt;/div&gt;</code></pre>
+    </details>
+</article>
+    <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Скелетон</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div aria-busy="true" aria-label="Загрузка…"><div class="d-flex align-items-center gap-3 mb-4" aria-hidden="true"><span class="fb-skeleton rounded-circle" style="width: 48px; height: 48px; flex: 0 0 48px"></span><div class="flex-grow-1"><span class="fb-skeleton mb-2 w-75"></span><span class="fb-skeleton w-50"></span></div></div><div class="d-grid gap-3" aria-hidden="true"><span class="fb-skeleton"></span><span class="fb-skeleton"></span><span class="fb-skeleton w-75"></span><span class="fb-skeleton" style="height: 100px"></span></div></div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-skeleton">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Скелетон"><code id="ui-code-skeleton">&lt;div aria-busy=&quot;true&quot; aria-label=&quot;Загрузка…&quot;&gt;&lt;div class=&quot;d-flex align-items-center gap-3 mb-4&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;fb-skeleton rounded-circle&quot; style=&quot;width: 48px; height: 48px; flex: 0 0 48px&quot;&gt;&lt;/span&gt;&lt;div class=&quot;flex-grow-1&quot;&gt;&lt;span class=&quot;fb-skeleton mb-2 w-75&quot;&gt;&lt;/span&gt;&lt;span class=&quot;fb-skeleton w-50&quot;&gt;&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;d-grid gap-3&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;fb-skeleton&quot;&gt;&lt;/span&gt;&lt;span class=&quot;fb-skeleton&quot;&gt;&lt;/span&gt;&lt;span class=&quot;fb-skeleton w-75&quot;&gt;&lt;/span&gt;&lt;span class=&quot;fb-skeleton&quot; style=&quot;height: 100px&quot;&gt;&lt;/span&gt;&lt;/div&gt;&lt;/div&gt;</code></pre>
+    </details>
+</article>
+    <div class="fb-ui-wide">
+        <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Прогресс и индикаторы</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="d-grid gap-4"><div class="d-flex flex-wrap align-items-center gap-3"><span class="spinner-border text-primary" role="status"><span class="visually-hidden">Загрузка…</span></span><span class="spinner-border spinner-border-sm text-secondary" role="status"><span class="visually-hidden">Загрузка…</span></span><span class="spinner-grow text-success" role="status"><span class="visually-hidden">Загрузка…</span></span><span>Загрузка…</span></div><div class="progress" role="progressbar" aria-label="Прогресс и индикаторы" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100"><div class="progress-bar bg-primary" style="width: 60%">60%</div></div><div class="progress" role="progressbar" aria-label="Прогресс и индикаторы" aria-valuenow="80" aria-valuemin="0" aria-valuemax="100"><div class="progress-bar progress-bar-striped progress-bar-animated bg-success" style="width: 80%">80%</div></div></div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-progress">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Прогресс и индикаторы"><code id="ui-code-progress">&lt;div class=&quot;d-grid gap-4&quot;&gt;&lt;div class=&quot;d-flex flex-wrap align-items-center gap-3&quot;&gt;&lt;span class=&quot;spinner-border text-primary&quot; role=&quot;status&quot;&gt;&lt;span class=&quot;visually-hidden&quot;&gt;Загрузка…&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;spinner-border spinner-border-sm text-secondary&quot; role=&quot;status&quot;&gt;&lt;span class=&quot;visually-hidden&quot;&gt;Загрузка…&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;spinner-grow text-success&quot; role=&quot;status&quot;&gt;&lt;span class=&quot;visually-hidden&quot;&gt;Загрузка…&lt;/span&gt;&lt;/span&gt;&lt;span&gt;Загрузка…&lt;/span&gt;&lt;/div&gt;&lt;div class=&quot;progress&quot; role=&quot;progressbar&quot; aria-label=&quot;Прогресс и индикаторы&quot; aria-valuenow=&quot;60&quot; aria-valuemin=&quot;0&quot; aria-valuemax=&quot;100&quot;&gt;&lt;div class=&quot;progress-bar bg-primary&quot; style=&quot;width: 60%&quot;&gt;60%&lt;/div&gt;&lt;/div&gt;&lt;div class=&quot;progress&quot; role=&quot;progressbar&quot; aria-label=&quot;Прогресс и индикаторы&quot; aria-valuenow=&quot;80&quot; aria-valuemin=&quot;0&quot; aria-valuemax=&quot;100&quot;&gt;&lt;div class=&quot;progress-bar progress-bar-striped progress-bar-animated bg-success&quot; style=&quot;width: 80%&quot;&gt;80%&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;</code></pre>
+    </details>
+</article>
+    </div>
+    </div></section>
+    <section class="fb-ui-section" id="ui-icons" data-ui-section data-ui-keywords="ci icons cartzilla иконки"><h2>Иконки</h2><div class="fb-ui-grid">    <div class="fb-ui-wide">
+        <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Иконки</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <div class="fb-ui-icons">
+                            <div class="fb-ui-icon"><i class="ci-home" aria-hidden="true"></i><code>ci-home</code></div>
+                            <div class="fb-ui-icon"><i class="ci-file-text" aria-hidden="true"></i><code>ci-file-text</code></div>
+                            <div class="fb-ui-icon"><i class="ci-folder" aria-hidden="true"></i><code>ci-folder</code></div>
+                            <div class="fb-ui-icon"><i class="ci-grid" aria-hidden="true"></i><code>ci-grid</code></div>
+                            <div class="fb-ui-icon"><i class="ci-layout" aria-hidden="true"></i><code>ci-layout</code></div>
+                            <div class="fb-ui-icon"><i class="ci-user" aria-hidden="true"></i><code>ci-user</code></div>
+                            <div class="fb-ui-icon"><i class="ci-shield" aria-hidden="true"></i><code>ci-shield</code></div>
+                            <div class="fb-ui-icon"><i class="ci-box" aria-hidden="true"></i><code>ci-box</code></div>
+                            <div class="fb-ui-icon"><i class="ci-settings" aria-hidden="true"></i><code>ci-settings</code></div>
+                            <div class="fb-ui-icon"><i class="ci-sliders" aria-hidden="true"></i><code>ci-sliders</code></div>
+                            <div class="fb-ui-icon"><i class="ci-search" aria-hidden="true"></i><code>ci-search</code></div>
+                            <div class="fb-ui-icon"><i class="ci-plus" aria-hidden="true"></i><code>ci-plus</code></div>
+                            <div class="fb-ui-icon"><i class="ci-edit" aria-hidden="true"></i><code>ci-edit</code></div>
+                            <div class="fb-ui-icon"><i class="ci-trash" aria-hidden="true"></i><code>ci-trash</code></div>
+                            <div class="fb-ui-icon"><i class="ci-copy" aria-hidden="true"></i><code>ci-copy</code></div>
+                            <div class="fb-ui-icon"><i class="ci-download" aria-hidden="true"></i><code>ci-download</code></div>
+                            <div class="fb-ui-icon"><i class="ci-upload" aria-hidden="true"></i><code>ci-upload</code></div>
+                            <div class="fb-ui-icon"><i class="ci-bell" aria-hidden="true"></i><code>ci-bell</code></div>
+                            <div class="fb-ui-icon"><i class="ci-inbox" aria-hidden="true"></i><code>ci-inbox</code></div>
+                            <div class="fb-ui-icon"><i class="ci-clock" aria-hidden="true"></i><code>ci-clock</code></div>
+                            <div class="fb-ui-icon"><i class="ci-eye" aria-hidden="true"></i><code>ci-eye</code></div>
+                            <div class="fb-ui-icon"><i class="ci-link" aria-hidden="true"></i><code>ci-link</code></div>
+                            <div class="fb-ui-icon"><i class="ci-check-circle" aria-hidden="true"></i><code>ci-check-circle</code></div>
+                            <div class="fb-ui-icon"><i class="ci-alert-triangle" aria-hidden="true"></i><code>ci-alert-triangle</code></div>
+                            <div class="fb-ui-icon"><i class="ci-info" aria-hidden="true"></i><code>ci-info</code></div>
+                            <div class="fb-ui-icon"><i class="ci-monitor" aria-hidden="true"></i><code>ci-monitor</code></div>
+                            <div class="fb-ui-icon"><i class="ci-smartphone" aria-hidden="true"></i><code>ci-smartphone</code></div>
+                            <div class="fb-ui-icon"><i class="ci-activity" aria-hidden="true"></i><code>ci-activity</code></div>
+                            <div class="fb-ui-icon"><i class="ci-sun" aria-hidden="true"></i><code>ci-sun</code></div>
+                            <div class="fb-ui-icon"><i class="ci-moon" aria-hidden="true"></i><code>ci-moon</code></div>
+                            <div class="fb-ui-icon"><i class="ci-code" aria-hidden="true"></i><code>ci-code</code></div>
+                            <div class="fb-ui-icon"><i class="ci-more-horizontal" aria-hidden="true"></i><code>ci-more-horizontal</code></div>
+                    </div>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-icons">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Иконки"><code id="ui-code-icons">&lt;i class=&quot;ci-settings&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;
+&lt;button type=&quot;button&quot; class=&quot;btn btn-icon btn-outline-secondary&quot; aria-label=&quot;Settings&quot;&gt;&lt;i class=&quot;ci-settings&quot; aria-hidden=&quot;true&quot;&gt;&lt;/i&gt;&lt;/button&gt;</code></pre>
+    </details>
+</article>
+    </div>
+    </div></section>
+    <section class="fb-ui-section" id="ui-reuse" data-ui-section data-ui-keywords="shell partial htmlSC csrf base_href admin-ui css js integration повторное использование"><h2>Использование на новых страницах</h2><div class="fb-ui-grid">    <div class="fb-ui-wide">
+        <article class="fb-card fb-ui-sample" data-ui-sample>
+    <div class="fb-card-header">
+        <div>
+            <h3 class="fb-card-title">Обёртка страницы</h3>
+                    </div>
+    </div>
+    <div class="fb-card-body fb-ui-preview">
+        <p>Общие стили подключаются на всех admin-маршрутах. Используйте shell и готовые partials.</p>
+        <p class="text-body-secondary">Общий внешний вид меняйте в admin-ui.css; поведение оболочки — в admin-ui.js. Стили каталога находятся отдельно.</p>
+        <p class="small mb-0">Пользовательский текст выводите через htmlSC(), ссылки создавайте через base_href(), а в рабочих формах сохраняйте get_csrf_field().</p>    </div>
+    <details class="fb-ui-source">
+        <summary><i class="ci-code" aria-hidden="true"></i> Код компонента</summary>
+        <div class="fb-ui-source-toolbar">
+            <span class="text-body-secondary small">HTML / PHP</span>
+            <button type="button" class="btn btn-sm btn-outline-secondary" data-ui-copy="ui-code-shell">
+                <i class="ci-copy me-1" aria-hidden="true"></i><span>Копировать</span>
+            </button>
+        </div>
+        <pre tabindex="0" aria-label="Обёртка страницы"><code id="ui-code-shell">&lt;?= view()-&gt;renderPartial(&#039;admin/shell_open&#039;, [
+    &#039;title&#039; =&gt; return_translation(&#039;my_page_title&#039;),
+    &#039;subtitle&#039; =&gt; return_translation(&#039;my_page_subtitle&#039;),
+]) ?&gt;
+
+&lt;div class=&quot;fb-card&quot;&gt;
+    &lt;div class=&quot;fb-card-header&quot;&gt;
+        &lt;h2 class=&quot;fb-card-title&quot;&gt;&lt;?= htmlSC($heading) ?&gt;&lt;/h2&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;fb-card-body&quot;&gt;
+        &lt;form method=&quot;post&quot; action=&quot;&lt;?= base_href(&#039;/admin/my-page&#039;) ?&gt;&quot;&gt;
+            &lt;?= get_csrf_field() ?&gt;
+            &lt;!-- Form fields --&gt;
+            &lt;button class=&quot;btn btn-primary&quot; type=&quot;submit&quot;&gt;
+                &lt;?= htmlSC(return_translation(&#039;admin_settings_save&#039;)) ?&gt;
+            &lt;/button&gt;
+        &lt;/form&gt;
+    &lt;/div&gt;
+&lt;/div&gt;
+
+&lt;?= view()-&gt;renderPartial(&#039;admin/shell_close&#039;) ?&gt;</code></pre>
+    </details>
+</article>
+    </div>
+    </div></section></div>
+
+            </div>
+        </main>
+    </div>
+
+    <nav class="fb-mobile-nav d-lg-none" aria-label="Мобильная навигация администратора">
+    <a class="fb-mobile-nav-item" href="/admin">
+        <i class="ci-home" aria-hidden="true"></i>
+        <span>Обзор</span>
+    </a>
+    <button class="fb-mobile-nav-item" type="button" data-bs-toggle="offcanvas" data-bs-target="#adminSidebar" aria-controls="adminSidebar">
+        <i class="ci-file-text" aria-hidden="true"></i>
+        <span>Контент</span>
+    </button>
+    <button class="fb-mobile-nav-item fb-mobile-nav-action" type="button" data-fb-command-open data-fb-command-mode="actions" aria-label="Командная палитра">
+        <i class="ci-plus" aria-hidden="true"></i>
+        <span>Действия</span>
+    </button>
+    <a class="fb-mobile-nav-item" href="/chat">
+        <i class="ci-chat" aria-hidden="true"></i>
+        <span>Сообщения</span>
+    </a>
+    <a class="fb-mobile-nav-item" href="/profile">
+        <i class="ci-user" aria-hidden="true"></i>
+        <span>Профиль</span>
+    </a>
+</nav>
+    
+<div hidden data-fb-command-registry>
+                    <a
+            href="/admin/pages/create"
+            data-fb-command
+            data-fb-command-label="Создать страницу"
+            data-fb-command-category="Действия"
+            data-fb-command-icon="ci-file-plus"
+            data-fb-command-keywords=""
+            data-fb-command-kind="action"
+        ></a>
+                    <a
+            href="/admin/posts/create"
+            data-fb-command
+            data-fb-command-label="Добавить запись"
+            data-fb-command-category="Действия"
+            data-fb-command-icon="ci-edit-3"
+            data-fb-command-keywords=""
+            data-fb-command-kind="action"
+        ></a>
+                    <a
+            href="/admin/files"
+            data-fb-command
+            data-fb-command-label="Загрузить медиафайл"
+            data-fb-command-category="Действия"
+            data-fb-command-icon="ci-image"
+            data-fb-command-keywords=""
+            data-fb-command-kind="action"
+        ></a>
+                            <a
+            href="/admin/plugins"
+            data-fb-command
+            data-fb-command-label="Управлять плагинами"
+            data-fb-command-category="Действия"
+            data-fb-command-icon="ci-box"
+            data-fb-command-keywords=""
+            data-fb-command-kind="action"
+        ></a>
+                    <a
+            href="/admin/themes"
+            data-fb-command
+            data-fb-command-label="Настроить тему"
+            data-fb-command-category="Действия"
+            data-fb-command-icon="ci-monitor"
+            data-fb-command-keywords=""
+            data-fb-command-kind="action"
+        ></a>
+    </div>
+
+<div
+    class="fb-command-palette"
+    data-fb-command-palette
+    data-empty-label="Ничего не найдено. Попробуйте изменить запрос."
+    data-navigation-label="Навигация"
+    data-actions-label="Действия"
+    data-site-label="Сайт"
+    data-site-all-label="Показать все результаты на сайте"
+    data-site-suggest-url="/search/suggest"
+    data-site-search-url="/search"
+    hidden
+    aria-hidden="true"
+>
+    <div class="fb-command-backdrop" data-fb-command-close></div>
+    <section
+        class="fb-command-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="fbCommandTitle"
+    >
+        <h2 class="visually-hidden" id="fbCommandTitle">Командная палитра</h2>
+        <div class="fb-command-search">
+            <i class="ci-search" aria-hidden="true"></i>
+            <input
+                type="search"
+                autocomplete="off"
+                placeholder="Найдите раздел, действие или материал сайта…"
+                aria-label="Найдите раздел, действие или материал сайта…"
+                data-fb-command-input
+            >
+            <kbd aria-hidden="true">Esc</kbd>
+            <button
+                class="fb-command-close"
+                type="button"
+                data-fb-command-close
+                aria-label="Закрыть"
+                title="Закрыть"
+            >
+                <i class="ci-close" aria-hidden="true"></i>
+            </button>
+        </div>
+        <div class="fb-command-results" data-fb-command-results role="listbox"></div>
+        <footer class="fb-command-footer">
+            <span><kbd>↑</kbd><kbd>↓</kbd> выбор</span>
+            <span><kbd>↵</kbd> открыть</span>
+            <span><kbd>Esc</kbd> Закрыть</span>
+        </footer>
+    </section>
+</div>
+    <div class="fb-modal-root" data-fb-modal-root></div>
+</div>
+<script src="/assets/default/js/jquery-3.7.1.min.js"></script><script src="/assets/default/js/../vendor/choices.js/choices.min.js"></script><script src="/assets/default/js/../vendor/simplebar/simplebar.min.js"></script><script src="/assets/default/js/bootstrap-guard.js"></script><script src="/assets/default/js/theme.min.js"></script><script src="/assets/default/js/password-field.js"></script><script src="/assets/default/js/select-init.js"></script><script src="/assets/default/js/datatable.js"></script><script src="/assets/default/js/main.js"></script><script src="/assets/default/js/admin-ui.js"></script><script src="/assets/default/js/admin-ui-kit.js"></script></body></html>
