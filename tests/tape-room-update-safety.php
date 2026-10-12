@@ -140,10 +140,10 @@ namespace {
     $copy($source, $installed);
     $metadata = json_decode((string)file_get_contents($installed . '/plugin.json'), true, 512, JSON_THROW_ON_ERROR);
     $releaseMetadata = $metadata;
-    $assert($releaseMetadata['version'] === '1.4.0', 'Source plugin is the actual 1.4.0 release under review');
+    $assert($releaseMetadata['version'] === '1.5.0', 'Source plugin is the actual 1.5.0 release under review');
     $metadata['version'] = '1.2.14';
     file_put_contents($installed . '/plugin.json', json_encode($metadata, JSON_THROW_ON_ERROR));
-    foreach (['004_chapters.sql','005_catalog.sql','006_catalog_listening_credits.sql'] as $migration) unlink($installed . '/migrations/' . $migration);
+    foreach (['004_chapters.sql','005_catalog.sql','006_catalog_listening_credits.sql','007_artist_profiles.sql'] as $migration) unlink($installed . '/migrations/' . $migration);
     file_put_contents($installed . '/obsolete-update-fixture.txt', 'Must disappear when the plugin is replaced.');
     $manager = new \FBL\Plugins\PluginManager(PLUGINS);
     $manager->install('reel-player');
@@ -166,7 +166,7 @@ namespace {
         '1/' . str_repeat('b', 40) . '.jpg' => 'fixture-cover-not-an-image',
     ];
     foreach ($protected as $relative => $bytes) { file_put_contents($private . '/' . $relative, $bytes); chmod($private . '/' . $relative, 0600); }
-    $checkFiles = static function (string $phase) use ($assert, $protected, $private): void {
+    $checkFiles = static function (string $phase) use ($assert, &$protected, $private): void {
         foreach ($protected as $relative => $bytes) {
             $assert(is_file($private . '/' . $relative) && hash_file('sha256', $private . '/' . $relative) === hash('sha256', $bytes), $phase . ': private bytes survive: ' . $relative);
             $assert((fileperms($private . '/' . $relative) & 0777) === 0600, $phase . ': private permissions survive');
@@ -203,6 +203,7 @@ namespace {
             // The pre-catalog releases must contain only their historical
             // migrations, even though the code fixture comes from this tree.
             if (version_compare($version,'1.4.0','<') && in_array($relative,['migrations/005_catalog.sql','migrations/006_catalog_listening_credits.sql'],true)) continue;
+            if (version_compare($version,'1.5.0','<') && $relative==='migrations/007_artist_profiles.sql') continue;
             $name = 'fixture-repository/plugins/reel-player/' . $relative;
             if ($relative === 'plugin.json') $zip->addFromString($name, $json); else $zip->addFile($file->getPathname(), $name);
         }
@@ -247,7 +248,7 @@ namespace {
     $assert((int)db()->query('SELECT COUNT(*) FROM plugin_migrations WHERE plugin_slug=?', ['reel-player'])->getColumn() === 4, 'Existing migrations do not run again');
     $checkFiles('Second update');
 
-    $makeRemote($releaseMetadata['version']);
+    $makeRemote('1.4.0');
     $result = $updater->update('reel-player', ['id' => 1, 'name' => 'Fixture creator']);
     $assert($result['status'] === 'success' && $result['version'] === '1.4.0', 'Real updater installs the actual catalog release from the 1.3.1 fixture');
     $assert($snapshot() === $before, 'Catalog migration preserves original local/Drive IDs, metadata, favorites and playlists exactly');
@@ -258,6 +259,7 @@ namespace {
         $assert((int)db()->query('SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?',[$table])->getColumn() === 1, 'Catalog migration creates '.$table);
         $assert((int)db()->query('SELECT COUNT(*) FROM '.$table)->getColumn() === 0, 'Catalog migration does not create or publish data automatically: '.$table);
     }
+    $assert((int)db()->query("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='reel_artist_profiles'")->getColumn() === 0, 'Historical catalog release does not include the future artist migration');
     $assert((int)db()->query("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='reel_listening_sessions' AND COLUMN_NAME='credited'")->getColumn() === 1, 'Listening-credit migration adds the processed/credited distinction');
     $assert(db()->query('SELECT status FROM plugins WHERE slug=?', ['reel-player'])->getColumn() === 'active', 'Catalog release preserves activation state');
     $assert($manager->setting('reel-player', 'preserved-fixture-setting') === ['value' => 'preserved'], 'Catalog release preserves existing plugin settings');
@@ -289,23 +291,51 @@ namespace {
         db()->query('SELECT * FROM reel_track_stats ORDER BY track_id')->get(),
         db()->query('SELECT * FROM reel_listening_sessions ORDER BY token_hash')->get(),
     ];
+    $beforeArtistUpgrade = $catalogSnapshot();
+
+    // Apply the actual current release after albums, shared references, private
+    // tracks and Google credentials already exist on the 1.4.0 fixture.
+    $makeRemote($releaseMetadata['version']);
+    $result = $updater->update('reel-player', ['id' => 1, 'name' => 'Fixture creator']);
+    $assert($result['status'] === 'success' && $result['version'] === '1.5.0', 'Real updater installs the actual artist/image release from a populated catalog');
+    $assert($snapshot() === $before && db()->query('SELECT * FROM reel_chapters ORDER BY id')->get() === $chapterSnapshot, 'Artist migration preserves original songs, playlists and chapter rows exactly');
+    $assert($catalogSnapshot() === $beforeArtistUpgrade, 'Artist upgrade preserves published albums, canonical membership, saves, viewer favorites and listening credits exactly');
+    $assert((int)db()->query('SELECT COUNT(*) FROM plugin_migrations WHERE plugin_slug=?', ['reel-player'])->getColumn() === 7, 'Artist migration 007 is journaled once after the historical six migrations');
+    $assert((int)db()->query("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='reel_artist_profiles'")->getColumn() === 1, 'Current release creates an independent artist profile table');
+    $assert((int)db()->query('SELECT COUNT(*) FROM reel_artist_profiles')->getColumn() === 0, 'Artist migration never fabricates photographs from existing album covers');
+    $assert($manager->setting('reel-player', 'preserved-fixture-setting') === ['value' => 'preserved'], 'Artist upgrade preserves existing plugin settings');
+    $assert($drive->status()['configured'] && $drive->status()['connected'], 'Artist upgrade keeps the existing Google account configured and connected');
+    $assert(!is_file(STORAGE . '/update.maintenance') && (glob(STORAGE . '/plugin-updates/work/*') ?: []) === [], 'Artist release completes maintenance and removes only its own extraction workspace');
+    $checkFiles('Artist release update');
+
+    // Multipart photo creation/replacement is exercised separately by the HTTP
+    // artist suite; here seed an existing durable photo for rollback integrity.
+    $portrait = '1/' . str_repeat('c',40) . '.png';
+    $protected[$portrait] = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO/a7v0AAAAASUVORK5CYII=',true);
+    file_put_contents($private.'/'.$portrait,$protected[$portrait]); chmod($private.'/'.$portrait,0600);
+    db()->query('INSERT INTO reel_artist_profiles(name_key,name,owner_id,image_path,image_mime,created_at,updated_at) VALUES(?,?,?,?,?,?,?)', [hash('sha256','fixture artist'),'Fixture artist',1,$portrait,'image/png',date('Y-m-d H:i:s'),date('Y-m-d H:i:s')]);
+    $artist = (int)db()->getInsertId();
+    $profilesBeforeFailure = db()->query('SELECT * FROM reel_artist_profiles ORDER BY id')->get();
+    $assert($viewerCatalog->state()['artistProfiles'][0]['id'] === $artist && $viewerCatalog->artistCover($artist)['path'] === $portrait, 'Updated repository can reopen an independent artist photo against the same shared album links');
+    $assert($snapshot() === $before && $catalogSnapshot() === $beforeArtistUpgrade, 'An independent artist image does not rename or alter existing musical relations');
     $beforeFailedCatalog = $catalogSnapshot();
 
-    $makeRemote('1.4.1', true);
+    $makeRemote('1.5.1', true);
     $failed = false;
     try { $updater->update('reel-player', ['id' => 1, 'name' => 'Fixture creator']); }
     catch (RuntimeException $error) { $failed = true; }
     $assert($failed, 'Invalid new migration rejects the update');
-    $assert($manager->metadata('reel-player')['version'] === '1.4.0', 'Failed update restores the preceding catalog plugin directory');
+    $assert($manager->metadata('reel-player')['version'] === '1.5.0', 'Failed update restores the preceding artist/image plugin directory');
     $assert($snapshot() === $before && db()->query('SELECT * FROM reel_chapters ORDER BY id')->get() === $chapterSnapshot, 'Rejected migration preserves all library and chapter data');
     $assert($catalogSnapshot() === $beforeFailedCatalog, 'Rejected later migration preserves album IDs, order, saves, per-viewer favorites, stats and credited listening tokens exactly');
-    $assert((int)db()->query('SELECT COUNT(*) FROM plugin_migrations WHERE plugin_slug=?', ['reel-player'])->getColumn() === 6, 'Failed later migration does not reapply or erase the catalog migration ledger');
+    $assert(db()->query('SELECT * FROM reel_artist_profiles ORDER BY id')->get() === $profilesBeforeFailure, 'Rejected later migration preserves artist profile IDs, canonical name keys and photo references exactly');
+    $assert((int)db()->query('SELECT COUNT(*) FROM plugin_migrations WHERE plugin_slug=?', ['reel-player'])->getColumn() === 7, 'Failed later migration does not reapply or erase the artist migration ledger');
     $checkFiles('Failed update rollback');
     $assert(is_file(STORAGE . '/update.maintenance'), 'A migration failure retains recovery maintenance instead of exposing a partially migrated site');
     $assert((glob(PLUGINS . '/.reel-player.*') ?: []) === [], 'Successful replacement and rollback clean their own staging directories');
-    $assert(count($GLOBALS['tapeUpdateHttpCalls']) === 16, 'Four update attempts use only the four expected fixture transfers each');
+    $assert(count($GLOBALS['tapeUpdateHttpCalls']) === 20, 'Five update attempts use only the four expected fixture transfers each');
 
-    $artifact = __DIR__ . '/artifacts/tape-room-1.4.0';
+    $artifact = __DIR__ . '/artifacts/tape-room-1.5.0';
     if (!is_dir($artifact)) mkdir($artifact, 0700, true);
     $report = [
         'result' => 'passed', 'checks' => $checks, 'php' => PHP_VERSION,
@@ -314,8 +344,8 @@ namespace {
         'http_fixture_transfers' => count($GLOBALS['tapeUpdateHttpCalls']),
         'migration_ledger' => (int)db()->query('SELECT COUNT(*) FROM plugin_migrations WHERE plugin_slug=?',['reel-player'])->getColumn(),
         'catalog_tables' => $catalogTables,
-        'scenarios' => ['1.2.14 fixture to 1.3.0 with automatic chapter migration', '1.3.0 to synthetic fixture 1.3.1 with existing chapters', '1.3.1 fixture to actual 1.4.0 with six empty catalog tables and listening credits', 'Explicit album create/publication/save and actual elapsed listening after update', 'Rejected synthetic 1.4.1 migration with 1.4.0 file rollback and unchanged catalog rows'],
-        'preserved' => ['OAuth app settings and per-owner tokens: byte equality and 0600 permissions', 'Local audio and cover bytes', 'Local and Google Drive DB tracks, favorites, playlists, order', 'Chapter IDs, associations and timestamps', 'Catalog album IDs, track order, user saves/favorites, counts and credited tokens', 'Plugin settings and active status'],
+        'scenarios' => ['1.2.14 fixture to 1.3.0 with automatic chapter migration', '1.3.0 to synthetic fixture 1.3.1 with existing chapters', '1.3.1 fixture to historical 1.4.0 with six empty catalog tables and listening credits', 'Explicit album create/publication/save and actual elapsed listening after update', 'Populated 1.4.0 fixture to actual 1.5.0 with independent empty artist profiles', 'Existing artist photo reopening and name/link preservation', 'Rejected synthetic 1.5.1 migration with 1.5.0 file rollback and unchanged catalog/artist rows'],
+        'preserved' => ['OAuth app settings and per-owner tokens: byte equality and 0600 permissions', 'Local audio, album/song artwork and independent artist photo bytes', 'Local and Google Drive DB tracks, favorites, playlists, order', 'Chapter IDs, associations and timestamps', 'Catalog album IDs, track order, user saves/favorites, counts and credited tokens', 'Artist profile IDs, canonical names and independent photo references', 'Plugin settings and active status'],
         'limitations' => ['Synthetic OAuth and audio bytes; no actual Google authentication or audio decoder playback', 'GitHub network transport mocked; live hosting and external API behavior not exercised', 'Failed migration fixture makes no preceding schema changes; this is not a test of database rollback after arbitrary DDL'],
     ];
     file_put_contents($artifact . '/update-safety.json', json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . "\n");
