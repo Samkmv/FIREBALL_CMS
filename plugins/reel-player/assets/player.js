@@ -111,11 +111,13 @@
         const options = $('[data-sort-options]'), restoreFocus = options.contains(document.activeElement);
         options.hidden = true;
         $('[data-sort-trigger]').setAttribute('aria-expanded', 'false');
+        setIcon($('[data-sort-trigger]'),'down');
         if (restoreFocus) $('[data-sort-trigger]').focus();
     }
     function openSort() {
         $('[data-sort-options]').hidden = false;
         $('[data-sort-trigger]').setAttribute('aria-expanded', 'true');
+        setIcon($('[data-sort-trigger]'),'up');
         $('[data-sort-options] [aria-selected="true"]')?.focus();
     }
     function renderSort() {
@@ -679,7 +681,7 @@
         }
         panel.hidden = !items.length;
         panel.querySelector('.rp-chapter-tools').hidden = Boolean(t?.shared);
-        $('[data-chapter-source]').textContent = t?.filename || t?.title || '';
+        $('[data-chapter-source]').textContent = t ? [t.artist,t.title].filter(Boolean).join(' — ') : '';
         const query = $('[data-chapter-search]').value.trim().toLocaleLowerCase();
         const visible = items.map((item,index) => ({item,index})).filter(({item}) => `${item.title} ${item.artist || ''}`.toLocaleLowerCase().includes(query));
         $('[data-chapter-list]').innerHTML = visible.map(({item,index}) => `<article class="rp-chapter-row" data-chapter-row="${item.id}"><button type="button" class="rp-chapter-play" data-action="chapter-play" data-id="${item.id}" aria-label="Воспроизвести ${esc(item.title)} с ${chapters.formatTime(item.start)}"><span class="rp-chapter-number">${index+1}</span><span class="rp-chapter-info"><span class="rp-chapter-title">${esc(item.title)}</span>${item.artist ? `<span class="rp-chapter-artist">${esc(item.artist)}</span>` : ''}</span><span class="rp-chapter-start">${chapters.formatTime(item.start)}</span></button>${t?.shared ? '' : `<div class="rp-chapter-actions">${button('chapter-edit','Изменить таймкод','edit',item.id)}${button('chapter-delete','Удалить таймкод','trash',item.id)}</div>`}</article>`).join('');

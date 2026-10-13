@@ -168,7 +168,7 @@ $button = static function (string $action, string $label, string $name, string $
         <div class="rp-chapter-toolbar">
             <div class="rp-chapter-heading">
                 <h2 id="rp-chapter-heading">Список треков</h2>
-                <p class="rp-chapter-source"><span class="rp-sr-only">Исходный аудиофайл: </span><span data-chapter-source></span></p>
+                <p class="rp-chapter-source"><span class="rp-sr-only">Запись: </span><span data-chapter-source></span></p>
             </div>
             <div class="rp-chapter-tools">
                 <button type="button" class="rp-upload-button" data-action="chapter-add"><?= $icon('plus') ?><span>Добавить таймкод</span></button>

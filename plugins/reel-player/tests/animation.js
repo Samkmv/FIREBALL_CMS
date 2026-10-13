@@ -34,6 +34,9 @@ function harness(mode = 'fallback') {
     const meterEnvelope=new TapeRoomMeterEnvelope();
     const context=vm.createContext({audio,visuals,transport,meterEnvelope,window:{TapeRoomTransport,TapeRoomMeterEnvelope},generation:1,positionKey:'',packRadii:[174,78],meterLevels:[0,0],meterSignal:{generation:1,values:[0,0],rms:[0,0],sampled:[-Infinity,-Infinity],drawn:0},meterReport:{samples:[],time:-Infinity,status:null},meterController:{sample(){},readFailure(){},canSample(){return true;},snapshot(){return {phase:'test'};},buffering(){},seek(){},nativeFailure(){}},performance:{now:()=>now},progressFrame:-Infinity,meterFrame:-Infinity,tapeFrame:-Infinity,frameId:0,frameTime:0,frameInProgress:false,angles:[0,0],loading:false,bufferVisible:false,bufferTimer:undefined,seekActive:false,current:1,lastSave:0,activeTrack:()=>({duration:audio.duration,source:'local'}),graph:{context:{state:'running'},samples:new Float32Array(2048),analysers:[0,1].map(()=>({getFloatTimeDomainData(array){counts.samples++;array.fill(.15);}}))},navigator:{mediaSession:{setPositionState(){counts.positions++;}}},document:{hidden:false},reducedMotion:{matches:false},syncChapter(){},playbackPosition:()=>audio.currentTime,formatTime:value=>String(Math.floor(value)),rangeFill(){counts.fills++;},requestAnimationFrame(callback){counts.scheduled++;const id=++sequence;frames.set(id,callback);return id;},cancelAnimationFrame:id=>frames.delete(id),setTimeout:()=>1,clearTimeout(){},updateButtons(){},prepareUpcoming(){},resumeMeters(){},preloader:{cancel(){counts.cancelledPreloads++;}},save(){},next(){},syncMirror(){},toast(){},stopMeters(){context.drawMeters(false);}});
     context.drawAudioQuality=()=>{};
+    context.sampleListening=()=>{};
+    context.startListening=()=>{};
+    context.listening=null;
     vm.runInContext(progress+animation+events,context);
     // Production initializes the display with a paused draw while loading.
     context.drawMeters(false);
