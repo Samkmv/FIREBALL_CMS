@@ -72,6 +72,9 @@ class View
 
     protected function injectCmsComponents(string $html): string
     {
+        if (function_exists('apply_filters_safe')) {
+            $html = (string)apply_filters_safe('cms_rendered_html', $html, ['surface' => 'view']);
+        }
         $components = renderAnalyticsTracker() . renderCookieConsent();
         if ($components === '') {
             return $html;

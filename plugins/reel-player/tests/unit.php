@@ -170,7 +170,9 @@ foreach (['player.css','preload.js','meters.js','chapters.js','player.js','trans
 $assert(preg_match('~^'.$assetPattern.'$~','/plugins/reel-player/assets/../src/Services/GoogleDrive.php')===0,'Asset route cannot expose private PHP');
 
 $privateRoutes = array_values(array_filter($router->routes, static fn(array $route): bool => str_starts_with($route['path'],'/admin/reel-player')));
-$assert(count($privateRoutes) === 20, 'Player, API, quality, chapters, preparation, media, artist images, covers and Google callback are registered');
+$legacyPrivateRoutes = array_values(array_filter($privateRoutes, static fn(array $route): bool => !str_starts_with($route['path'],'/admin/reel-player/platform') && !str_starts_with($route['path'],'/admin/reel-player/api/discovery/')));
+$assert(count($legacyPrivateRoutes) === 20, 'Existing player, media, chapters and Google routes remain registered');
+$assert(count($privateRoutes) === 25, 'Platform and discovery management add five guarded routes');
 foreach ($privateRoutes as $route) $assert($route['guard'] === ['auth','admin'],'Authenticated admin guard: ' . $route['path']);
 (new FireballPluginReelPlayer())->boot();
 foreach (['creator'=>true,'admin'=>true,'moderator'=>false,'user'=>false,'unknown'=>false,'guest'=>false] as $role=>$allowed) {

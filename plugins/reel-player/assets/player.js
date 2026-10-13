@@ -20,6 +20,11 @@
     let data = config.state, saved = {};
     try { saved = JSON.parse(localStorage.getItem(config.storageKey) || '{}'); } catch (_) {}
     if (!saved || typeof saved !== 'object' || Array.isArray(saved)) saved = {};
+    const commonSaved = window.TapeRoomPlaybackCore?.readShared(config);
+    if (commonSaved && commonSaved.savedAt>Number(saved.savedAt || 0) && config.preferences?.remember_queue!==false) {
+        const available=new Set(window.TapeRoomCollections.tracks(data).map(track=>Number(track.id)));
+        if(available.has(commonSaved.current)) saved={...saved,current:commonSaved.current,queue:commonSaved.queue.map(track=>track.id).filter(id=>available.has(id)),queueSource:commonSaved.queueSource || {type:'songs'},queueName:commonSaved.queueName || 'Очередь',time:config.preferences?.restore_position===false?0:commonSaved.position,volume:commonSaved.volume,muted:commonSaved.muted,shuffle:commonSaved.shuffle,repeat:commonSaved.repeat,manualQueue:true,savedAt:commonSaved.savedAt};
+    }
     let audibleVolume = Number(saved.audibleVolume) > 0 ? Math.min(1, Number(saved.audibleVolume)) : Number(saved.volume) > 0 ? Math.min(1, Number(saved.volume)) : .8;
     let selected = Number(saved.playlist) || 0;
     let current = 0, queue = [], queueName = '', queuePlaylist = Number(saved.queuePlaylist) || 0, repeat = ['off', 'all', 'one'].includes(saved.repeat) ? saved.repeat : 'off';
@@ -31,6 +36,7 @@
     let queueSource = collections.descriptor(saved.queueSource, {type:queuePlaylist === -1 ? 'favorites' : queuePlaylist > 0 ? 'playlist' : 'songs', ...(queuePlaylist > 0 ? {id:queuePlaylist} : {})});
     let trackPool = collections.tracks(data), trackMap = new Map(trackPool.map(t => [t.id,t]));
     let shuffle = Boolean(saved.shuffle), bag = [], history = [], seekActive = false, restoreTime = 0;
+    let queueSnapshot = saved.manualQueue && Array.isArray(saved.queue) ? [...saved.queue] : null;
     let toastTimer, frameId = 0, frameTime = 0, frameInProgress = false, angles = [0, 0], graph, uploading = false, dialogHandler, dialogSubmitting = false;
     let dialogScroll = null;
     let listening = null;
@@ -44,6 +50,8 @@
     let mutationQueue = Promise.resolve();
     let dialogRequest = 0;
     let futureBag = [], shuffleCycleStarted = false;
+    let playbackCore = null, appearance = null, compact = null, reelVisible = true;
+    const ownsMediaSession = () => !playbackCore || !window.FireballMediaSession || window.FireballMediaSession.owns(playbackCore.owner);
     const preloader = new window.TapeRoomPreloader({url:`${config.api}/prepare`,csrf:config.csrf});
     const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
     const formatTime = value => {
@@ -105,7 +113,8 @@
         clearTimeout(toastTimer); toastTimer = setTimeout(() => { node.hidden = true; }, error ? 7000 : 3500);
     }
     function save() {
-        try { localStorage.setItem(config.storageKey, JSON.stringify({playlist:selected, libraryView, queueSource, current, queue, queueName, queuePlaylist, queueSort, librarySort, playlistSort, time:playbackPosition(), volume:audio.volume, audibleVolume, muted:audio.muted, shuffle, repeat})); } catch (_) {}
+        const preferences = appearance?.get();
+        try { localStorage.setItem(config.storageKey, JSON.stringify({playlist:selected, libraryView, ...(preferences?.remember_queue === false ? {} : {queueSource,current,queue,queueName,queuePlaylist,queueSort,manualQueue:Boolean(queueSnapshot)}), savedAt:Date.now(), librarySort, playlistSort, time:preferences?.restore_position === false || preferences?.remember_queue === false ? 0 : playbackPosition(), volume:audio.volume, audibleVolume, muted:audio.muted, shuffle, repeat})); } catch (_) {}
     }
     function closeSort() {
         const options = $('[data-sort-options]'), restoreFocus = options.contains(document.activeElement);
@@ -138,8 +147,8 @@
         if (selected > 0 && !playlist(selected)) selected = 0;
         if ((libraryView.type === 'album' && !album(libraryView.id)) || (libraryView.type === 'playlist' && !playlist(libraryView.id))) libraryView = {type:'mine'};
         if ((queueSource.type === 'album' && !album(queueSource.id)) || (queueSource.type === 'playlist' && !playlist(queueSource.id))) { queueSource = {type:'songs'}; queuePlaylist = 0; queueSort = librarySort; }
-        queue = collections.collection(data,queueSource,queueSort).map(t => t.id);
-        queueName = collections.name(data,queueSource);
+        queue = queueSnapshot ? queueSnapshot.filter(id=>Boolean(track(id))) : collections.collection(data,queueSource,queueSort).map(t => t.id);
+        if(!queueSnapshot)queueName = collections.name(data,queueSource);
         bag = bag.filter(id => queue.includes(id)); futureBag = futureBag.filter(id => queue.includes(id)); history = history.filter(id => Boolean(track(id)));
         if (current && !activeTrack()) { audio.pause(); audio.removeAttribute('src'); audio.load(); current = 0; updateNow(); }
         const nav = $('[data-playlists]'); nav.replaceChildren();
@@ -231,7 +240,7 @@
         else { $('[data-cover]').removeAttribute('srcset'); $('[data-cover]').removeAttribute('src'); }
         $('[data-cover]').closest('.rp-cover-button').classList.toggle('has-custom-cover',Boolean(customArtwork));
         $('[data-source]').textContent = current ? (queueName || 'Вся музыка') + (t?.source === 'drive' ? ' · GOOGLE DRIVE' : ' · STEREO') : 'ВАША МУЗЫКА. ВАШ РИТМ.';
-        if (t && 'mediaSession' in navigator && 'MediaMetadata' in window) {
+        if (t && ownsMediaSession() && 'mediaSession' in navigator && 'MediaMetadata' in window) {
             const defaultArt = config.defaultCoverVariants?.[theme]?.[640];
             const artwork = customArtwork ? {src:new URL(window.TapeRoomImages.thumbnail(customArtwork,640),location.href).href}
                 : {src:new URL(defaultArt || config.defaultCovers?.[theme] || config.defaultArtwork || config.defaultCover,location.href).href,sizes:defaultArt ? '640x640' : config.defaultArtworkSize || '512x512',type:defaultArt ? 'image/webp' : 'image/png'};
@@ -270,7 +279,8 @@
             const control = row.querySelector('.rp-track-play'); setIcon(control, Number(row.dataset.trackId) === current && playing ? 'pause' : 'play');
             control.setAttribute('aria-label', `${Number(row.dataset.trackId) === current && playing ? 'Приостановить' : 'Воспроизвести'} ${track(row.dataset.trackId)?.title || ''}`);
         }
-        if ('mediaSession' in navigator) navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
+        if (ownsMediaSession() && 'mediaSession' in navigator) navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
+        playbackCore?.publish();
     }
     function setBuffering(active) {
         loading = Boolean(active && current && !audio.paused && !audio.ended);
@@ -316,7 +326,7 @@
         packRadii = radii;
         syncReels(); drawTape();
         const key = `${generation}:${duration}:${Math.floor(position)}:${audio.playbackRate}`;
-        if ((forcePosition || key !== positionKey) && 'mediaSession' in navigator && navigator.mediaSession.setPositionState && duration > 0) {
+        if ((forcePosition || key !== positionKey) && ownsMediaSession() && 'mediaSession' in navigator && navigator.mediaSession.setPositionState && duration > 0) {
             try { navigator.mediaSession.setPositionState({duration, playbackRate:audio.playbackRate, position:Math.min(duration,position)}); } catch (_) {}
             positionKey = key;
         }
@@ -340,7 +350,7 @@
         });
     }
     function syncReels() {
-        const visible = !document.hidden && !reducedMotion.matches;
+        const visible = reelVisible && !document.hidden && !reducedMotion.matches;
         if (visible) transport.setRunning(!audio.paused && !audio.ended && !loading && !audio.error);
         else transport.reset();
         visuals.reels.forEach((reel,i) => {
@@ -372,6 +382,7 @@
         if (notice) notice.hidden = !meterController.needsGesture || audio.paused || audio.ended || document.hidden;
     }});
     function resumeMeters(origin = 'lifecycle', event) {
+        if (!reelVisible) return;
         try { meterController.resume(origin,event); }
         catch (_) { meterController.terminal = true; meterController.state('unavailable','analysis-command-failed'); }
         graph = meterController.engine;
@@ -466,9 +477,9 @@
             visuals.reels.forEach((reel,i) => { if (!reel.motion) { angles[i] = (angles[i] - elapsed * 95 * 126 / packRadii[i] * audio.playbackRate * transport.speed) % 360; reel.rotor.style.transform = `rotate(${angles[i]}deg)`; } });
         }
         frameInProgress = false;
-        if ((playing || transport.moving || meterEnvelope.moving) && !document.hidden) frameId = requestAnimationFrame(animate);
+        if ((playing || transport.moving || meterEnvelope.moving) && reelVisible && !document.hidden) frameId = requestAnimationFrame(animate);
     }
-    function startAnimation() { if (!frameId && !frameInProgress && !document.hidden) { frameTime = 0; progressFrame = meterFrame = tapeFrame = -Infinity; frameId = requestAnimationFrame(animate); } }
+    function startAnimation() { if (reelVisible && !frameId && !frameInProgress && !document.hidden) { frameTime = 0; progressFrame = meterFrame = tapeFrame = -Infinity; frameId = requestAnimationFrame(animate); } }
     async function play(origin = 'automatic', event) {
         if (!current) {
             const first = selectedTracks()[0]; if (!first) return;
@@ -515,7 +526,7 @@
         const allowed = !document.hidden && !audio.paused && !audio.ended && !audio.seeking && !loading && enough && !connection?.saveData && !['slow-2g','2g'].includes(connection?.effectiveType);
         preloader.schedule(upcoming(),allowed);
     }
-    function setQueue(source = selectedSource()) { preloader.reset(); queueSource = collections.descriptor(source); queueSort = selectedSort(); queue = collections.collection(data,queueSource,queueSort).map(t => t.id); queuePlaylist = queueSource.type === 'playlist' ? queueSource.id : queueSource.type === 'favorites' ? -1 : 0; queueName = collections.name(data,queueSource); bag = []; futureBag = []; shuffleCycleStarted = false; history = []; }
+    function setQueue(source = selectedSource()) { queueSnapshot=null;preloader.reset(); queueSource = collections.descriptor(source); queueSort = selectedSort(); queue = collections.collection(data,queueSource,queueSort).map(t => t.id); queuePlaylist = queueSource.type === 'playlist' ? queueSource.id : queueSource.type === 'favorites' ? -1 : 0; queueName = collections.name(data,queueSource); bag = []; futureBag = []; shuffleCycleStarted = false; history = []; }
     function load(id, time = 0) {
         const t = track(id); if (!t) return;
         sampleListening(); listening = null;
@@ -551,6 +562,8 @@
         const id = shuffle && history.length ? history.pop() : queue[(Math.max(0, queue.indexOf(current)) - 1 + queue.length) % queue.length];
         if (id) { futureBag = []; load(id); play(origin,event); }
     }
+    function toggleShuffle() { shuffle = !shuffle; bag = []; futureBag = []; shuffleCycleStarted = false; history = []; preloader.reset(); updateButtons(); prepareUpcoming(); save(); }
+    function cycleRepeat() { repeat = {off:'all',all:'one',one:'off'}[repeat]; preloader.cancel(); futureBag = []; updateButtons(); prepareUpcoming(); save(); }
     function applyState(result) { data = {tracks:result.tracks, playlists:result.playlists,catalog:result.catalog || {albums:[],tracks:[]}}; trackPool = collections.tracks(data); trackMap = new Map(trackPool.map(t=>[t.id,t])); render(); save(); }
     function mutate(operation) {
         // Library snapshots must be applied in commit order. Metadata, uploads
@@ -946,13 +959,14 @@
                 case 'prev': previous('user',event); break;
                 case 'next': next(false,'user',event); break;
                 case 'play-track': setQueue(control.dataset.source === 'popular' ? {type:'popular'} : selectedSource()); if (current === id) { if (audio.paused) await play('user',event); else audio.pause(); } else { load(id); await play('user',event); } break;
-                case 'shuffle': shuffle = !shuffle; bag = []; futureBag = []; shuffleCycleStarted = false; history = []; preloader.reset(); updateButtons(); prepareUpcoming(); save(); break;
-                case 'repeat': repeat = {off:'all',all:'one',one:'off'}[repeat]; preloader.cancel(); futureBag = []; updateButtons(); prepareUpcoming(); save(); break;
+                case 'shuffle': toggleShuffle(); break;
+                case 'repeat': cycleRepeat(); break;
                 case 'mute': toggleMute(); break;
                 case 'meters': if (!audio.paused && !audio.ended) resumeMeters('user',event); break;
                 case 'meter-report': openMeterReport(); break;
                 case 'meter-report-download': downloadMeterReport(); break;
-                case 'theme': theme = theme === 'dark' ? 'light' : 'dark'; applyTheme(); break;
+                case 'theme': theme = theme === 'dark' ? 'light' : 'dark'; applyTheme(); appearance?.set({theme}).catch(error=>toast(error.message,true)); break;
+                case 'appearance': if(dialog.open){dialog.close();unlockDialogScroll();}appearance?.open(app); break;
                 case 'select-playlist': browse(descriptorForPlaylist(id)); break;
                 case 'catalog-view': browse({type:control.dataset.view}); break;
                 case 'catalog-album': browse({type:'album',id}); break;
@@ -1170,7 +1184,7 @@
             else seekTo(playbackPosition() + (event.code === 'ArrowLeft' ? -5 : 5));
         }
     });
-    if ('mediaSession' in navigator) {
+    if ('mediaSession' in navigator && !window.TapeRoomPlaybackCore) {
         // iOS uses the same lock-screen slots for track skipping and timed
         // seeking. Disable timed seek actions so this music player shows tracks.
         const handlers = {
@@ -1181,7 +1195,7 @@
         for (const [name,handler] of Object.entries(handlers)) { try { navigator.mediaSession.setActionHandler(name,handler); } catch (_) {} }
     }
     window.addEventListener('pagehide', () => {
-        save(); cancelQuality(); transport.reset(); visuals.reels.forEach(reel => reel.motion?.pause());
+        save(); playbackCore?.persist(true); cancelQuality(); transport.reset(); visuals.reels.forEach(reel => reel.motion?.pause());
         cancelAnimationFrame(frameId); frameId = 0; frameTime = 0;
     });
     document.addEventListener('visibilitychange', () => {
@@ -1272,7 +1286,7 @@
         const status = await driveDialogStatus(++dialogRequest); if (!status) return;
         config.drive = status.drive;
         if (!status.drive.canManage) { toast('Настройки доступны только создателю сайта.',true); return; }
-        openDialog('Настройки плеера', '<div class="rp-settings-section"><h3>Google Drive</h3><p>Подключение для всего сайта. Каждый администратор входит в собственный Google-аккаунт.</p></div>' + field('client_id','OAuth Client ID',status.drive.clientId,500) + '<label class="rp-field">OAuth Client Secret<input type="password" name="client_secret" autocomplete="off" placeholder="' + (status.drive.configured ? 'Оставьте пустым, чтобы сохранить текущий' : 'Введите секрет клиента') + '"></label>' + driveSetupHelp(status.drive.callback), async form => {
+        openDialog('Настройки плеера', '<div class="rp-settings-section"><h3>Google Drive</h3><p>Подключение для всего сайта. Каждый администратор входит в собственный Google-аккаунт.</p></div>' + field('client_id','OAuth Client ID',status.drive.clientId,500) + '<label class="rp-field">OAuth Client Secret<input type="password" name="client_secret" autocomplete="off" placeholder="' + (status.drive.configured ? 'Оставьте пустым, чтобы сохранить текущий' : 'Введите секрет клиента') + '"></label>' + driveSetupHelp(status.drive.callback) + '<div class="rp-settings-section"><h3>Музыкальная платформа</h3><p><a href="' + esc(config.platformUrl || config.api.replace(/\/api\/?$/, '/platform')) + '">Каталог и права на музыку</a></p><p><button type="button" class="rp-drive-settings-link" data-action="appearance">Внешний вид плеера</button></p></div>', async form => {
             const result = await action('drive.settings',{client_id:form.get('client_id'),client_secret:form.get('client_secret')}); config.drive = result.drive;
             toast('Настройки сайта сохранены. Теперь можно войти в Google Drive.');
         }, 'Эти настройки доступны только создателю сайта и сохраняются один раз для всех пользователей.');
@@ -1354,6 +1368,29 @@
         const image=new Image();image.decoding='async';image.fetchPriority='low';
         window.TapeRoomImages.apply(image,'',config,value,'artist');image.decode?.().catch(()=>{});return image;
     });
+    if (typeof window.TapeRoomPlaybackCore === 'function') {
+        playbackCore = new window.TapeRoomPlaybackCore({audio,config,adapter:{
+            snapshot:()=>({track:activeTrack()?{...activeTrack(),cover:activeTrack().cover || (queueSource.type==='album'?album(queueSource.id)?.cover:'') || '',album:queueName || 'Tape Room'}:null,queue:queue.map(track).filter(Boolean),queueSource,queueName,current,position:playbackPosition(),duration:Number.isFinite(audio.duration)?audio.duration:activeTrack()?.duration || 0,playing:!audio.paused && !audio.ended,buffering:loading,volume:audio.volume,muted:audio.muted,shuffle,repeat,error:audio.error?'Запись недоступна.':'',generation,chapterIndex:chapters.indexAt(currentChapters(),playbackPosition()),chapter:currentChapters()[chapters.indexAt(currentChapters(),playbackPosition())] || null}),
+            play,pause:()=>audio.pause(),load,next,previous,seek:seekTo,mute:toggleMute,shuffle:toggleShuffle,repeat:cycleRepeat,
+            volume:value=>{audio.volume=Math.max(0,Math.min(1,Number(value) || 0));if(audio.volume>0)audibleVolume=audio.volume;audio.muted=audio.volume===0;syncVolume();save();}
+        }});
+        if (typeof window.TapeRoomPreferences === 'function') {
+            const compactEnabled=Boolean(config.features?.compact || config.flags?.compact_player);
+            appearance = new window.TapeRoomPreferences({config:{...config,preferences:config.preferences || {theme}},host:app,onTheme:value=>{if(theme!==value){theme=value;applyTheme();}playbackCore.publish();},onDisplay:preferences=>{
+                const mode=compactEnabled?preferences.display_mode:'reel';
+                reelVisible=mode!=='compact';
+                const reel=app.querySelector('[data-tape-room-reel]') || app.querySelector('.rp-machine');if(reel)reel.hidden=!reelVisible;
+                compact?.show(compactEnabled && mode==='compact');
+                if(!reelVisible){cancelAnimationFrame(frameId);frameId=0;frameTime=0;transport.reset();syncReels();stopMeters('hidden');}
+                else{drawProgress();if(!audio.paused){resumeMeters();startAnimation();}}
+                save();
+            }});
+            playbackCore.setPreferences(appearance);
+            if (compactEnabled && typeof window.TapeRoomCompact === 'function') compact=new window.TapeRoomCompact({core:playbackCore,host:app,config,openReel:()=>{appearance.set({display_mode:'reel'}).catch(error=>toast(error.message,true));app.querySelector('.rp-machine')?.scrollIntoView({block:'start',behavior:reducedMotion.matches?'instant':'smooth'});}});
+            const preferences=appearance.get();if(!preferences.remember_queue){delete saved.current;delete saved.queue;delete saved.time;queueSnapshot=null;}else if(!preferences.restore_position)delete saved.time;
+            appearance.apply();appearance.load();
+        }
+    }
     audio.volume = Number.isFinite(Number(saved.volume)) ? Math.max(0,Math.min(1,Number(saved.volume))) : .8;
     audio.muted = Boolean(saved.muted); syncVolume();
     $('[data-upload-limit]').textContent = `${(config.maxUpload / 1048576).toFixed(0)} МБ`;

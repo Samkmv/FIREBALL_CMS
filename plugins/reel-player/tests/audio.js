@@ -102,15 +102,17 @@ function setup({capture=false,contextState='running',resumeHang=false}={}){
     const playback=source.slice(source.indexOf('    async function play('),source.indexOf('    function shuffled('));
     const wrapper=source.slice(source.indexOf('    function resumeMeters('),source.indexOf('    function stopMeters('));
     let nativePlays=0,analysisErrors=0;
-    const isolated=vm.createContext({current:1,generation:1,audio:{paused:true,ended:false,error:null,play(){nativePlays++;this.paused=false;return Promise.resolve();}},meterController:{engine:null,resume(){throw new Error('analysis fault');},state(phase){assert.equal(phase,'unavailable');analysisErrors++;}},configureAudioSession(){},toast(){throw new Error('Analysis must not be misreported as native audio failure');},graph:null});
+    const isolated=vm.createContext({reelVisible:true,current:1,generation:1,audio:{paused:true,ended:false,error:null,play(){nativePlays++;this.paused=false;return Promise.resolve();}},meterController:{engine:null,resume(){throw new Error('analysis fault');},state(phase){assert.equal(phase,'unavailable');analysisErrors++;}},configureAudioSession(){},toast(){throw new Error('Analysis must not be misreported as native audio failure');},graph:null});
     vm.runInContext(wrapper+playback,isolated);await isolated.play('user',{isTrusted:true,type:'click'});assert.equal(nativePlays,1);assert.equal(isolated.audio.paused,false);assert.equal(analysisErrors,1,'Analysis command exceptions do not reject native play');
     const controlsEnd=source.indexOf("    window.addEventListener('pagehide',");
-    assert.ok(controlsEnd>source.indexOf("    if ('mediaSession' in navigator) {"),'Media Session harness must end before visual page lifecycle');
-    const controls=source.slice(source.indexOf("    if ('mediaSession' in navigator) {"),controlsEnd);
+    const controlsStart=source.indexOf("    if ('mediaSession' in navigator && !window.TapeRoomPlaybackCore) {");
+    assert.ok(controlsStart>=0 && controlsEnd>controlsStart,'Media Session harness must end before visual page lifecycle');
+    const controls=source.slice(controlsStart,controlsEnd);
     const navigation=source.slice(source.indexOf('    function next(automatic = false,'),source.indexOf('    function applyState(result)'));
     const seekCode=source.slice(source.indexOf('    function seekTo('),source.indexOf('    function jumpChapter('));
     const actions=new Map(); const audio={duration:200,currentTime:75,paused:false,pause(){this.paused=true;}};
     const context=vm.createContext({audio,current:2,queue:[1,2,3],repeat:'off',shuffle:false,bag:[],futureBag:[],history:[],playOrigins:[],navigator:{mediaSession:{setActionHandler(name,handler){actions.set(name,handler);}}},drawProgress(){},save(){},seekChapter(){return false;}});
+    context.window={};
     vm.runInContext('function load(id){current=id;audio.currentTime=0;} function play(origin){playOrigins.push(origin);audio.paused=false;}',context);
     vm.runInContext(navigation+seekCode+controls,context);
     assert.equal(actions.get('seekbackward'),null); assert.equal(actions.get('seekforward'),null);
@@ -118,6 +120,7 @@ function setup({capture=false,contextState='running',resumeHang=false}={}){
     actions.get('previoustrack')(); assert.equal(context.current,2);
     actions.get('seekto')({seekTime:150}); assert.equal(audio.currentTime,150);
     actions.get('pause')(); assert.equal(audio.paused,true); actions.get('play')(); assert.equal(audio.paused,false);assert.deepEqual(Array.from(context.playOrigins),['system','system','system'],'Lock-screen commands never pretend to be user gestures');
+    actions.clear();context.window.TapeRoomPlaybackCore=function(){};vm.runInContext(controls,context);assert.equal(actions.size,0,'The core owns system handlers when it is available; the old bootstrap does not register a second owner');
     const cover=source.slice(source.indexOf('    function updateNow()'),source.indexOf('    function updateButtons()'));
     const nodes=new Map(); const currentTrack={title:'Fixture',artist:'Artist',cover:'',source:'drive'};
     const thumbnails=[imageNode({src:'/cover-light.png?v=light',dataset:{defaultCover:''}}),imageNode({src:'/cover-light.png?v=light',dataset:{defaultCover:''}}),imageNode({src:'/private-cover',dataset:{}})];
@@ -125,6 +128,7 @@ function setup({capture=false,contextState='running',resumeHang=false}={}){
     const preferences=new Map(),catalogThemeRenders=[],coverClasses=new Set(),albumFixture={cover:'/album-cover'}; let themeIcon;
     const metaContext=vm.createContext({drawAudioQuality(){},activeTrack:()=>currentTrack,$:selector=>{if(!nodes.has(selector))nodes.set(selector,{textContent:'',value:'',getAttribute(name){return this[name]||'';},setAttribute(name,value){this[name]=value;},removeAttribute(name){delete this[name];},closest(selector){assert.equal(selector,'.rp-cover-button');return {classList:{toggle(name,on){if(on)coverClasses.add(name);else coverClasses.delete(name);}}};}});return nodes.get(selector);},catalogUI:{render(options){catalogThemeRenders.push(options);}},data:{tracks:[currentTrack],catalog:{albums:[],tracks:[]}},libraryView:{type:'songs'},queueSource:{type:'songs'},album:id=>Number(id)===10?albumFixture:null,audio:{paused:true},config:{defaultCover:'/cover-light.png?v=light',defaultArtwork:'/cover-light.png?v=light',defaultCovers:{light:'/cover-light.png?v=light',dark:'/cover-dark.png?v=dark'},defaultArtworkSize:'1254x1254',storageKey:'fixture-theme'},current:1,queueName:'Fixture',navigator:{mediaSession:{}},window:{MediaMetadata:true,TapeRoomImages:Images},MediaMetadata:class {constructor(metadata){Object.assign(this,metadata);}},URL,location:{href:'https://fixture.invalid/player'},document:documentTheme,localStorage:{setItem:(key,value)=>preferences.set(key,value)},setIcon:(node,name)=>{themeIcon=name;},app:{querySelectorAll:selector=>{if(selector==='[data-default-artist]')return [];assert.equal(selector,'[data-default-cover]');return thumbnails.filter(image=>Object.hasOwn(image.dataset,'defaultCover'));}}});
     const defaultCoverHelper=source.match(/^    const defaultCover = .*;$/m)?.[0];assert.ok(defaultCoverHelper,'Theme cover helper is present');
+    metaContext.ownsMediaSession=()=>true;
     const themeCode=source.slice(source.indexOf('    function applyTheme()'),source.indexOf('    function toast('));
     vm.runInContext("let theme = 'light';\n"+defaultCoverHelper+cover+themeCode,metaContext);metaContext.applyTheme();
     assert.equal(nodes.get('[data-cover]').src,undefined,'Default art uses the predecoded theme layers without downloading another hidden original');assert.equal(metaContext.navigator.mediaSession.metadata.artwork[0].sizes,'1254x1254');assert.equal(metaContext.navigator.mediaSession.metadata.artwork[0].type,'image/png');assert.equal(metaContext.navigator.mediaSession.metadata.artwork[0].src,'https://fixture.invalid/cover-light.png?v=light');
@@ -138,6 +142,7 @@ function setup({capture=false,contextState='running',resumeHang=false}={}){
     assert.equal(coverClasses.has('has-custom-cover'),false,'Default artwork remains controlled by theme-specific cover layers');
     metaContext.queueSource={type:'album',id:10};metaContext.updateNow();assert.equal(nodes.get('[data-cover]').src,'/album-cover');assert.equal(metaContext.navigator.mediaSession.metadata.artwork[0].src,'https://fixture.invalid/album-cover');assert.equal(coverClasses.has('has-custom-cover'),true,'Album cover fills the central player and lock-screen artwork when song artwork is absent');
     currentTrack.cover='/song-cover';metaContext.updateNow();assert.equal(nodes.get('[data-cover]').src,'/song-cover','Song cover takes precedence over the album fallback');
+    const otherMetadata=metaContext.navigator.mediaSession.metadata;metaContext.ownsMediaSession=()=>false;currentTrack.title='Inactive Tape Room';metaContext.updateNow();assert.equal(metaContext.navigator.mediaSession.metadata,otherMetadata,'An inactive full player cannot overwrite a different active media owner');
     const volumeCode=source.slice(source.indexOf('    function syncVolume()'),source.indexOf('    function updateButtons()'));
     const volumeSlider={value:.65}, attributes={};let volumeFill,volumeIcon,saves=0;
     const volumeContext=vm.createContext({audio:{volume:.65,muted:false},audibleVolume:.65,$:selector=>selector==='[data-volume]'?volumeSlider:{setAttribute(name,value){attributes[name]=value;},classList:{toggle(name,value){attributes[name]=value;}}},rangeFill(node,value){volumeFill=value;},setIcon(node,name){volumeIcon=name;},save(){saves++;}});

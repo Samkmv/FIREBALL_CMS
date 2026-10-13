@@ -12,6 +12,8 @@ $permissionIcons = [
     'videos.view_paid' => 'ci-play-circle',
     'camera_archive.view' => 'ci-camera',
     'camera_archive.download' => 'ci-download',
+    'music.listen_paid' => 'ci-music',
+    'music.download_paid' => 'ci-download',
     'camera_archive.max_days' => 'ci-calendar',
     'camera_archive.max_fragment_minutes' => 'ci-clock',
 ];

@@ -9,6 +9,8 @@ final class PlanRepository
     public const PERMISSIONS = [
         'posts.view_paid',
         'videos.view_paid',
+        'music.listen_paid',
+        'music.download_paid',
         'camera_archive.view',
         'camera_archive.download',
         'camera_archive.max_days',
