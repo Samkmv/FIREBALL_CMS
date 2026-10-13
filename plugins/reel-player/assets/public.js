@@ -125,7 +125,9 @@
                 const playing=selected && state.playing;control.classList.toggle('is-playing',playing);control.setAttribute('aria-pressed',String(Boolean(playing)));
                 control.querySelector('use')?.setAttribute('href',playing?'#rp-i-pause':'#rp-i-play');
                 if(control.classList.contains('tr-button')){const text=[...control.childNodes].find(node=>node.nodeType===3 && node.textContent.trim());if(text){if(!control.dataset.originalPlayLabel)control.dataset.originalPlayLabel=text.textContent;text.textContent=playing?' Пауза':control.dataset.originalPlayLabel;}}
-                const label=playing?'Пауза':control.hasAttribute('data-public-album')?'Воспроизвести альбом':'Воспроизвести композицию';control.setAttribute('aria-label',label);
+                const label=playing?'Пауза':control.hasAttribute('data-public-album')?'Воспроизвести альбом':'Воспроизвести композицию';
+                const title=album?.title || this.tracks.get(idOf(control.dataset.publicPlay))?.title || '';
+                control.setAttribute('aria-label',label+(title?' — '+title:''));
             }
             for(const row of this.page.querySelectorAll('[data-public-track],[data-track-row]'))row.classList.toggle('is-current',idOf(row.dataset.publicTrack || row.dataset.trackRow)===state.current);
         }
@@ -170,9 +172,13 @@
                 const url=this.endpoint('recommendations');url.searchParams.set('limit','8');if(id)url.searchParams.set('track_id',String(id));
                 try {
                     const result=await jsonRequest(url,{signal:controller.signal});if(page!==this.page || !container.isConnected)return;
-                    let list=container.querySelector('[data-recommendation-items]');if(!list){list=this.document.createElement('div');list.className='tr-grid';list.dataset.recommendationItems='';container.append(list);}list.replaceChildren();
-                    for(const value of (Array.isArray(result.items)?result.items:[]).slice(0,24)){const track=playableTrack(value);if(!track)continue;this.tracks.set(track.id,track);list.append(this.recommendationCard(track));}
-                    if(!list.children.length){const empty=this.document.createElement('p');empty.className='tr-empty';empty.textContent='Похожие композиции пока не найдены.';list.append(empty);}this.images();if(this.core)this.updatePlaying(this.core.snapshot());
+                    const outside=new Set();for(const node of page.querySelectorAll('[data-public-track],[data-public-play]'))if(!container.contains(node)){const id=idOf(node.dataset.publicTrack || node.dataset.publicPlay);if(id)outside.add(id);}
+                    let list=container.querySelector('[data-recommendation-items]') || container.querySelector('.tr-track-list,.tr-grid');
+                    if(list){for(const node of list.querySelectorAll('[data-public-track],[data-public-play]')){const id=idOf(node.dataset.publicTrack || node.dataset.publicPlay);if(id && !outside.has(id))this.tracks.delete(id);}}
+                    else{list=this.document.createElement('div');container.append(list);}
+                    list.className='tr-grid';list.dataset.recommendationItems='';list.replaceChildren();const shown=new Set(outside);
+                    for(const value of (Array.isArray(result.items)?result.items:[]).slice(0,24)){const track=playableTrack(value);if(!track || shown.has(track.id))continue;shown.add(track.id);this.tracks.set(track.id,track);list.append(this.recommendationCard(track));}
+                    container.hidden=!list.children.length;this.images();if(this.core)this.updatePlaying(this.core.snapshot());
                 } catch(error){if(error.name!=='AbortError' && page===this.page){const message=this.document.createElement('p');message.className='tr-message';message.textContent='Рекомендации сейчас недоступны.';container.append(message);}}
             }
         }

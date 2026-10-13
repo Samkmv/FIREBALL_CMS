@@ -6,7 +6,7 @@
     --tr-error-bg:#f3e7df;--tr-error-ink:#844c37;
     color:var(--tr-ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:light;
 }
-:is([data-bs-theme=dark],[data-theme=dark]) :is(.tr-public,.tr-admin,.tr-compact,.tr-preferences-dialog,.tr-embed),
+:is([data-theme=dark],html[data-bs-theme=dark]:not([data-theme=light])) :is(.tr-public,.tr-admin,.tr-compact,.tr-preferences-dialog,.tr-embed),
 :is(.tr-public,.tr-admin,.tr-compact,.tr-preferences-dialog,.tr-embed)[data-theme=dark]{
     --tr-surface:#242a23;--tr-paper:#1c211c;--tr-ink:#f0ecdf;--tr-muted:#b1b4a5;
     --tr-line:#424b3d;--tr-soft:#333c2d;--tr-accent:#c4a375;
@@ -15,6 +15,7 @@
 }
 :is(.tr-public,.tr-admin,.tr-compact,.tr-preferences-dialog,.tr-embed),
 :is(.tr-public,.tr-admin,.tr-compact,.tr-preferences-dialog,.tr-embed) *{box-sizing:border-box}
+:is(.tr-public,.tr-admin,.tr-embed) .rp-symbols{position:absolute;width:0;height:0;overflow:hidden;pointer-events:none}
 :is(.tr-public,.tr-admin,.tr-compact,.tr-preferences-dialog) [hidden],.tr-compact[hidden]{display:none!important}
 :is(.tr-public,.tr-admin,.tr-compact,.tr-preferences-dialog) :is(button,input,select,textarea){font:inherit;-webkit-tap-highlight-color:transparent}
 :is(.tr-public,.tr-admin,.tr-compact,.tr-preferences-dialog) button{color:inherit;touch-action:manipulation;cursor:pointer}
@@ -105,6 +106,7 @@
 
 /* One fixed compact interface controls the existing audio instance. */
 .tr-compact{position:fixed;left:max(16px,env(safe-area-inset-left));right:max(16px,env(safe-area-inset-right));bottom:calc(12px + env(safe-area-inset-bottom));z-index:1060;display:grid;grid-template-columns:56px minmax(90px,1fr) auto minmax(160px,1.2fr) 134px auto;grid-template-areas:"cover info controls progress volume extra";align-items:center;gap:18px;max-width:1440px;margin-inline:auto;padding:16px 20px;border:1px solid var(--tr-line);border-radius:18px;background:var(--tr-surface);box-shadow:0 10px 32px var(--tr-shadow);min-width:0}
+.tr-playback.is-compact-mode{min-height:0;min-width:0;background:transparent}
 .tr-playback.is-compact-mode>.rp-app{display:none}
 body.has-tape-room-compact{padding-bottom:calc(112px + env(safe-area-inset-bottom))}
 .tr-compact-cover{grid-area:cover;display:block;width:56px;height:56px;border-radius:9px;object-fit:cover;background:var(--tr-soft)}

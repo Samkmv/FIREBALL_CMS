@@ -10,6 +10,19 @@
         if(relative && !/^(?:albums|artists|tracks|new|popular|genres|collection|(?:album|track)\/[1-9][0-9]*(?:-[a-z0-9-]+)?)$/.test(relative))return null;
         if(url.searchParams.has('fragment'))url.searchParams.delete('fragment');return url;
     }
+    function searchURL(data,action,base,current){
+        const url=musicURL(action,base,current);if(!url)return null;
+        url.search='';let facets=0;
+        for(const kind of ['genre','tag']){
+            const values=[...data.getAll(kind),...data.getAll(kind+'[]')],slugs=[];
+            for(const value of values){if(typeof value!=='string')throw new Error('Некорректный музыкальный фильтр.');for(const part of value.split(',')){const slug=part.trim();if(!slug)continue;if(slug.length>120 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))throw new Error('Укажите адресные имена жанров и тегов, например jazz или retro.');if(!slugs.includes(slug))slugs.push(slug);}}
+            facets+=slugs.length;if(facets>10)throw new Error('Можно выбрать не более 10 жанров и тегов.');
+            for(const slug of slugs)url.searchParams.append(kind+(slugs.length>1?'[]':''),slug);
+        }
+        const allowed=new Set(['q','artist','sort','from','to','kind','per_page']);
+        for(const [name,value]of data)if(allowed.has(name) && typeof value==='string' && value.trim())url.searchParams.append(name,value.trim());
+        return url;
+    }
     function fragmentPage(html,document=root.document){
         if(typeof html!=='string' || html.length>5*1024*1024)throw new Error('Недопустимый фрагмент музыкальной страницы.');
         const parsed=new root.DOMParser().parseFromString(html,'text/html'),pages=parsed.querySelectorAll('[data-music-page]');
@@ -31,7 +44,7 @@
         return document.importNode(page,true);
     }
     class TapeRoomNavigation {
-        constructor(document=root.document){this.document=document;this.ticket=0;this.onClick=event=>this.click(event);this.onPop=()=>this.pop();document.addEventListener('click',this.onClick);root.addEventListener('popstate',this.onPop);const page=document.querySelector('[data-music-page]');if(page && this.url(root.location.href)){const old=root.history.state;root.history.replaceState({...((old && typeof old==='object')?old:{}),tapeRoom:true},'',root.location.href);}}
+        constructor(document=root.document){this.document=document;this.ticket=0;this.onClick=event=>this.click(event);this.onSubmit=event=>this.submit(event);this.onPop=()=>this.pop();document.addEventListener('click',this.onClick);document.addEventListener('submit',this.onSubmit);root.addEventListener('popstate',this.onPop);const page=document.querySelector('[data-music-page]');if(page && this.url(root.location.href)){const old=root.history.state;root.history.replaceState({...((old && typeof old==='object')?old:{}),tapeRoom:true},'',root.location.href);}}
         base(){try{return JSON.parse(this.document.querySelector('[data-music-data]')?.textContent || '{}').config?.base || '/music';}catch(_){return '/music';}}
         url(value){return musicURL(value,this.base(),root.location.href);}
         click(event){
@@ -40,6 +53,12 @@
             const url=this.url(link.href);if(!url || !this.document.querySelector('[data-music-page]'))return;
             if(url.pathname===root.location.pathname && url.search===root.location.search && url.hash)return;
             event.preventDefault();this.go(url,{history:true});
+        }
+        submit(event){
+            const form=event.target?.closest?.('form[data-music-search]');
+            if(event.defaultPrevented || !form || String(form.method).toLowerCase()!=='get' || !this.document.querySelector('[data-music-page]') || !this.url(form.action))return;
+            try{const url=searchURL(new FormData(form),form.action,this.base(),root.location.href);if(!url)return;event.preventDefault();this.go(url,{history:true});}
+            catch(error){event.preventDefault();root.TapeRoomPublicUI?.message(error.message);}
         }
         pop(){const url=this.url(root.location.href);if(url && this.document.querySelector('[data-music-page]'))this.go(url,{history:false});else root.location.assign(root.location.href);}
         async go(url,{history=true}={}){
@@ -66,9 +85,9 @@
             for(const name of ['og:image:url','og:image:secure_url','og:image:width','og:image:height','og:image:alt'])this.meta(name,'',true);
             this.document.head.querySelector('link[rel=image_src]')?.remove();
         }
-        destroy(){this.controller?.abort();this.ticket++;this.document.removeEventListener('click',this.onClick);root.removeEventListener('popstate',this.onPop);}
+        destroy(){this.controller?.abort();this.ticket++;this.document.removeEventListener('click',this.onClick);this.document.removeEventListener('submit',this.onSubmit);root.removeEventListener('popstate',this.onPop);}
     }
-    if(typeof module!=='undefined' && module.exports)module.exports={musicURL,fragmentPage,TapeRoomNavigation};
+    if(typeof module!=='undefined' && module.exports)module.exports={musicURL,searchURL,fragmentPage,TapeRoomNavigation};
     root.TapeRoomNavigation=TapeRoomNavigation;
     if(root.document && !root.TapeRoomNavigator){const start=()=>{if(root.document.querySelector('[data-music-page]'))root.TapeRoomNavigator=new TapeRoomNavigation();};if(root.document.readyState==='loading')root.document.addEventListener('DOMContentLoaded',start,{once:true});else start();}
 })(typeof window!=='undefined'?window:globalThis);

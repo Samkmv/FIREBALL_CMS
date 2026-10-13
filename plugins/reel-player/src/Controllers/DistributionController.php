@@ -21,7 +21,8 @@ final class DistributionController
         header('Cache-Control: private, no-store');
         try {
             if (!PlatformFeatures::schemaReady(true)) throw new \InvalidArgumentException('Сначала завершите обновление Tape Room в настройках плагинов CMS.');
-            $data = request()->getData(); $action = (string)($data['action'] ?? '');
+            $data = request()->getData(); $action = $data['action'] ?? '';
+            if (!is_string($action)) throw new \InvalidArgumentException('Некорректное действие платформы.');
             if ($action === 'settings') {
                 if (!check_creator()) response()->json(['status' => false, 'message' => 'Общие настройки доступны только создателю сайта.'], 403);
                 PlatformFeatures::save($data);

@@ -21,7 +21,12 @@ final class PlatformHost
             $config = ['api'=>base_href('/music/api'),'base'=>base_href('/music'),'viewer'=>$viewer,'csrf'=>$viewer ? (string)session()->get('needCSRFToken','') : ''];
             $html = str_ireplace('</body>', self::markup($config) . PlatformAssets::tags() . '</body>', $html);
         }
-        if (!str_contains($html, 'data-tr-platform-style')) $html = str_ireplace('</head>', str_replace('data-tr-platform-asset', 'data-tr-platform-style', PlatformAssets::tags(false)) . '</head>', $html);
+        $styles = '';
+        foreach (PlatformAssets::STYLES as $file) {
+            $url = PlatformAssets::url($file);
+            if ($url !== '' && !str_contains($html, htmlSC($url))) $styles .= '<link rel="stylesheet" href="' . htmlSC($url) . '" data-tr-platform-style>';
+        }
+        if ($styles !== '') $html = str_ireplace('</head>', $styles . '</head>', $html);
         return $html;
     }
 }

@@ -12,6 +12,11 @@ use Fireball\ReelPlayer\Services\PlatformFeatures;
 
 final class PublicController
 {
+    private static function text(mixed $value): string
+    {
+        if (!is_string($value)) throw new \InvalidArgumentException('Некорректный параметр музыки.');
+        return $value;
+    }
     private function user(): ?array { return check_auth() ? get_user() : null; }
     private function repository(): PublicCatalog { return new PublicCatalog($this->user()); }
     private function guard(string $bucket = 'catalog', int $limit = 180): void
@@ -26,7 +31,12 @@ final class PublicController
     private function filters(): array
     {
         $filters = [];
-        foreach (['q','genre','tag','artist','sort','from','to','kind'] as $key) { $value = request()->get($key, ''); if ($value !== '') $filters[$key] = $value; }
+        foreach (['q','genre','tag','artist','sort','from','to','kind'] as $key) {
+            $value = request()->get($key, '');
+            if (in_array($key, ['genre','tag'], true) && is_array($value) && array_is_list($value)) $value = array_values(array_filter($value, static fn(mixed $item): bool => $item !== ''));
+            if (!in_array($key, ['genre','tag'], true) && !is_string($value)) throw new \InvalidArgumentException('Некорректный фильтр музыки.');
+            if ($value !== '' && $value !== []) $filters[$key] = $value;
+        }
         return $filters;
     }
     private function config(array $extra = []): array
@@ -41,7 +51,7 @@ final class PublicController
     }
     private function pageView(string $view, array $data): string
     {
-        if ((string)request()->get('fragment', '') === '1') {
+        if (request()->get('fragment', '') === '1') {
             $data['fragment'] = true;
             response()->json(['status' => true, 'html' => plugin_view('reel-player', $view, $data, false), 'title' => $data['seo_title'] ?? $data['title'], 'description' => $data['seo_description'] ?? '', 'canonical' => $data['seo_canonical'] ?? '', 'image' => $data['seo_image'] ?? '']);
         }
@@ -53,10 +63,11 @@ final class PublicController
     }
     public function index(): string
     {
-        $this->guard(); $section = (string)get_route_param('section', 'overview'); $filters = $this->filters();
-        try { $catalog = $this->repository()->page($section, $filters, (int)request()->get('page', 1), (int)request()->get('per_page', 24)); }
+        $this->guard(); $section = (string)get_route_param('section', 'overview');
+        try { $filters = $this->filters(); $catalog = $this->repository()->page($section, $filters, (int)request()->get('page', 1), (int)request()->get('per_page', 24)); }
         catch (\InvalidArgumentException $error) { abort($error->getMessage(), 422); }
-        return $this->pageView('public/catalog', ['title' => self::title($section) . ' · Tape Room', 'section' => $section, 'filters' => $filters, 'catalog' => $catalog, 'config' => $this->config(), 'seo_title' => self::title($section) . ' · Tape Room', 'seo_description' => 'Музыкальные альбомы, артисты и композиции в Tape Room.', 'seo_canonical' => base_href('/music' . ($section === 'overview' ? '' : '/' . $section))]);
+        $taxonomy = PlatformFeatures::enabled('discovery') ? ['genres'=>$this->repository()->taxonomy('genre'),'tags'=>$this->repository()->taxonomy('tag')] : ['genres'=>[],'tags'=>[]];
+        return $this->pageView('public/catalog', ['title' => self::title($section) . ' · Tape Room', 'section' => $section, 'filters' => $filters, 'catalog' => $catalog, 'taxonomy'=>$taxonomy, 'config' => $this->config(), 'seo_title' => self::title($section) . ' · Tape Room', 'seo_description' => 'Музыкальные альбомы, артисты и композиции в Tape Room.', 'seo_canonical' => base_href('/music' . ($section === 'overview' ? '' : '/' . $section))]);
     }
     public function detail(): string
     {
@@ -75,8 +86,8 @@ final class PublicController
         catch (\Throwable $error) { log_error_details('Tape Room public request failed', [], $error); response()->json(['status' => false, 'message' => 'Не удалось получить музыку. Попробуйте ещё раз.'], 500); }
         exit;
     }
-    public function catalog(): never { $this->json(fn(): array => $this->repository()->page((string)request()->get('section', 'tracks'), $this->filters(), (int)request()->get('page', 1), (int)request()->get('per_page', 24))); }
-    public function album(): never { $this->json(fn(): array => ['album' => $this->repository()->album((int)get_route_param('id'), (int)request()->get('page', 1), (int)request()->get('per_page', 48), (string)request()->get('streamable','') === '1')]); }
+    public function catalog(): never { $this->json(fn(): array => $this->repository()->page(self::text(request()->get('section', 'tracks')), $this->filters(), (int)request()->get('page', 1), (int)request()->get('per_page', 24))); }
+    public function album(): never { $this->json(fn(): array => ['album' => $this->repository()->album((int)get_route_param('id'), (int)request()->get('page', 1), (int)request()->get('per_page', 48), self::text(request()->get('streamable','')) === '1')]); }
     public function track(): never { $this->json(fn(): array => ['track' => $this->repository()->track((int)get_route_param('id'))]); }
     public function artists(): never { $this->json(fn(): array => $this->repository()->artists((int)request()->get('page', 1), (int)request()->get('per_page', 24), $this->filters())); }
 
@@ -126,7 +137,7 @@ final class PublicController
     {
         $this->json(function (): array {
             $user = $this->user(); if (!$user) throw new \InvalidArgumentException('Войдите в аккаунт.');
-            $owner = (int)$user['id']; $data = request()->getData(); $id = (int)($data['id'] ?? 0); $action = (string)($data['action'] ?? '');
+            $owner = (int)$user['id']; $data = request()->getData(); $id = (int)($data['id'] ?? 0); $action = self::text($data['action'] ?? '');
             $value = $data['value'] ?? $data['saved'] ?? $data['favorite'] ?? '1';
             if (!in_array($value, [true,false,1,0,'1','0'], true)) throw new \InvalidArgumentException('Некорректное значение.');
             $enabled = in_array($value, [true,1,'1'], true);
@@ -153,7 +164,7 @@ final class PublicController
                 $id = (int)($data['track_id'] ?? $data['id'] ?? 0); $this->repository()->mediaTrack($id); session()->close(); return $catalog->beginListening($id);
             }
             if (($data['action'] ?? '') !== 'finish') throw new \InvalidArgumentException('Некорректный сеанс прослушивания.');
-            $token = (string)($data['token'] ?? '');
+            $token = self::text($data['token'] ?? '');
             if (!preg_match('/^[a-f0-9]{64}$/D', $token)) throw new \InvalidArgumentException('Некорректный сеанс прослушивания.');
             $row = db()->query('SELECT track_id FROM reel_listening_sessions WHERE token_hash=? AND owner_id=?', [hash('sha256',$token),(int)$user['id']])->getOne();
             if (!$row) throw new \InvalidArgumentException('Сеанс прослушивания недоступен.');
@@ -166,19 +177,19 @@ final class PublicController
         try {
             if (!PlatformFeatures::schemaReady(true)) throw new \InvalidArgumentException('Встраивание недоступно.');
             $guest = new PublicCatalog(); $guest->mediaTrack($id, 'embed'); $track = $guest->track($id);
-            $settings = EmbedAuthorization::frame($id, (string)request()->get('ticket', ''), (float)$track['duration']);
+            $settings = EmbedAuthorization::frame($id, self::text(request()->get('ticket', '')), (float)$track['duration']);
         } catch (\InvalidArgumentException) { header("Content-Security-Policy: frame-ancestors 'none'"); abort('Встраивание недоступно.', 404); }
         header_remove('X-Frame-Options');
         header('Content-Security-Policy: frame-ancestors ' . $settings['ancestors']);
         header('Referrer-Policy: no-referrer');
         $track['url'] = base_href('/music/embed/media/' . $id) . ($settings['mediaToken'] ? '?token=' . rawurlencode($settings['mediaToken']) : '');
-        $theme = (string)request()->get('theme', $settings['theme']); if (!in_array($theme, ['light','dark','system'], true)) $theme = 'system';
+        $theme = request()->get('theme', $settings['theme']); if (!in_array($theme, ['light','dark','system'], true)) $theme = 'system';
         return plugin_view('reel-player', 'embed/track', ['track' => $track, 'theme' => $theme, 'config' => $this->config(['embed' => true]), 'title' => $track['title'] . ' · Tape Room'], false);
     }
     public function embedMedia(): never
     {
         $this->guard('media', 360); $id = (int)get_route_param('id');
-        try { if (!PlatformFeatures::schemaReady(true)) throw new \InvalidArgumentException('Встраивание недоступно.'); $row = (new PublicCatalog())->mediaTrack($id, 'embed'); EmbedAuthorization::media($id, (string)request()->get('token', '')); }
+        try { if (!PlatformFeatures::schemaReady(true)) throw new \InvalidArgumentException('Встраивание недоступно.'); $row = (new PublicCatalog())->mediaTrack($id, 'embed'); EmbedAuthorization::media($id, self::text(request()->get('token', ''))); }
         catch (\InvalidArgumentException) { abort('Музыка недоступна.', 404); }
         (new MediaStorage())->stream($row['file_path'], $row['mime']);
     }

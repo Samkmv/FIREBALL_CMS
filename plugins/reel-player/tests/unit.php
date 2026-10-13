@@ -4,6 +4,7 @@ require dirname(__DIR__) . '/src/Services/MediaStorage.php';
 require dirname(__DIR__) . '/src/Services/GoogleDrive.php';
 require dirname(__DIR__, 3) . '/core/Auth.php';
 require dirname(__DIR__, 3) . '/core/Plugins/PluginInterface.php';
+require dirname(__DIR__, 3) . '/core/Plugins/PluginMigrationInterface.php';
 require dirname(__DIR__) . '/Plugin.php';
 // Use the CMS's real role check with a session double; no user accounts are changed.
 function session(): object {
