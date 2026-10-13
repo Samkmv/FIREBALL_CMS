@@ -8,7 +8,7 @@ final class DatabaseBackupService
 {
     private ?string $lastFailureKey = null;
 
-    public function __construct(private readonly ?PDO $connection = null) {}
+    public function __construct(private readonly ?PDO $connection = null, private readonly ?string $outputDirectory = null) {}
 
     public function lastFailure(): string
     {
@@ -19,7 +19,7 @@ final class DatabaseBackupService
     public function createBackup(): string
     {
         $this->lastFailureKey = 'admin_update_backup_storage_failed';
-        $directory = ROOT . '/storage/backups';
+        $directory = $this->outputDirectory ?? ROOT . '/storage/backups';
         if (!is_dir($directory) && !@mkdir($directory, 0700, true) && !is_dir($directory)) return '';
         $path = $directory . '/db-backup-' . date('Y-m-d-H-i-s') . '-' . bin2hex(random_bytes(6)) . '.sql';
         $temporary = $path . '.tmp';

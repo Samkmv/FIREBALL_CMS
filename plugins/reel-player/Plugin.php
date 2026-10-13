@@ -11,7 +11,7 @@ spl_autoload_register(static function (string $class): void {
     }
 });
 
-final class FireballPluginReelPlayer implements PluginInterface
+final class FireballPluginReelPlayer implements PluginInterface, \FBL\Plugins\PluginMigrationInterface
 {
     public function install(): void {}
     public function activate(): void {}
@@ -19,8 +19,14 @@ final class FireballPluginReelPlayer implements PluginInterface
     // Keep the private library when the plugin is removed or deactivated.
     public function uninstall(): void {}
 
+    public function migrateSchema(): void
+    {
+        (new \Fireball\ReelPlayer\Services\SchemaUpgrade())->run();
+    }
+
     public function boot(): void
     {
+        add_filter('cms_rendered_html', static fn(string $html, array $context = []): string => \Fireball\ReelPlayer\Services\PlatformHost::inject($html, $context));
         add_filter('admin_menu', static function (array $menu): array {
             if (check_admin()) {
                 $menu[] = ['group' => 'applications', 'label' => 'Tape Room',

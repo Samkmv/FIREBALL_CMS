@@ -7,6 +7,8 @@ $planColumnClass = $planCount === 1
 $features = [
     ['posts.view_paid', 'subscriptions_feature_posts'],
     ['videos.view_paid', 'subscriptions_feature_video'],
+    ['music.listen_paid', 'subscriptions_feature_music'],
+    ['music.download_paid', 'subscriptions_feature_music_download'],
     ['camera_archive.view', 'subscriptions_feature_archive'],
 ];
 ?>

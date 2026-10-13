@@ -15,6 +15,8 @@ use ZipArchive;
  */
 class ThemeManager
 {
+    public static function supportsPersistentComponents(): bool { return true; }
+
     public const DEFAULT_THEME = 'default';
 
     protected const RESERVED_SLUGS = [
@@ -672,6 +674,11 @@ class ThemeManager
 
     protected function injectCmsComponents(string $html): string
     {
+        // Extensions may mount persistent UI outside the replaceable page content.
+        // A failing extension must not prevent the active theme from rendering.
+        if (function_exists('apply_filters_safe')) {
+            $html = (string)apply_filters_safe('cms_rendered_html', $html, ['surface' => 'theme']);
+        }
         $components = renderAnalyticsTracker() . renderCookieConsent();
         if ($components === '') {
             return $html;
