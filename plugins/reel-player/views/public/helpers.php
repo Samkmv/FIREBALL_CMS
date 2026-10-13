@@ -7,11 +7,11 @@ $musicTime = static function (float $seconds): string {
     $seconds = (int)max(0, $seconds);
     return $seconds >= 3600 ? sprintf('%d:%02d:%02d', intdiv($seconds,3600), intdiv($seconds,60)%60, $seconds%60) : sprintf('%d:%02d',intdiv($seconds,60),$seconds%60);
 };
-$musicImage = static function (array $item, string $class, string $kind = 'cover', int $size = 320) use ($config): string {
+$musicImage = static function (array $item, string $class, string $kind = 'cover', int $size = 320, bool $priority = false) use ($config): string {
     $source = (string)($item[$kind === 'artist' ? 'image' : 'cover'] ?? '');
     $fallback = $config[$kind === 'artist' ? 'defaultArtistVariants' : 'defaultCoverVariants']['light'][$size] ?? $config[$kind === 'artist' ? 'defaultArtists' : 'defaultCovers']['light'] ?? '';
     $src = $source ? $source . (str_contains($source,'?') ? '&' : '?') . 'size=' . $size : $fallback;
-    return '<img class="' . htmlSC($class) . '" width="' . $size . '" height="' . $size . '" src="' . htmlSC($src) . '" alt="' . htmlSC($item['title'] ?? $item['name'] ?? 'Обложка') . '" loading="lazy" decoding="async" data-music-image="' . $kind . '" data-image-source="' . htmlSC($source) . '">';
+    return '<img class="' . htmlSC($class) . '" width="' . $size . '" height="' . $size . '" src="' . htmlSC($src) . '" alt="' . htmlSC($item['title'] ?? $item['name'] ?? 'Обложка') . '" loading="' . ($priority?'eager':'lazy') . '"' . ($priority?' fetchpriority="high"':'') . ' decoding="async" data-music-image="' . $kind . '" data-image-source="' . htmlSC($source) . '">';
 };
 $musicSave = static function (array $item, string $type, bool $text = false) use ($config,$icon): string {
     if (empty($config['viewer'])) return '';

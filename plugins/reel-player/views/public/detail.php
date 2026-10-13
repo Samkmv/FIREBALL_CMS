@@ -8,7 +8,7 @@ if (empty($fragment)) echo \Fireball\ReelPlayer\Services\PlatformHost::markup($c
 <section class="tr-public" data-music-page tabindex="-1">
     <?= $musicNavigation($album?'albums':'tracks') ?>
     <div class="tr-detail">
-        <?= $musicImage($entity,'tr-detail-art','cover',640) ?>
+        <?= $musicImage($entity,'tr-detail-art','cover',640,true) ?>
         <div class="tr-detail-info"><p><?= $album?'АЛЬБОМ':'КОМПОЗИЦИЯ' ?></p><h1><?= htmlSC($entity['title']) ?></h1><p><?= htmlSC($entity['artist'] ?: 'Неизвестный исполнитель') ?></p>
             <?php if ($album && !empty($entity['description'])): ?><p><?= nl2br(htmlSC($entity['description'])) ?></p><?php endif; ?>
             <?= $musicBadges($entity) ?>

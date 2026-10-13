@@ -9,11 +9,12 @@ $tracks = $albumView ? ($catalog['tracks'] ?? []) : (in_array($section,['artists
 if (empty($fragment)) echo \Fireball\ReelPlayer\Services\PlatformHost::markup($config);
 ?>
 <section class="tr-public" data-music-page tabindex="-1">
-    <header class="tr-heading"><div><h1><?= htmlSC($labels[$section] ?? 'Музыка') ?></h1><p>Альбомы, композиции и любимые исполнители.</p></div><button type="button" class="tr-button" data-public-preferences><?= $icon('settings') ?> Внешний вид плеера</button></header>
+    <header class="tr-heading"><div><h1><?= htmlSC(($section==='tracks' && !empty($filters['artist']))?$filters['artist']:($labels[$section] ?? 'Музыка')) ?></h1><p>Альбомы, композиции и любимые исполнители.</p></div><button type="button" class="tr-button" data-public-preferences><?= $icon('settings') ?> Внешний вид плеера</button></header>
     <?= $musicNavigation($section) ?>
     <?php if ($section==='collection'): ?><nav class="tr-nav" aria-label="Коллекция"><a href="<?= htmlSC($musicUrl('/collection',['kind'=>'albums'])) ?>" data-music-link<?= ($filters['kind'] ?? 'albums')==='albums'?' aria-current="page"':'' ?>>Сохранённые альбомы</a><a href="<?= htmlSC($musicUrl('/collection',['kind'=>'tracks'])) ?>" data-music-link<?= ($filters['kind'] ?? '')==='tracks'?' aria-current="page"':'' ?>>Избранные песни</a></nav><?php endif; ?>
     <?php if ($section!=='genres'): ?><form class="tr-tools" method="get" action="<?= htmlSC($musicUrl($section==='overview'?'':'/'.$section)) ?>" data-music-search>
         <?php if ($section==='collection'): ?><input type="hidden" name="kind" value="<?= htmlSC($filters['kind'] ?? 'albums') ?>"><?php endif; ?>
+        <?php if (!empty($filters['artist'])): ?><input type="hidden" name="artist" value="<?= htmlSC($filters['artist']) ?>"><?php endif; ?>
         <label class="tr-search"><?= $icon('search') ?><input type="search" name="q" value="<?= htmlSC($filters['q'] ?? '') ?>" maxlength="240" aria-label="Найти музыку" placeholder="Название, исполнитель, жанр или тег"></label>
         <?php if (!in_array($section,['artists','genres'],true)): ?><div class="tr-filters">
             <?php if (!empty($config['flags']['discovery'])): ?>
