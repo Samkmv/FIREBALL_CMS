@@ -1,0 +1,1 @@
+<section class="tr-card"><h1>Вы сейчас не в сети</h1><p>Подключитесь к интернету, чтобы открыть музыкальную комнату.</p><a class="rp-button" href="<?= htmlSC(base_href('/')) ?>">Повторить</a></section>

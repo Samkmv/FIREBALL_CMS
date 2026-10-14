@@ -20,35 +20,46 @@ final class PlayerController
     private function catalog(): Catalog { return new Catalog((int)get_user()['id'],check_creator()); }
     private function trackDrive(array $track): GoogleDrive { return new GoogleDrive((int)$track['owner_id']); }
 
+    /** The plugin entry in the CMS is an overview; the theme owns the player UI. */
     public function index(): string
     {
         header('Cache-Control: private, no-store');
-        $assets = dirname(__DIR__, 2) . '/assets';
-        $manifest = json_decode((string)file_get_contents(dirname($assets) . '/plugin.json'), true, 512, JSON_THROW_ON_ERROR);
+        return plugin_view('reel-player', 'overview', [
+            'title' => 'Tape Room · Обзор',
+            'theme_active' => theme()->getActiveTheme()['slug'] === 'tape-room',
+        ]);
+    }
+
+    /** Supplies account data to the standalone Tape Room theme. */
+    public function pageData(): array
+    {
+        header('Cache-Control: private, no-store');
+        $assets = theme()->getActiveTheme()['path'] . '/assets';
+        $manifest = json_decode((string)file_get_contents(dirname(__DIR__, 2) . '/plugin.json'), true, 512, JSON_THROW_ON_ERROR);
         $defaultCovers = []; $defaultCoverVariants = []; $defaultArtists = []; $defaultArtistVariants = [];
         foreach (['light', 'dark'] as $theme) {
-            $file = 'cover-' . $theme . '.png';
-            $defaultCovers[$theme] = base_href('/plugins/reel-player/assets/' . $file . '?v=' . substr(hash_file('sha256', $assets . '/' . $file), 0, 16));
+            $file = 'images/cover-' . $theme . '.png';
+            $defaultCovers[$theme] = theme_asset_versioned($file);
             foreach (MediaStorage::COVER_SIZES as $size) {
-                $variant = 'cover-' . $theme . '-' . $size . '.webp';
-                if (is_file($assets . '/' . $variant)) $defaultCoverVariants[$theme][$size] = base_href('/plugins/reel-player/assets/' . $variant . '?v=' . substr(hash_file('sha256',$assets . '/' . $variant),0,16));
+                $variant = 'images/cover-' . $theme . '-' . $size . '.webp';
+                if (is_file($assets . '/' . $variant)) $defaultCoverVariants[$theme][$size] = theme_asset_versioned($variant);
             }
             // Owner-supplied microphone artwork is optional; do not substitute
             // album covers or request missing files while it is unavailable.
-            $artist = 'artist-' . $theme . '.png';
+            $artist = 'images/artist-' . $theme . '.png';
             if (is_file($assets . '/' . $artist)) {
-                $defaultArtists[$theme] = base_href('/plugins/reel-player/assets/' . $artist . '?v=' . substr(hash_file('sha256',$assets . '/' . $artist),0,16));
+                $defaultArtists[$theme] = theme_asset_versioned($artist);
                 foreach (MediaStorage::COVER_SIZES as $size) {
-                    $variant = 'artist-' . $theme . '-' . $size . '.webp';
-                    if (is_file($assets . '/' . $variant)) $defaultArtistVariants[$theme][$size] = base_href('/plugins/reel-player/assets/' . $variant . '?v=' . substr(hash_file('sha256',$assets . '/' . $variant),0,16));
+                    $variant = 'images/artist-' . $theme . '-' . $size . '.webp';
+                    if (is_file($assets . '/' . $variant)) $defaultArtistVariants[$theme][$size] = theme_asset_versioned($variant);
                 }
             }
         }
         $pwa = function_exists('pwa_head_data') ? pwa_head_data() : [];
-        return plugin_view('reel-player', 'player', [
+        return [
             'config' => [
                 'version' => (string)$manifest['version'],
-                'api' => base_href('/admin/reel-player/api'),
+                'api' => base_href('/tape-room/api'),
                 'csrf' => (string)session()->get('needCSRFToken', ''),
                 'storageKey' => 'fireball-tape-room:' . (int)get_user()['id'],
                 'defaultCover' => $defaultCovers['light'],
@@ -63,18 +74,19 @@ final class PlayerController
                 'drive' => $this->drive()->status(),
                 'pwa' => ['enabled' => !empty($pwa['enabled']), 'worker' => $pwa['service_worker_url'] ?? ''],
             ],
-            'pwa_head' => function_exists('pwa_head_tags') ? pwa_head_tags() : '',
-            'css_url' => base_href('/plugins/reel-player/assets/player.css?v=' . substr(hash_file('sha256',$assets . '/player.css'),0,16)),
-            'js_url' => base_href('/plugins/reel-player/assets/player.js?v=' . substr(hash_file('sha256',$assets . '/player.js'),0,16)),
-            'meters_url' => base_href('/plugins/reel-player/assets/meters.js?v=' . substr(hash_file('sha256',$assets . '/meters.js'),0,16)),
-            'preload_url' => base_href('/plugins/reel-player/assets/preload.js?v=' . substr(hash_file('sha256',$assets . '/preload.js'),0,16)),
-            'chapters_url' => base_href('/plugins/reel-player/assets/chapters.js?v=' . substr(hash_file('sha256',$assets . '/chapters.js'),0,16)),
-            'transport_url' => base_href('/plugins/reel-player/assets/transport.js?v=' . substr(hash_file('sha256',$assets . '/transport.js'),0,16)),
-            'quality_url' => base_href('/plugins/reel-player/assets/quality.js?v=' . substr(hash_file('sha256',$assets . '/quality.js'),0,16)),
-            'collections_url' => base_href('/plugins/reel-player/assets/collections.js?v=' . substr(hash_file('sha256',$assets . '/collections.js'),0,16)),
-            'catalog_url' => base_href('/plugins/reel-player/assets/catalog.js?v=' . substr(hash_file('sha256',$assets . '/catalog.js'),0,16)),
-            'images_url' => base_href('/plugins/reel-player/assets/images.js?v=' . substr(hash_file('sha256',$assets . '/images.js'),0,16)),
-        ], false);
+            'back_url' => base_href(check_admin() ? '/admin' : '/profile'),
+            'pwa_head' => theme()->partial('pwa-head'),
+            'css_url' => theme_asset_versioned('css/player.css'),
+            'js_url' => theme_asset_versioned('js/player.js'),
+            'meters_url' => theme_asset_versioned('js/meters.js'),
+            'preload_url' => theme_asset_versioned('js/preload.js'),
+            'chapters_url' => theme_asset_versioned('js/chapters.js'),
+            'transport_url' => theme_asset_versioned('js/transport.js'),
+            'quality_url' => theme_asset_versioned('js/quality.js'),
+            'collections_url' => theme_asset_versioned('js/collections.js'),
+            'catalog_url' => theme_asset_versioned('js/catalog.js'),
+            'images_url' => theme_asset_versioned('js/images.js'),
+        ];
     }
 
     public function state(): void
@@ -260,9 +272,9 @@ final class PlayerController
         header('Cache-Control: private, no-store');
         try {
             $this->drive()->finish((string)request()->get('state', ''), (string)request()->get('code', ''));
-            response()->redirect(base_href('/admin/reel-player') . '?drive=connected');
+            response()->redirect(base_href('/') . '?drive=connected');
         } catch (\Throwable) {
-            response()->redirect(base_href('/admin/reel-player') . '?drive=error');
+            response()->redirect(base_href('/') . '?drive=error');
         }
     }
 

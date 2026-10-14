@@ -45,6 +45,10 @@ class HomeController extends BaseController
      */
     public function index()
     {
+        if (theme()->getActiveTheme()['homepage'] === 'home') {
+            return Theme::render('home', ['title' => theme()->getActiveTheme()['name']]);
+        }
+
         $homepageType = $this->siteSettings->get('homepage_type', 'default');
 
         if ($homepageType === 'page') {

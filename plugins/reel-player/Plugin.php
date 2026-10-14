@@ -21,6 +21,10 @@ final class FireballPluginReelPlayer implements PluginInterface
 
     public function boot(): void
     {
+        add_filter('auth_success_redirect', static function (string $url): string {
+            return theme()->getActiveTheme()['slug'] === 'tape-room' ? base_href('/') : $url;
+        });
+
         add_filter('admin_menu', static function (array $menu): array {
             if (check_admin()) {
                 $menu[] = ['group' => 'applications', 'label' => 'Tape Room',

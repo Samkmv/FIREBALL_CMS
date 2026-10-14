@@ -106,7 +106,7 @@ class AuthController extends BaseController
         $this->clearFormState();
         $this->flashTwoFactorResetNotice((int)$user['id']);
         session()->setFlash('success', return_translation('auth_login_success'));
-        response()->redirect(base_href('/profile'));
+        response()->redirect(apply_filters('auth_success_redirect', base_href('/profile')));
     }
 
     /**
@@ -160,7 +160,7 @@ class AuthController extends BaseController
         $this->securityLogs->record('login_2fa', 'success', (int)$user['id'], (int)$user['id']);
         $this->flashTwoFactorResetNotice((int)$user['id']);
         session()->setFlash('success', return_translation('auth_login_success'));
-        response()->redirect(base_href('/profile'));
+        response()->redirect(apply_filters('auth_success_redirect', base_href('/profile')));
     }
 
     public function twoFactorRecovery()
@@ -421,7 +421,7 @@ class AuthController extends BaseController
 
         $this->clearFormState();
         session()->setFlash('success', return_translation('auth_register_success'));
-        response()->redirect(base_href('/profile'));
+        response()->redirect(apply_filters('auth_success_redirect', base_href('/profile')));
     }
 
     /**

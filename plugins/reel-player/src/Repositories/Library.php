@@ -21,8 +21,8 @@ final class Library
             $track['shared'] = false;
             $track['collected'] = true;
             $track['chapters'] = $chapters[$track['id']] ?? [];
-            $track['url'] = base_href('/admin/reel-player/media/' . $track['id']);
-            $track['cover'] = $track['cover_path'] ? base_href('/admin/reel-player/cover/' . $track['id']) . '?v=' . basename($track['cover_path']) : '';
+            $track['url'] = base_href('/tape-room/media/' . $track['id']);
+            $track['cover'] = $track['cover_path'] ? base_href('/tape-room/cover/' . $track['id']) . '?v=' . basename($track['cover_path']) : '';
             unset($track['cover_path']);
         }
         unset($track);

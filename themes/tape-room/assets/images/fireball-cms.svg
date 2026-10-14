@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="fireballTitle fireballDescription">
+  <title id="fireballTitle">FIREBALL CMS</title>
+  <desc id="fireballDescription">A white lightning bolt on a warm coral rounded square.</desc>
+  <defs>
+    <linearGradient id="fireballSurface" x1="10" y1="7" x2="54" y2="59" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF8063"/>
+      <stop offset="0.55" stop-color="#FF5D43"/>
+      <stop offset="1" stop-color="#F04432"/>
+    </linearGradient>
+    <linearGradient id="fireballShine" x1="18" y1="8" x2="38" y2="43" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF" stop-opacity="0.3"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="fireballShadow" x="-20%" y="-20%" width="140%" height="155%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#B82B20" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+  <g filter="url(#fireballShadow)">
+    <rect x="5" y="4" width="54" height="54" rx="17" fill="url(#fireballSurface)"/>
+    <path d="M8 22C12 10 21 7 35 7c9 0 16 3 20 9-13-4-31 1-47 16V22Z" fill="url(#fireballShine)"/>
+    <circle cx="48" cy="14" r="7" fill="#FFFFFF" opacity="0.08"/>
+    <path d="M37.7 12.6 20.4 35.4h11.2l-3.8 16 16.9-23.3H33.5l4.2-15.5Z" fill="#FFFFFF"/>
+    <path d="m36.7 17.4-12.1 16h9.8l-2.1 8.8 8.2-11.3h-9.8l6-13.5Z" fill="#FFFFFF" opacity="0.18"/>
+  </g>
+</svg>

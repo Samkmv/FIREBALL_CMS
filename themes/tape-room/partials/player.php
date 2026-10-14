@@ -60,7 +60,7 @@ $button = static function (string $action, string $label, string $name, string $
 </defs></svg>
 <main class="rp-app" data-player>
     <header class="rp-header">
-        <a class="rp-back" href="<?= htmlSC(base_href('/admin')) ?>" aria-label="Вернуться в CMS" title="Вернуться в CMS"><span class="rp-icon-button rp-back-control"><?= $icon('back') ?></span><span class="rp-back-label">FIREBALL</span></a>
+        <a class="rp-back" href="<?= htmlSC($back_url) ?>" aria-label="Вернуться в CMS" title="Вернуться в CMS"><span class="rp-icon-button rp-back-control"><?= $icon('back') ?></span><span class="rp-back-label">FIREBALL</span></a>
         <div class="rp-brand">TAPE ROOM<span>ЛИЧНАЯ МУЗЫКАЛЬНАЯ КОМНАТА</span></div>
         <div class="rp-header-actions">
             <?php if (!empty($config['drive']['canManage'])): ?><?= $button('player-settings', 'Настройки плеера', 'settings') ?><?php endif; ?>

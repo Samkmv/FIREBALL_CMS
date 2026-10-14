@@ -10,8 +10,13 @@ $router->get('/plugins/reel-player/assets/(?P<file>player\.(?:css|js)|preload\.j
         foreach ([96,320,640] as $size) $allowed[] = $kind . '-' . $theme . '-' . $size . '.webp';
     }
     if (!in_array($file, $allowed, true)) abort();
-    $path = __DIR__ . '/assets/' . $file;
+    $kind = str_ends_with($file, '.css') ? 'css' : (str_ends_with($file, '.js') ? 'js' : 'images');
+    $path = ROOT . '/themes/tape-room/assets/' . $kind . '/' . $file;
     if (!is_file($path)) abort();
+    if ($file === 'player.css') {
+        // Relative font URLs must resolve next to the moved stylesheet.
+        response()->redirect(base_url('/themes/tape-room/assets/css/player.css'));
+    }
     $hash = hash_file('sha256', $path);
     $etag = '"' . $hash . '"';
     $version = (string)request()->get('v', '');
@@ -37,24 +42,28 @@ $router->get('/plugins/reel-player/assets/(?P<file>player\.(?:css|js)|preload\.j
     exit;
 });
 
-$guard = ['auth', 'admin'];
-$router->get('/admin/reel-player', [PlayerController::class, 'index'])->middleware($guard);
-$router->get('/admin/reel-player/api/state', [PlayerController::class, 'state'])->middleware($guard);
-$router->get('/admin/reel-player/api/quality/(?P<id>\d+)', [PlayerController::class, 'quality'])->middleware($guard);
-$router->post('/admin/reel-player/api/action', [PlayerController::class, 'action'])->middleware($guard);
-$router->post('/admin/reel-player/api/upload', [PlayerController::class, 'upload'])->middleware($guard);
-$router->post('/admin/reel-player/api/prepare', [PlayerController::class, 'prepare'])->middleware($guard);
-$router->post('/admin/reel-player/api/chapters/cue', [PlayerController::class, 'cuePreview'])->middleware($guard);
-$router->post('/admin/reel-player/api/chapters/analyze', [PlayerController::class, 'chapterAnalysis'])->middleware($guard);
-$router->get('/admin/reel-player/media/(?P<id>\d+)', [PlayerController::class, 'media'])->middleware($guard);
-$router->get('/admin/reel-player/cover/(?P<id>\d+)', [PlayerController::class, 'cover'])->middleware($guard);
-$router->get('/admin/reel-player/api/drive/status', [PlayerController::class, 'driveStatus'])->middleware($guard);
-$router->get('/admin/reel-player/api/drive/files', [PlayerController::class, 'driveFiles'])->middleware($guard);
-$router->get('/admin/reel-player/drive/callback', [PlayerController::class, 'driveCallback'])->middleware($guard);
-$router->get('/admin/reel-player/catalog/media/(?P<id>\d+)', [PlayerController::class, 'catalogMedia'])->middleware($guard);
-$router->get('/admin/reel-player/catalog/cover/(?P<id>\d+)', [PlayerController::class, 'catalogCover'])->middleware($guard);
-$router->get('/admin/reel-player/catalog/album-cover/(?P<id>\d+)', [PlayerController::class, 'albumCover'])->middleware($guard);
-$router->get('/admin/reel-player/catalog/artist-image/(?P<id>\d+)', [PlayerController::class, 'artistImage'])->middleware($guard);
-$router->get('/admin/reel-player/api/catalog/quality/(?P<id>\d+)', [PlayerController::class, 'catalogQuality'])->middleware($guard);
-$router->post('/admin/reel-player/api/catalog/prepare', [PlayerController::class, 'catalogPrepare'])->middleware($guard);
-$router->post('/admin/reel-player/api/catalog/listen', [PlayerController::class, 'catalogListen'])->middleware($guard);
+$router->get('/admin/reel-player', [PlayerController::class, 'index'])->middleware(['auth', 'admin']);
+
+// New browser requests use the front-end URLs. Keep administrator aliases for
+// existing sessions and the registered OAuth callback URL for Google Drive.
+foreach (['/tape-room' => ['auth'], '/admin/reel-player' => ['auth', 'admin']] as $prefix => $guard) {
+    $router->get($prefix . '/api/state', [PlayerController::class, 'state'])->middleware($guard);
+    $router->get($prefix . '/api/quality/(?P<id>\d+)', [PlayerController::class, 'quality'])->middleware($guard);
+    $router->post($prefix . '/api/action', [PlayerController::class, 'action'])->middleware($guard);
+    $router->post($prefix . '/api/upload', [PlayerController::class, 'upload'])->middleware($guard);
+    $router->post($prefix . '/api/prepare', [PlayerController::class, 'prepare'])->middleware($guard);
+    $router->post($prefix . '/api/chapters/cue', [PlayerController::class, 'cuePreview'])->middleware($guard);
+    $router->post($prefix . '/api/chapters/analyze', [PlayerController::class, 'chapterAnalysis'])->middleware($guard);
+    $router->get($prefix . '/media/(?P<id>\d+)', [PlayerController::class, 'media'])->middleware($guard);
+    $router->get($prefix . '/cover/(?P<id>\d+)', [PlayerController::class, 'cover'])->middleware($guard);
+    $router->get($prefix . '/api/drive/status', [PlayerController::class, 'driveStatus'])->middleware($guard);
+    $router->get($prefix . '/api/drive/files', [PlayerController::class, 'driveFiles'])->middleware($guard);
+    $router->get($prefix . '/drive/callback', [PlayerController::class, 'driveCallback'])->middleware(['auth']);
+    $router->get($prefix . '/catalog/media/(?P<id>\d+)', [PlayerController::class, 'catalogMedia'])->middleware($guard);
+    $router->get($prefix . '/catalog/cover/(?P<id>\d+)', [PlayerController::class, 'catalogCover'])->middleware($guard);
+    $router->get($prefix . '/catalog/album-cover/(?P<id>\d+)', [PlayerController::class, 'albumCover'])->middleware($guard);
+    $router->get($prefix . '/catalog/artist-image/(?P<id>\d+)', [PlayerController::class, 'artistImage'])->middleware($guard);
+    $router->get($prefix . '/api/catalog/quality/(?P<id>\d+)', [PlayerController::class, 'catalogQuality'])->middleware($guard);
+    $router->post($prefix . '/api/catalog/prepare', [PlayerController::class, 'catalogPrepare'])->middleware($guard);
+    $router->post($prefix . '/api/catalog/listen', [PlayerController::class, 'catalogListen'])->middleware($guard);
+}

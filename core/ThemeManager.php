@@ -435,6 +435,8 @@ class ThemeManager
             'description' => $data['description'],
             'preview' => $preview,
             'minCmsVersion' => $theme['minCmsVersion'] !== '' ? $theme['minCmsVersion'] : '1.5.0',
+            'inheritDefault' => $theme['inheritDefault'],
+            'homepage' => $theme['homepage'],
         ];
 
         $this->writeThemeJson($themeRoot, $updated);
@@ -533,7 +535,8 @@ class ThemeManager
         if ($theme === null) {
             throw new InvalidArgumentException('Unknown theme.');
         }
-        foreach (array_unique([$theme['slug'], self::DEFAULT_THEME]) as $candidate) {
+        $candidates = $theme['inheritDefault'] ? [$theme['slug'], self::DEFAULT_THEME] : [$theme['slug']];
+        foreach (array_unique($candidates) as $candidate) {
             $source = $candidate === $theme['slug'] ? $theme : $this->loadTheme($candidate);
             $file = $source ? $this->themeFile($source, $directory, $name) : null;
             if ($file !== null) {
@@ -640,6 +643,10 @@ class ThemeManager
     {
         $started = PerformanceProfiler::begin();
         $templateFile = $this->resolveFile('templates', $template)['path'] ?? $fallback;
+        if ($templateFile === null && !$this->getActiveTheme()['inheritDefault']) {
+            $templateFile = $this->resolveFile('templates', '404')['path'] ?? null;
+            http_response_code(404);
+        }
         $layoutFile = $this->resolveFile('templates', 'layout')['path'] ?? null;
         if ($templateFile === null || $layoutFile === null) {
             throw new RuntimeException('Theme template or layout not found.');
@@ -855,7 +862,7 @@ class ThemeManager
     public function asset($path): string
     {
         $theme = $this->getActiveTheme();
-        $default = $theme['slug'] !== self::DEFAULT_THEME ? $this->loadTheme(self::DEFAULT_THEME) : null;
+        $default = $theme['inheritDefault'] && $theme['slug'] !== self::DEFAULT_THEME ? $this->loadTheme(self::DEFAULT_THEME) : null;
 
         return $this->themeAssets->asset((string)$path, $theme, $default);
     }
@@ -863,7 +870,7 @@ class ThemeManager
     public function assetPath($path): string
     {
         $theme = $this->getActiveTheme();
-        $default = $theme['slug'] !== self::DEFAULT_THEME ? $this->loadTheme(self::DEFAULT_THEME) : null;
+        $default = $theme['inheritDefault'] && $theme['slug'] !== self::DEFAULT_THEME ? $this->loadTheme(self::DEFAULT_THEME) : null;
 
         return $this->themeAssets->assetPath((string)$path, $theme, $default);
     }
@@ -1195,6 +1202,8 @@ class ThemeManager
             'description' => (string)($data['description'] ?? ''),
             'preview' => $this->sanitizePreview((string)($data['preview'] ?? 'preview.png')),
             'minCmsVersion' => (string)($data['minCmsVersion'] ?? '1.5.0'),
+            'inheritDefault' => ($data['inheritDefault'] ?? true) !== false,
+            'homepage' => ($data['homepage'] ?? '') === 'home' ? 'home' : '',
         ];
 
         $json = json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -1375,6 +1384,8 @@ class ThemeManager
             'description' => trim((string)($data['description'] ?? '')),
             'preview' => $this->sanitizePreview((string)($data['preview'] ?? 'preview.png')) ?: 'preview.png',
             'minCmsVersion' => trim((string)($data['minCmsVersion'] ?? '')),
+            'inheritDefault' => ($data['inheritDefault'] ?? true) !== false,
+            'homepage' => ($data['homepage'] ?? '') === 'home' ? 'home' : '',
             'path' => $themeRoot,
             'preview_url' => base_url('/themes/' . rawurlencode($slug) . '/' . rawurlencode($this->sanitizePreview((string)($data['preview'] ?? 'preview.png')) ?: 'preview.png')),
         ];

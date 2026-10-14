@@ -28,7 +28,7 @@ final class Catalog
         foreach ($tracks as $track) {
             $id = (int)$track['id']; $shared = (int)$track['owner_id'] !== $this->owner;
             $coverByTrack[$id] = $track['cover_path'];
-            $prefix = $shared ? '/admin/reel-player/catalog/' : '/admin/reel-player/';
+            $prefix = $shared ? '/tape-room/catalog/' : '/tape-room/';
             $publicTracks[] = [
                 'id'=>$id,'title'=>$track['title'],'artist'=>$track['artist'],'filename'=>$track['filename'],
                 'mime'=>$track['mime'],'duration'=>(float)$track['duration'],'file_size'=>(int)$track['file_size'],
@@ -49,7 +49,7 @@ final class Catalog
             $editable = (int)$album['owner_id'] === $this->owner;
             $publicAlbums[] = [
                 'id'=>$id,'title'=>$album['title'],'artist'=>$album['artist'],'release_date'=>$album['release_date'],
-                'description'=>$album['description'],'cover'=>$coverPath ? base_href('/admin/reel-player/catalog/album-cover/'.$id).'?v='.basename($coverPath) : '',
+                'description'=>$album['description'],'cover'=>$coverPath ? base_href('/tape-room/catalog/album-cover/'.$id).'?v='.basename($coverPath) : '',
                 'tracks'=>$ids,'published'=>(bool)$album['published'],'saved'=>$album['saved_id'] !== null,
                 'editable'=>$editable,'canPublish'=>$editable && $this->canPublish,'created_at'=>$album['created_at'],
             ];
@@ -101,7 +101,7 @@ final class Catalog
                 if ((int)$row['owner_id']!==$this->owner && !isset($publishedKeys[$key])) continue;
                 $profiles[] = [
                     'id'=>(int)$row['id'],'name'=>$row['name'],'key'=>$key,
-                    'image'=>$row['image_path'] ? base_href('/admin/reel-player/catalog/artist-image/'.(int)$row['id']).'?v='.basename($row['image_path']) : '',
+                    'image'=>$row['image_path'] ? base_href('/tape-room/catalog/artist-image/'.(int)$row['id']).'?v='.basename($row['image_path']) : '',
                     'editable'=>$this->canPublish,
                 ];
             }
