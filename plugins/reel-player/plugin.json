@@ -2,40 +2,37 @@
   "name": "Tape Room",
   "slug": "reel-player",
   "class": "FireballPluginReelPlayer",
-  "version": "2.0.0-rc.1",
+  "version": "1.5.1",
   "type": "system",
-  "description": "Tape Room musical platform with a private library, explicit public catalogue, licensed distribution and a shared reel/compact player.",
+  "description": "Reel-to-reel player with a shared album catalogue, artists, personal collections, playlists and audio chapters.",
   "name_i18n": {
     "ru": "Tape Room · Аудиоплеер",
     "en": "Tape Room"
   },
   "description_i18n": {
-    "ru": "Музыкальная платформа с личной библиотекой, отдельным публичным каталогом, правами распространения и единым катушечным/компактным плеером.",
-    "en": "Tape Room musical platform with a private library, explicit public catalogue, licensed distribution and a shared reel/compact player."
+    "ru": "Катушечный плеер с общим каталогом альбомов, артистами, личной коллекцией, плейлистами и таймкодами.",
+    "en": "Reel-to-reel player with a shared album catalogue, artists, personal collections, playlists and audio chapters."
   },
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
-    "Add an opt-in public catalogue with access checks before pagination and every audio, cover, download and embed request.",
-    "Keep all existing publication settings internal by default; preserve music, chapters, Drive accounts, collections and listening statistics.",
-    "Add genres, tags, consent-based recommendations, server preferences and a compact interface over the existing audio engine.",
-    "Integrate licensed downloads, restricted iframe embeds and exact active subscription plans without changing payment processing.",
-    "Back up the complete database and private music/OAuth storage before additive platform migrations. This release candidate still requires physical iPhone/PWA acceptance."
+    "Highlight chapter rows across their full width without overlapping inner fills or lingering hover states; show the recording's artist and title below the chapter heading.",
+    "Keep search focus and button highlights inside their boundaries, without duplicate rings.",
+    "Make artist-photo removal readable in both light and dark themes.",
+    "Show the sort direction without moving or rotating icons."
   ],
   "release_notes_i18n": {
     "en": [
-      "Add an opt-in public catalogue with access checks before pagination and every audio, cover, download and embed request.",
-      "Keep all existing publication settings internal by default; preserve music, chapters, Drive accounts, collections and listening statistics.",
-      "Add genres, tags, consent-based recommendations, server preferences and a compact interface over the existing audio engine.",
-      "Integrate licensed downloads, restricted iframe embeds and exact active subscription plans without changing payment processing.",
-      "Back up the complete database and private music/OAuth storage before additive platform migrations. This release candidate still requires physical iPhone/PWA acceptance."
+      "Highlight chapter rows across their full width without overlapping inner fills or lingering hover states; show the recording's artist and title below the chapter heading.",
+      "Keep search focus and button highlights inside their boundaries, without duplicate rings.",
+      "Make artist-photo removal readable in both light and dark themes.",
+      "Show the sort direction without moving or rotating icons."
     ],
     "ru": [
-      "Отдельный публичный каталог включается явно; права проверяются до пагинации и при каждом запросе аудио, обложки, скачивания и виджета.",
-      "Прежние публикации остаются внутренними. Музыка, главы, Google Drive, коллекции и статистика сохраняются.",
-      "Жанры, теги, рекомендации с согласием на персонализацию, серверные настройки и компактный интерфейс над тем же аудиодвижком.",
-      "Скачивание по лицензии, ограниченные iframe-виджеты и проверка конкретного активного тарифа через действующий плагин подписок.",
-      "Резервная копия всей базы и музыкальной библиотеки перед добавочными миграциями. Кандидат в релиз требует проверки на настоящем iPhone/PWA."
+      "Единая подсветка главы на всю ширину строки, без наложения внутренних фонов и зависшего наведения; под заголовком списка показываются исполнитель и название записи.",
+      "Фокус поиска и подсветка кнопок остаются внутри границ, без двойных рамок.",
+      "Кнопка удаления фотографии артиста читается в светлой и тёмной темах.",
+      "Направление сортировки обозначается без движения и вращения иконок."
     ]
   },
   "update": {
@@ -44,9 +41,5 @@
     "repository": "Samkmv/FIREBALL_CMS",
     "branch": "main",
     "path": "plugins/reel-player"
-  },
-  "requires": {
-    "cms": ">=1.8.10",
-    "php": ">=8.2"
   }
 }

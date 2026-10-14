@@ -11,7 +11,7 @@
             try { const url=new URL(path,location.href);if(url.origin!==location.origin || !/^https?:$/.test(url.protocol))return source; }
             catch (_) {return source;}
         }
-        if (!/\/(?:admin\/reel-player\/(?:catalog\/)?|music\/)(?:cover|album-cover|artist-image)\/\d+$/.test(path)) return source;
+        if (!/\/admin\/reel-player\/(?:catalog\/)?(?:cover|album-cover|artist-image)\/\d+$/.test(path)) return source;
         const params = new URLSearchParams(query); params.set('size',String(size));
         return `${path}?${params}${parts.length > 1 ? '#' + parts.slice(1).join('#') : ''}`;
     };

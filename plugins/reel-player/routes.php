@@ -2,9 +2,9 @@
 use Fireball\ReelPlayer\Controllers\PlayerController;
 
 /** @var \FBL\Router $router */
-$router->get('/plugins/reel-player/assets/(?P<file>[a-z0-9.-]+)', static function (): never {
+$router->get('/plugins/reel-player/assets/(?P<file>player\.(?:css|js)|preload\.js|meters\.js|chapters\.js|transport\.js|quality\.js|collections\.js|catalog\.js|images\.js|(?:cover|artist)-(?:light|dark)(?:\.png|-(?:96|320|640)\.webp))', static function (): never {
     $file = (string)get_route_param('file');
-    $allowed = ['player.css','player.js','preload.js','meters.js','chapters.js','transport.js','quality.js','collections.js','catalog.js','images.js','reel.css','public.css','public.js','navigation.js','platform-admin.js','media-session.js','playback-core.js','preferences.js','compact.js','public-playback.js','embed.js'];
+    $allowed = ['player.css','player.js','preload.js','meters.js','chapters.js','transport.js','quality.js','collections.js','catalog.js','images.js'];
     foreach (['cover','artist'] as $kind) foreach (['light','dark'] as $theme) {
         $allowed[] = $kind . '-' . $theme . '.png';
         foreach ([96,320,640] as $size) $allowed[] = $kind . '-' . $theme . '-' . $size . '.webp';
@@ -58,7 +58,3 @@ $router->get('/admin/reel-player/catalog/artist-image/(?P<id>\d+)', [PlayerContr
 $router->get('/admin/reel-player/api/catalog/quality/(?P<id>\d+)', [PlayerController::class, 'catalogQuality'])->middleware($guard);
 $router->post('/admin/reel-player/api/catalog/prepare', [PlayerController::class, 'catalogPrepare'])->middleware($guard);
 $router->post('/admin/reel-player/api/catalog/listen', [PlayerController::class, 'catalogListen'])->middleware($guard);
-
-require __DIR__ . '/routes-public.php';
-require __DIR__ . '/routes-discovery.php';
-require __DIR__ . '/routes-preferences.php';
