@@ -38,10 +38,10 @@ final class DriveCache
         return is_array($file) && ($file['id'] ?? '') === $id ? $file : null;
     }
 
-    public function saveMetadata(array $file): void
+    public function saveMetadata(array $file, bool $cleanup = true): void
     {
-        $this->directory(); $this->cleanup();
-        $allowed = array_intersect_key($file, array_flip(['id','name','mimeType','size','headRevisionId','md5Checksum','modifiedTime','capabilities']));
+        $this->directory(); if ($cleanup) $this->cleanup();
+        $allowed = array_intersect_key($file, array_flip(['id','name','mimeType','size','headRevisionId','md5Checksum','modifiedTime','capabilities','parents']));
         $this->atomic($this->path($file['id'], 'meta'), json_encode($allowed, JSON_THROW_ON_ERROR));
     }
 

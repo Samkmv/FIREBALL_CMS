@@ -117,7 +117,8 @@ final class AudioQuality
         return [];
     }
 
-    private static function mpegFrame(string $header): ?array
+    /** Shared bounded MPEG header parser for quality labels and Xing/VBRI duration. */
+    public static function mpegFrame(string $header): ?array
     {
         if (strlen($header) < 4) return null;
         $bytes = array_map('ord', str_split($header));

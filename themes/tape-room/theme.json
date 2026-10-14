@@ -1,7 +1,7 @@
 {
     "name": "Tape Room",
     "slug": "tape-room",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "author": "FIREBALL CMS",
     "description": "Самостоятельная тема музыкальной комнаты Tape Room. Плеер на главной странице для всех вошедших пользователей.",
     "preview": "preview.png",

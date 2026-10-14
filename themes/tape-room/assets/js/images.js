@@ -35,7 +35,32 @@
         }
         if (image.getAttribute('src') !== value.src) image.setAttribute('src',value.src);
     };
-    const api = {thumbnail,sources,apply};
+    // Patch existing nodes in place. Playback updates must never detach images
+    // or restart their decoding, and keyboard focus stays on the same control.
+    const patch = (parent, content) => {
+        if (typeof content === 'string') { const template = document.createElement('template'); template.innerHTML = content; content = template.content; }
+        const key = node => node.nodeType === 1 ? node.getAttribute('data-track-id') && `track:${node.getAttribute('data-track-id')}` || node.getAttribute('data-album-id') && `album:${node.getAttribute('data-album-id')}` || node.getAttribute('data-artist-key') && `artist:${node.getAttribute('data-artist-key')}` || '' : '';
+        const old = [...parent.childNodes], keyed = new Map(old.map(node => [key(node),node]).filter(([id]) => id));
+        let cursor = parent.firstChild;
+        for (const fresh of [...content.childNodes]) {
+            const id = key(fresh), candidate = id ? keyed.get(id) : cursor;
+            const compatible = candidate && candidate.nodeType === fresh.nodeType && candidate.nodeName === fresh.nodeName && key(candidate) === id;
+            let node = fresh;
+            if (compatible) {
+                node = candidate;
+                if (node.nodeType === 1) {
+                    for (const attribute of [...node.attributes]) if (!fresh.hasAttribute(attribute.name)) node.removeAttribute(attribute.name);
+                    // srcset goes first, as with apply(). Unchanged URLs are never assigned.
+                    for (const attribute of [...fresh.attributes].sort((a,b) => (a.name === 'srcset' ? -1 : b.name === 'srcset' ? 1 : 0))) if (node.getAttribute(attribute.name) !== attribute.value) node.setAttribute(attribute.name,attribute.value);
+                    patch(node,fresh);
+                } else if (node.nodeValue !== fresh.nodeValue) node.nodeValue = fresh.nodeValue;
+            }
+            if (node !== cursor) parent.insertBefore(node,cursor);
+            cursor = node.nextSibling;
+        }
+        while (cursor) { const next=cursor.nextSibling; cursor.remove(); cursor=next; }
+    };
+    const api = {thumbnail,sources,apply,patch};
     if (typeof window !== 'undefined') window.TapeRoomImages = api;
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
 })();

@@ -30,6 +30,8 @@
             this.latest = null;
         }
 
+        html(value) { window.TapeRoomImages.patch(this.content,value); }
+
         render({data, view = {type:'overview'}, current = 0, playing = false, query, canPublish}) {
             if (!this.content) return {listMode:true};
             const catalog = data.catalog || {albums:[],tracks:[]};
@@ -66,16 +68,18 @@
                 case 'mine':
                     result = this.cardsPage(personalAlbums, 'Моя музыка', 'Ваша коллекция', 'Ваша коллекция альбомов пока пуста', 'Откройте альбом в каталоге и нажмите «В коллекцию» или создайте альбом из своих песен.', `<button class="rp-catalog-text-button" type="button" data-action="catalog-view" data-view="songs">Все мои песни</button>`);
                     break;
+                case 'genres': result = this.genresPage(); break;
+                case 'genre': { const genre=(catalog.genres || []).find(item=>Number(item.id)===Number(view.id)); result=this.cardsPage(publicAlbums.filter(item=>Number(item.genreId)===Number(view.id)),genre?.name || 'Жанр','Альбомы жанра','В этом жанре пока нет альбомов','Одобренные альбомы появятся здесь.'); break; }
                 case 'artists': result = this.artistsPage(); break;
                 case 'new': result = this.newPage(); break;
                 case 'popular': {
                     const tracks = this.popularTracks();
-                    this.content.innerHTML = '<p class="rp-catalog-note">Песни из общего каталога, которые чаще слушают на сайте.</p>';
+                    this.html('<p class="rp-catalog-note">Песни из общего каталога, которые чаще слушают на сайте.</p>');
                     result = {listMode:true,title:'Популярное',tracks,summary:countLabel(tracks.length,'песня','песни','песен'),emptyTitle:'Популярные песни появятся после первых прослушиваний',emptyDescription:'Рейтинг строится по прослушиваниям музыки из общего каталога.'};
                     break;
                 }
                 case 'songs': case 'favorites': case 'playlist':
-                    this.content.replaceChildren();
+                    this.html('');
                     result = {listMode:true};
                     break;
                 default: result = this.overview();
@@ -91,15 +95,25 @@
             if (dropHint) dropHint.hidden = !['songs','favorites','playlist','mine'].includes(view.type);
             const input = this.app.querySelector('[data-search]');
             if (input) {
-                const label = ['overview','albums','mine','new'].includes(view.type) ? 'Найти альбом или артиста' : view.type === 'artists' ? 'Найти артиста' : 'Найти трек или исполнителя';
+                const label = ['overview','albums','mine','new'].includes(view.type) ? 'Найти альбом или артиста' : view.type === 'genres' ? 'Найти жанр' : view.type === 'artists' ? 'Найти артиста' : 'Найти трек или исполнителя';
                 input.placeholder = label;
                 input.setAttribute('aria-label', label);
             }
             return result;
         }
 
+        genresPage() {
+            const genres=(this.latest.data.catalog?.genres || []).filter(item=>!this.latest.search || normalized(item.name).includes(this.latest.search));
+            this.html(`<div class="rp-genre-grid">${genres.map(genre=>{
+                const albums=this.latest.publicAlbums.filter(album=>Number(album.genreId)===Number(genre.id));
+                const tracks=new Set(albums.flatMap(album=>album.tracks || []));
+                return `<button type="button" class="rp-genre-card" data-action="catalog-genre" data-id="${Number(genre.id)}"><strong>${this.escape(genre.name)}</strong><span>${this.escape(countLabel(albums.length,'альбом','альбома','альбомов'))} · ${this.escape(countLabel(tracks.size,'песня','песни','песен'))}</span></button>`;
+            }).join('')}</div>`);
+            return {listMode:false,title:'Жанры',summary:'Библиотека жанров'};
+        }
+
         matches(album) {
-            return !this.latest.search || normalized(`${album.title} ${album.artist || ''} ${album.description || ''}`).includes(this.latest.search);
+            return !this.latest.search || normalized(`${album.title} ${album.artist || ''} ${album.description || ''} ${album.genre || ''}`).includes(this.latest.search);
         }
 
         tracksFor(album) {
@@ -121,9 +135,9 @@
             const esc = this.escape, tracks = this.tracksFor(album);
             const date = timestamp(album.release_date), year = date ? new Date(date).getFullYear() : '';
             const total = tracks.reduce((sum,track) => sum + (Number(track.duration)||0),0);
-            const meta = [year || (!album.published ? 'Личный альбом' : 'Без даты релиза'), countLabel(tracks.length,'трек','трека','треков'),total ? duration(total) : ''].filter(Boolean).join(' · ');
+            const meta = [year || (!album.published ? (album.moderation === 'pending' ? 'На модерации' : album.moderation === 'rejected' ? 'Отклонён' : 'Личный альбом') : 'Без даты релиза'), countLabel(tracks.length,'трек','трека','треков'),total ? duration(total) : ''].filter(Boolean).join(' · ');
             const active = tracks.some(track => Number(track.id) === this.latest.current) && this.latest.playing;
-            return `<article class="rp-album-card${active ? ' is-playing' : ''}">
+            return `<article data-album-id="${Number(album.id)}" class="rp-album-card${active ? ' is-playing' : ''}">
                 <div class="rp-album-artwork">
                     <button type="button" class="rp-album-open" data-action="catalog-album" data-id="${Number(album.id)}" aria-label="Открыть альбом ${esc(album.title)}">${this.image(this.albumCover(album))}</button>
                     ${tracks.length ? `<button type="button" class="rp-catalog-card-play" data-action="catalog-play-album" data-id="${Number(album.id)}" aria-label="Воспроизвести альбом ${esc(album.title)}">${this.icon('play')}</button>` : ''}
@@ -131,7 +145,7 @@
                 </div>
                 <button type="button" class="rp-album-title" data-action="catalog-album" data-id="${Number(album.id)}">${esc(album.title)}</button>
                 ${album.artist ? `<button type="button" class="rp-album-artist" data-action="catalog-artist" data-artist="${esc(album.artist)}">${esc(album.artist)}</button>` : '<span class="rp-album-artist">Исполнитель не указан</span>'}
-                <span class="rp-album-meta">${esc(meta)}</span>
+                ${album.genre ? `<button class="rp-catalog-text-button" type="button" data-action="catalog-genre" data-id="${Number(album.genreId)}">${esc(album.genre)}</button>` : ''}<span class="rp-album-meta">${esc(meta)}</span>
             </article>`;
         }
 
@@ -153,7 +167,7 @@
 
         cardsPage(albums, title, summary, emptyTitle, emptyDescription, extra = '') {
             const visible = albums.filter(album => this.matches(album)).sort((a,b) => timestamp(b.created_at) - timestamp(a.created_at) || Number(b.id) - Number(a.id));
-            this.content.innerHTML = `${extra ? `<div class="rp-catalog-collection-link">${extra}</div>` : ''}${this.albumGrid(visible, this.latest.search ? 'Ничего не найдено' : emptyTitle, this.latest.search ? 'Попробуйте другое название альбома или имя артиста.' : emptyDescription)}`;
+            this.html(`${extra ? `<div class="rp-catalog-collection-link">${extra}</div>` : ''}${this.albumGrid(visible, this.latest.search ? 'Ничего не найдено' : emptyTitle, this.latest.search ? 'Попробуйте другое название альбома или имя артиста.' : emptyDescription)}`);
             return {listMode:false,title,summary:`${summary} · ${countLabel(albums.length,'альбом','альбома','альбомов')}`};
         }
 
@@ -164,7 +178,7 @@
 
         popularPreview(tracks) {
             const esc = this.escape;
-            return `<div class="rp-catalog-popular-list">${tracks.map((track,index) => `<article class="rp-catalog-popular-row${Number(track.id) === this.latest.current ? ' is-current' : ''}">
+            return `<div class="rp-catalog-popular-list">${tracks.map((track,index) => `<article data-track-id="${Number(track.id)}" class="rp-catalog-popular-row${Number(track.id) === this.latest.current ? ' is-current' : ''}">
                 <button type="button" class="rp-catalog-inline-play" data-action="play-track" data-source="popular" data-id="${Number(track.id)}" aria-label="Воспроизвести ${esc(track.title)}">${this.icon(Number(track.id) === this.latest.current && this.latest.playing ? 'pause' : 'play')}</button>
                 <span class="rp-catalog-ranking" aria-hidden="true">${String(index+1).padStart(2,'0')}</span>${this.image(track.cover,'rp-catalog-song-cover')}
                 <span class="rp-catalog-song-info"><strong>${esc(track.title)}</strong><span>${esc(track.artist || 'Неизвестный исполнитель')}</span></span>
@@ -175,17 +189,17 @@
         overview() {
             const albums = this.latest.publicAlbums.filter(album => this.matches(album)).sort((a,b) => timestamp(b.release_date || b.created_at) - timestamp(a.release_date || a.created_at) || Number(b.id)-Number(a.id));
             const popular = this.popularTracks().filter(track => !this.latest.search || normalized(`${track.title} ${track.artist || ''}`).includes(this.latest.search));
-            this.content.innerHTML = `<section class="rp-catalog-section">${this.sectionHeading('Альбомы на вашей ленте','Новые релизы и недавние добавления в каталог',this.viewLink('albums','Все альбомы'))}${this.albumGrid(albums.slice(0,6),this.latest.search ? 'Ничего не найдено' : 'Здесь появятся альбомы сайта',this.latest.search ? 'Попробуйте другое название альбома или имя артиста.' : 'Пока каталог пуст. Соберите альбом из своей музыки; создатель сайта может опубликовать его для всех.')}</section>
-                <section class="rp-catalog-section">${this.sectionHeading('Чаще слушают','На основе прослушиваний в общем каталоге',this.viewLink('popular','Все песни'))}${popular.length ? this.popularPreview(popular.slice(0,5)) : `<p class="rp-catalog-note">${this.latest.search ? 'По вашему запросу песен не найдено.' : 'Популярные песни появятся после первых прослушиваний.'}</p>`}</section>`;
+            this.html(`<section class="rp-catalog-section">${this.sectionHeading('Альбомы на вашей ленте','Новые релизы и недавние добавления в каталог',this.viewLink('albums','Все альбомы'))}${this.albumGrid(albums.slice(0,6),this.latest.search ? 'Ничего не найдено' : 'Здесь появятся альбомы сайта',this.latest.search ? 'Попробуйте другое название альбома или имя артиста.' : 'Пока каталог пуст. Соберите альбом из своей музыки; создатель сайта может опубликовать его для всех.')}</section>
+                <section class="rp-catalog-section">${this.sectionHeading('Чаще слушают','На основе прослушиваний в общем каталоге',this.viewLink('popular','Все песни'))}${popular.length ? this.popularPreview(popular.slice(0,5)) : `<p class="rp-catalog-note">${this.latest.search ? 'По вашему запросу песен не найдено.' : 'Популярные песни появятся после первых прослушиваний.'}</p>`}</section>`);
             return {listMode:false,title:'Обзор',summary:'Общий каталог сайта'};
         }
 
         newPage() {
             const dated = this.latest.publicAlbums.filter(album => timestamp(album.release_date) && this.matches(album)).sort((a,b) => timestamp(b.release_date)-timestamp(a.release_date));
             const added = this.latest.publicAlbums.filter(album => !timestamp(album.release_date) && this.matches(album)).sort((a,b) => timestamp(b.created_at)-timestamp(a.created_at) || Number(b.id)-Number(a.id));
-            this.content.innerHTML = (dated.length ? `<section class="rp-catalog-section">${this.sectionHeading('Новые релизы','Альбомы по дате выпуска')}${this.albumGrid(dated)}</section>` : '') +
+            this.html((dated.length ? `<section class="rp-catalog-section">${this.sectionHeading('Новые релизы','Альбомы по дате выпуска')}${this.albumGrid(dated)}</section>` : '') +
                 (added.length ? `<section class="rp-catalog-section">${this.sectionHeading('Недавно добавлены','Дата релиза не указана — порядок по добавлению на сайт')}${this.albumGrid(added)}</section>` : '') ||
-                this.empty(this.latest.search ? 'Ничего не найдено' : 'Новых альбомов пока нет',this.latest.search ? 'Попробуйте другое название альбома или имя артиста.' : 'Новые релизы и недавно добавленные альбомы появятся здесь после публикации.');
+                this.empty(this.latest.search ? 'Ничего не найдено' : 'Новых альбомов пока нет',this.latest.search ? 'Попробуйте другое название альбома или имя артиста.' : 'Новые релизы и недавно добавленные альбомы появятся здесь после публикации.'));
             return {listMode:false,title:'Новинки',summary:'Релизы и добавления'};
         }
 
@@ -215,40 +229,40 @@
 
         artistsPage() {
             const artists = this.artists(), visible = artists.filter(artist => !this.latest.search || normalized(artist.name).includes(this.latest.search));
-            this.content.innerHTML = visible.length ? `<div class="rp-artist-grid">${visible.map(artist => `<button type="button" class="rp-artist-card" data-action="catalog-artist" data-artist="${this.escape(artist.name)}"><span class="rp-artist-artwork">${this.image(artist.cover,'','artist')}</span><strong>${this.escape(artist.name)}</strong><span>${this.escape([countLabel(artist.albums.length,'альбом','альбома','альбомов'),countLabel(artist.tracks.length,'песня','песни','песен')].join(' · '))}</span></button>`).join('')}</div>` : this.empty(this.latest.search ? 'Артист не найден' : 'Артисты появятся вместе с музыкой',this.latest.search ? 'Попробуйте другое имя.' : 'Укажите исполнителей в песнях и альбомах общего каталога.');
+            this.html(visible.length ? `<div class="rp-artist-grid">${visible.map(artist => `<button type="button" data-artist-key="${this.escape(artist.name)}" class="rp-artist-card" data-action="catalog-artist" data-artist="${this.escape(artist.name)}"><span class="rp-artist-artwork">${this.image(artist.cover,'','artist')}</span><strong>${this.escape(artist.name)}</strong><span>${this.escape([countLabel(artist.albums.length,'альбом','альбома','альбомов'),countLabel(artist.tracks.length,'песня','песни','песен')].join(' · '))}</span></button>`).join('')}</div>` : this.empty(this.latest.search ? 'Артист не найден' : 'Артисты появятся вместе с музыкой',this.latest.search ? 'Попробуйте другое имя.' : 'Укажите исполнителей в песнях и альбомах общего каталога.'));
             return {listMode:false,title:'Артисты',summary:countLabel(artists.length,'артист','артиста','артистов')};
         }
 
         albumDetail(album) {
             if (!album) {
-                this.content.innerHTML = this.empty('Альбом больше недоступен','Он мог быть удалён или снят с публикации.') + this.viewLink('albums','Вернуться к альбомам');
+                this.html(this.empty('Альбом больше недоступен','Он мог быть удалён или снят с публикации.') + this.viewLink('albums','Вернуться к альбомам'));
                 return {listMode:false,title:'Альбом',summary:''};
             }
             const esc = this.escape, tracks = this.tracksFor(album), total = tracks.reduce((sum,track) => sum + (Number(track.duration)||0),0);
             const year = timestamp(album.release_date) ? new Date(timestamp(album.release_date)).getFullYear() : '';
-            const meta = [year,countLabel(tracks.length,'трек','трека','треков'),total ? duration(total) : ''].filter(Boolean).join(' · ');
+            const meta = [year,album.genre,countLabel(tracks.length,'трек','трека','треков'),total ? duration(total) : ''].filter(Boolean).join(' · ');
             const canPublish = this.canPublish || this.latest.canPublish || Boolean(this.latest.data.canPublish);
-            this.content.innerHTML = `<div class="rp-catalog-detail-back">${this.viewLink(album.published ? 'albums' : 'mine','К альбомам')}</div>
+            this.html(`<div class="rp-catalog-detail-back">${this.viewLink(album.published ? 'albums' : 'mine','К альбомам')}</div>
                 <section class="rp-album-detail"><div class="rp-album-detail-cover">${this.image(this.albumCover(album),'','cover',true)}</div><div class="rp-album-detail-info">
                 <span class="rp-catalog-eyebrow">${album.published ? 'Альбом · каталог сайта' : 'Личный альбом'}</span><h3>${esc(album.title)}</h3>
                 ${album.artist ? `<button class="rp-catalog-artist-link" type="button" data-action="catalog-artist" data-artist="${esc(album.artist)}">${esc(album.artist)}</button>` : ''}<p class="rp-album-detail-meta">${esc(meta)}</p>
-                ${album.description ? `<p class="rp-album-description">${esc(album.description)}</p>` : ''}
+                ${album.editable && album.moderation !== 'draft' ? `<p class="rp-catalog-note">${esc(album.moderation === 'pending' ? 'Альбом ожидает проверки. В общем каталоге он появится после одобрения.' : album.moderation === 'rejected' ? 'Публикация отклонена. Исправьте альбом и отправьте его повторно.' : 'Публикация одобрена.')} ${esc(album.moderationNote || '')}</p>` : ''}${album.description ? `<p class="rp-album-description">${esc(album.description)}</p>` : ''}
                 <div class="rp-album-detail-actions"><button type="button" class="rp-button rp-button--primary rp-catalog-play" data-action="catalog-play-album" data-id="${Number(album.id)}" ${tracks.length ? '' : 'disabled'}>${this.icon('play')}<span>Слушать альбом</span></button><button type="button" class="rp-button rp-catalog-save${album.saved ? ' is-saved' : ''}" data-action="catalog-save" data-id="${Number(album.id)}" aria-pressed="${Boolean(album.saved)}">${this.icon(album.saved ? 'heart' : 'plus')}<span>${album.saved ? 'В коллекции' : 'В коллекцию'}</span></button>${album.editable ? `<button class="rp-icon-button" type="button" data-action="catalog-edit" data-id="${Number(album.id)}" title="Изменить альбом" aria-label="Изменить альбом">${this.icon('edit')}</button>` : ''}</div>
-                ${album.editable ? `<div class="rp-album-detail-management">${canPublish ? `<button type="button" class="rp-catalog-publish" data-action="catalog-publish" data-id="${Number(album.id)}" data-published="${album.published ? 0 : 1}">${album.published ? 'Снять с публикации' : 'Опубликовать для всех'}</button>` : ''}<button type="button" class="rp-catalog-delete" data-action="catalog-delete" data-id="${Number(album.id)}">${this.icon('trash')}Удалить альбом</button></div>` : ''}
-                </div></section><div class="rp-catalog-track-heading"><h3>Песни альбома</h3><span>Порядок альбома</span></div>`;
+                ${album.editable ? `<div class="rp-album-detail-management">${canPublish ? `<button type="button" class="rp-catalog-publish" data-action="catalog-publish" data-id="${Number(album.id)}" data-published="${album.submitted ? 0 : 1}">${album.submitted ? 'Отозвать публикацию' : 'Отправить на модерацию'}</button>` : ''}<button type="button" class="rp-catalog-delete" data-action="catalog-delete" data-id="${Number(album.id)}">${this.icon('trash')}Удалить альбом</button></div>` : ''}
+                </div></section><div class="rp-catalog-track-heading"><h3>Песни альбома</h3><span>Порядок альбома</span></div>`);
             return {listMode:true,title:'Альбом',summary:'',tracks,emptyTitle:'В альбоме пока нет песен',emptyDescription:album.editable ? 'Откройте редактор альбома и выберите песни из своей библиотеки.' : 'Песни появятся после добавления владельцем альбома.'};
         }
 
         artistDetail(name) {
             const artist = this.artists().find(item => normalized(item.name) === normalized(name));
             if (!artist) {
-                this.content.innerHTML = this.empty('В каталоге нет музыки этого артиста','Личные альбомы и песни видны только в вашей коллекции.') + this.viewLink('artists','Все артисты');
+                this.html(this.empty('В каталоге нет музыки этого артиста','Личные альбомы и песни видны только в вашей коллекции.') + this.viewLink('artists','Все артисты'));
                 return {listMode:false,title:name || 'Артист',summary:''};
             }
             const albums = artist.albums.filter(album => this.matches(album));
             const canEdit = this.canPublish || this.latest.canPublish || Boolean(this.latest.data.catalog?.canPublish);
-            this.content.innerHTML = `<div class="rp-catalog-detail-back">${this.viewLink('artists','Все артисты')}</div><div class="rp-artist-detail"><span class="rp-artist-detail-cover">${this.image(artist.cover,'','artist',true)}</span><div><span class="rp-catalog-eyebrow">Артист · каталог сайта</span><h3>${this.escape(artist.name)}</h3><p>${this.escape(countLabel(artist.albums.length,'альбом','альбома','альбомов'))} · ${this.escape(countLabel(artist.tracks.length,'песня','песни','песен'))}</p>${canEdit ? `<button type="button" class="rp-button" data-action="artist-edit" data-artist="${this.escape(artist.name)}">${this.icon('edit')}Изображение артиста</button>` : ''}</div></div>
-                ${albums.length ? `<section class="rp-catalog-section">${this.sectionHeading('Альбомы')}${this.albumGrid(albums)}</section>` : ''}${artist.tracks.length ? `<div class="rp-catalog-track-heading"><h3>Песни артиста</h3></div>` : ''}`;
+            this.html(`<div class="rp-catalog-detail-back">${this.viewLink('artists','Все артисты')}</div><div class="rp-artist-detail"><span class="rp-artist-detail-cover">${this.image(artist.cover,'','artist',true)}</span><div><span class="rp-catalog-eyebrow">Артист · каталог сайта</span><h3>${this.escape(artist.name)}</h3><p>${this.escape(countLabel(artist.albums.length,'альбом','альбома','альбомов'))} · ${this.escape(countLabel(artist.tracks.length,'песня','песни','песен'))}</p>${canEdit ? `<button type="button" class="rp-button" data-action="artist-edit" data-artist="${this.escape(artist.name)}">${this.icon('edit')}Изображение артиста</button>` : ''}</div></div>
+                ${albums.length ? `<section class="rp-catalog-section">${this.sectionHeading('Альбомы')}${this.albumGrid(albums)}</section>` : ''}${artist.tracks.length ? `<div class="rp-catalog-track-heading"><h3>Песни артиста</h3></div>` : ''}`);
             return {listMode:artist.tracks.length > 0,title:artist.name,summary:'Дискография',tracks:artist.tracks,emptyTitle:'Песни не найдены',emptyDescription:'Попробуйте другое название.'};
         }
     }

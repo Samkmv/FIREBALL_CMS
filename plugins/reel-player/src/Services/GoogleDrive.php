@@ -235,10 +235,10 @@ final class GoogleDrive
         if (strlen($page) > 2000) throw new \InvalidArgumentException('Некорректная страница Google Drive.');
         $q = $folder ? "trashed = false and '" . self::id($folder) . "' in parents" : self::audioQuery();
         $result = $this->request('https://www.googleapis.com/drive/v3/files?' . http_build_query([
-            'q' => $q, 'fields' => 'nextPageToken,files(id,name,mimeType,size,capabilities(canDownload))', 'pageSize' => 100,
+            'q' => $q, 'fields' => 'nextPageToken,files(id,name,mimeType,size,headRevisionId,md5Checksum,modifiedTime,parents,capabilities(canDownload))', 'pageSize' => 100,
             'orderBy' => 'name', 'pageToken' => $page, 'supportsAllDrives' => 'true', 'includeItemsFromAllDrives' => 'true',
         ], '', '&', PHP_QUERY_RFC3986), null, $this->token());
-        return self::audioPage($result);
+        $audio=self::audioPage($result); $this->cacheListed($audio['files']); return $audio;
     }
 
     public static function audioPage(array $result): array
@@ -257,10 +257,10 @@ final class GoogleDrive
         $folder = $folder === 'root' ? 'root' : self::id($folder);
         $result = $this->request('https://www.googleapis.com/drive/v3/files?' . http_build_query([
             'q' => "trashed = false and '" . $folder . "' in parents",
-            'fields' => 'nextPageToken,files(id,name,mimeType,size,capabilities(canDownload))', 'pageSize' => 100,
+            'fields' => 'nextPageToken,files(id,name,mimeType,size,headRevisionId,md5Checksum,modifiedTime,parents,capabilities(canDownload))', 'pageSize' => 100,
             'orderBy' => 'name', 'pageToken' => $page, 'supportsAllDrives' => 'true', 'includeItemsFromAllDrives' => 'true',
         ], '', '&', PHP_QUERY_RFC3986), null, $this->token());
-        return self::browsePage($result);
+        $page=self::browsePage($result); $this->cacheListed($page['files']); return $page;
     }
 
     public static function browsePage(array $result): array
@@ -289,7 +289,7 @@ final class GoogleDrive
             try { if ($file = $cache->metadata($id)) return $file; } catch (\Throwable) { /* Optional cache. */ }
         }
         $file = $this->request('https://www.googleapis.com/drive/v3/files/' . rawurlencode($id) . '?' . http_build_query([
-            'fields' => 'id,name,mimeType,size,headRevisionId,md5Checksum,modifiedTime,capabilities(canDownload)', 'supportsAllDrives' => 'true',
+            'fields' => 'id,name,mimeType,size,headRevisionId,md5Checksum,modifiedTime,parents,capabilities(canDownload)', 'supportsAllDrives' => 'true',
         ]), null, $this->token());
         // Folders are useful during import but do not belong in the audio cache.
         if (($file['mimeType'] ?? '') !== 'application/vnd.google-apps.folder') {
@@ -342,6 +342,55 @@ final class GoogleDrive
         }
         if (!$files) throw new \InvalidArgumentException('В папке нет поддерживаемых аудиофайлов.');
         return array_values($files);
+    }
+
+    private function cacheListed(array $files): void
+    {
+        try { $cache=$this->cache(); $cache->cleanup(); foreach($files as $file) if(($file['mimeType'] ?? '')!=='application/vnd.google-apps.folder') $cache->saveMetadata($file,false); }
+        catch (\Throwable) { /* Listing remains usable when the optional cache is full. */ }
+    }
+
+    private function rangeBytes(array $file,int $start,int $end): string
+    {
+        $bytes=''; $skip=0;
+        $this->download($file,$start,$end,false,
+            static function(int $status,array $headers) use (&$skip,$start,$end,$file): void { $skip=DriveStream::response($status,$headers,$start,$end,(int)$file['size']); },
+            static function(string $chunk) use (&$bytes,&$skip,$end,$start): bool { $discard=min($skip,strlen($chunk));$skip-=$discard;$chunk=substr($chunk,$discard);$left=$end-$start+1-strlen($bytes);$bytes.=substr($chunk,0,max(0,$left));return strlen($bytes)<$end-$start+1; });
+        if(strlen($bytes)!==$end-$start+1)throw new \RuntimeException('Не удалось прочитать метаданные Google Drive.');
+        return $bytes;
+    }
+
+    /** Metadata reads share the immutable playback prefix and have an eight-second budget. */
+    public function metadata(string $id,bool $folderArtwork=false): array
+    {
+        $previous=$this->analysisDeadline;$this->analysisDeadline=microtime(true)+8;
+        try {
+            $file=self::assertAudio($this->file($id));$size=(int)$file['size'];$cache=$this->cache();$prefix=$cache->prefix($file);
+            $head=$prefix ? (string)file_get_contents($prefix,false,null,0,AudioMetadata::MAX_BYTES) : $this->rangeBytes($file,0,min($size,AudioMetadata::MAX_BYTES)-1);
+            if(!$prefix && !empty($file['headRevisionId']) && strlen($head)===min($size,DriveCache::PREFIX_BYTES)) {
+                try { $cache->savePrefix($file,$head); } catch(\Throwable) { /* Metadata is usable without a playback cache. */ }
+            }
+            $format=strtolower(pathinfo($file['name'],PATHINFO_EXTENSION));$tail='';
+            if(in_array($format,['m4a','ogg','opus'],true) && $size>strlen($head) && microtime(true)<$this->analysisDeadline-1) {
+                $tailSize=$format==='m4a'?AudioMetadata::MAX_BYTES:131072;
+                try { $tail=$this->rangeBytes($file,max(strlen($head),$size-$tailSize),$size-1); } catch(\Throwable) { /* Keep any tags already read from the prefix. */ }
+            }
+            $metadata=AudioMetadata::read($head,$file['name'],$size,$tail);
+            if($folderArtwork && empty($metadata['cover']) && !empty($file['parents'][0]) && microtime(true)<$this->analysisDeadline-1) {
+                try { $metadata['cover']=$this->folderArtwork($file['parents'][0]); } catch(\Throwable) { /* Cover art is optional. */ }
+            }
+            return $metadata;
+        } finally { $this->analysisDeadline=$previous; }
+    }
+
+    private function folderArtwork(string $folder): string
+    {
+        $result=$this->request('https://www.googleapis.com/drive/v3/files?'.http_build_query([
+            'q'=>"trashed=false and '".self::id($folder)."' in parents and (mimeType='image/jpeg' or mimeType='image/png' or mimeType='image/webp')",
+            'fields'=>'files(id,name,mimeType,size,capabilities(canDownload))','pageSize'=>100,'supportsAllDrives'=>'true','includeItemsFromAllDrives'=>'true',
+        ]),null,$this->token());
+        foreach($result['files'] ?? [] as $image) if(preg_match('/^(cover|folder|front|album|artwork)\.(jpe?g|png|webp)$/i',$image['name']) && (int)($image['size'] ?? 0)>0 && (int)$image['size']<=8*1048576 && ($image['capabilities']['canDownload'] ?? true)) return $this->rangeBytes($image,0,(int)$image['size']-1);
+        return '';
     }
 
     private function pipeline(): DriveStream

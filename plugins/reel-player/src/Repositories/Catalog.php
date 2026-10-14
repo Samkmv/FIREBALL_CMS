@@ -11,17 +11,17 @@ final class Catalog
 
     public function state(): array
     {
-        $albums = db()->query('SELECT a.*, s.album_id AS saved_id FROM reel_albums a LEFT JOIN reel_album_saves s ON s.album_id=a.id AND s.owner_id=? WHERE a.owner_id=? OR a.published=1 ORDER BY a.created_at DESC,a.id DESC', [$this->owner,$this->owner])->get() ?: [];
-        $memberships = db()->query('SELECT at.album_id,at.track_id FROM reel_album_tracks at JOIN reel_albums a ON a.id=at.album_id WHERE a.owner_id=? OR a.published=1 ORDER BY at.album_id,at.position,at.track_id', [$this->owner])->get() ?: [];
+        $albums = db()->query('SELECT a.*, s.album_id AS saved_id FROM reel_albums a LEFT JOIN reel_album_saves s ON s.album_id=a.id AND s.owner_id=? WHERE a.owner_id=? OR (a.published=1 AND a.moderation_status=\'approved\') ORDER BY a.created_at DESC,a.id DESC', [$this->owner,$this->owner])->get() ?: [];
+        $memberships = db()->query('SELECT at.album_id,at.track_id FROM reel_album_tracks at JOIN reel_albums a ON a.id=at.album_id WHERE a.owner_id=? OR (a.published=1 AND a.moderation_status=\'approved\') ORDER BY at.album_id,at.position,at.track_id', [$this->owner])->get() ?: [];
         $albumTracks = [];
         foreach ($memberships as $member) $albumTracks[(int)$member['album_id']][] = (int)$member['track_id'];
         $tracks = db()->query('SELECT t.*, CASE WHEN t.owner_id=? THEN t.favorite ELSE COALESCE(f.favorite,0) END AS viewer_favorite, COALESCE(stats.listens,0) AS listen_count,
             EXISTS(SELECT 1 FROM reel_album_tracks at JOIN reel_album_saves s ON s.album_id=at.album_id WHERE at.track_id=t.id AND s.owner_id=?) AS saved_album,
             EXISTS(SELECT 1 FROM reel_playlist_tracks pt JOIN reel_playlists p ON p.id=pt.playlist_id WHERE pt.track_id=t.id AND p.owner_id=?) AS playlist_member
             FROM reel_tracks t LEFT JOIN reel_catalog_favorites f ON f.track_id=t.id AND f.owner_id=? LEFT JOIN reel_track_stats stats ON stats.track_id=t.id
-            WHERE EXISTS(SELECT 1 FROM reel_album_tracks at JOIN reel_albums a ON a.id=at.album_id WHERE at.track_id=t.id AND (a.owner_id=? OR a.published=1)) ORDER BY t.id DESC',
+            WHERE EXISTS(SELECT 1 FROM reel_album_tracks at JOIN reel_albums a ON a.id=at.album_id WHERE at.track_id=t.id AND (a.owner_id=? OR (a.published=1 AND a.moderation_status=\'approved\'))) ORDER BY t.id DESC',
             [$this->owner,$this->owner,$this->owner,$this->owner,$this->owner])->get() ?: [];
-        $chapters = db()->query('SELECT c.id,c.track_id,c.title,c.artist,c.start_time FROM reel_chapters c JOIN reel_tracks t ON t.id=c.track_id WHERE EXISTS(SELECT 1 FROM reel_album_tracks at JOIN reel_albums a ON a.id=at.album_id WHERE at.track_id=t.id AND (a.owner_id=? OR a.published=1)) ORDER BY c.track_id,c.start_time,c.id', [$this->owner])->get() ?: [];
+        $chapters = db()->query('SELECT c.id,c.track_id,c.title,c.artist,c.start_time FROM reel_chapters c JOIN reel_tracks t ON t.id=c.track_id WHERE EXISTS(SELECT 1 FROM reel_album_tracks at JOIN reel_albums a ON a.id=at.album_id WHERE at.track_id=t.id AND (a.owner_id=? OR (a.published=1 AND a.moderation_status=\'approved\'))) ORDER BY c.track_id,c.start_time,c.id', [$this->owner])->get() ?: [];
         $trackChapters = [];
         foreach ($chapters as $chapter) $trackChapters[(int)$chapter['track_id']][] = ['id'=>(int)$chapter['id'],'track_id'=>(int)$chapter['track_id'],'title'=>$chapter['title'],'artist'=>$chapter['artist'],'start'=>(float)$chapter['start_time']];
         $publicTracks = []; $coverByTrack = [];
@@ -32,7 +32,7 @@ final class Catalog
             $publicTracks[] = [
                 'id'=>$id,'title'=>$track['title'],'artist'=>$track['artist'],'filename'=>$track['filename'],
                 'mime'=>$track['mime'],'duration'=>(float)$track['duration'],'file_size'=>(int)$track['file_size'],
-                'source'=>$track['source'],'cover_mime'=>$track['cover_mime'],'favorite'=>(bool)$track['viewer_favorite'],
+                'source'=>$track['source'],'album_title'=>$track['album_title'],'album_artist'=>$track['album_artist'],'genre_tag'=>$track['genre_tag'],'metadata_loaded'=>(bool)$track['metadata_loaded'],'cover_mime'=>$track['cover_mime'],'favorite'=>(bool)$track['viewer_favorite'],
                 'created_at'=>$track['created_at'],'url'=>base_href($prefix.'media/'.$id),
                 'cover'=>$track['cover_path'] ? base_href($prefix.'cover/'.$id).'?v='.basename($track['cover_path']) : '',
                 'chapters'=>$trackChapters[$id] ?? [],'shared'=>$shared,'editable'=>!$shared,
@@ -41,6 +41,7 @@ final class Catalog
                 'listen_count'=>(int)$track['listen_count'],
             ];
         }
+        $genres=(new Genres())->all(); $genreNames=array_column($genres,'name','id');
         $publicAlbums = [];
         foreach ($albums as $album) {
             $id = (int)$album['id']; $ids = $albumTracks[$id] ?? [];
@@ -50,8 +51,9 @@ final class Catalog
             $publicAlbums[] = [
                 'id'=>$id,'title'=>$album['title'],'artist'=>$album['artist'],'release_date'=>$album['release_date'],
                 'description'=>$album['description'],'cover'=>$coverPath ? base_href('/tape-room/catalog/album-cover/'.$id).'?v='.basename($coverPath) : '',
-                'tracks'=>$ids,'published'=>(bool)$album['published'],'saved'=>$album['saved_id'] !== null,
-                'editable'=>$editable,'canPublish'=>$editable && $this->canPublish,'created_at'=>$album['created_at'],
+                'tracks'=>$ids,'published'=>(bool)$album['published'] && $album['moderation_status']==='approved','submitted'=>(bool)$album['published'],'moderation'=>$album['moderation_status'],'moderationNote'=>$editable ? $album['moderation_note'] : '',
+                'genreId'=>(int)($album['genre_id'] ?? 0),'genre'=>($genreNames[(int)($album['genre_id'] ?? 0)] ?? ''),'saved'=>$album['saved_id'] !== null,
+                'editable'=>$editable,'canPublish'=>$editable,'created_at'=>$album['created_at'],
             ];
         }
         $publishedArtistKeys = []; $publishedTrackIds = [];
@@ -60,7 +62,7 @@ final class Catalog
             foreach ($album['tracks'] as $trackId) $publishedTrackIds[$trackId] = true;
         }
         foreach ($publicTracks as $track) if (isset($publishedTrackIds[$track['id']])) $publishedArtistKeys[self::artistKey($track['artist'])] = true;
-        return ['albums'=>$publicAlbums,'tracks'=>$publicTracks,'artistProfiles'=>$this->artistProfiles([...$albums,...$tracks],$publishedArtistKeys),'canPublish'=>$this->canPublish];
+        return ['albums'=>$publicAlbums,'tracks'=>$publicTracks,'artistProfiles'=>$this->artistProfiles([...$albums,...$tracks],$publishedArtistKeys),'canPublish'=>true,'genres'=>$genres];
     }
 
     /** Artist identity remains its existing name; a profile never renames music. */
@@ -111,8 +113,8 @@ final class Catalog
 
     private function hasArtist(string $key, bool $publishedOnly = false): bool
     {
-        $albumAccess = $publishedOnly ? 'published=1' : 'owner_id=? OR published=1';
-        $trackAccess = ($publishedOnly ? '' : 't.owner_id=? OR ').'EXISTS(SELECT 1 FROM reel_album_tracks at JOIN reel_albums a ON a.id=at.album_id WHERE at.track_id=t.id AND a.published=1)';
+        $albumAccess = $publishedOnly ? "published=1 AND moderation_status='approved'" : "owner_id=? OR (published=1 AND moderation_status='approved')";
+        $trackAccess = ($publishedOnly ? '' : 't.owner_id=? OR ').'EXISTS(SELECT 1 FROM reel_album_tracks at JOIN reel_albums a ON a.id=at.album_id WHERE at.track_id=t.id AND (a.published=1 AND a.moderation_status=\'approved\'))';
         $names = db()->query('SELECT artist FROM reel_albums WHERE '.$albumAccess.' UNION SELECT t.artist FROM reel_tracks t WHERE '.$trackAccess, $publishedOnly ? [] : [$this->owner,$this->owner])->get() ?: [];
         foreach ($names as $row) if (self::artistKey((string)$row['artist'])===$key) return true;
         return false;
@@ -164,7 +166,7 @@ final class Catalog
     /** Returns a server-only row: source paths are never serialized by state(). */
     public function accessibleTrack(int $id): array
     {
-        $track = db()->query('SELECT t.* FROM reel_tracks t WHERE t.id=? AND (t.owner_id=? OR EXISTS(SELECT 1 FROM reel_album_tracks at JOIN reel_albums a ON a.id=at.album_id WHERE at.track_id=t.id AND a.published=1))', [$id,$this->owner])->getOne();
+        $track = db()->query('SELECT t.* FROM reel_tracks t WHERE t.id=? AND (t.owner_id=? OR EXISTS(SELECT 1 FROM reel_album_tracks at JOIN reel_albums a ON a.id=at.album_id WHERE at.track_id=t.id AND (a.published=1 AND a.moderation_status=\'approved\')))', [$id,$this->owner])->getOne();
         if (!$track) throw new \InvalidArgumentException('Трек не найден или больше не доступен.');
         return $track;
     }
@@ -176,7 +178,7 @@ final class Catalog
 
     private function albumRow(int $id, bool $edit, bool $lock): array
     {
-        $album = db()->query('SELECT * FROM reel_albums WHERE id=? AND '.($edit ? 'owner_id=?' : '(owner_id=? OR published=1)').($lock ? ' FOR UPDATE' : ''), [$id,$this->owner])->getOne();
+        $album = db()->query('SELECT * FROM reel_albums WHERE id=? AND '.($edit ? 'owner_id=?' : "(owner_id=? OR (published=1 AND moderation_status='approved'))").($lock ? ' FOR UPDATE' : ''), [$id,$this->owner])->getOne();
         if (!$album) throw new \InvalidArgumentException($edit ? 'Этот альбом нельзя изменять.' : 'Альбом не найден или больше не доступен.');
         return $album;
     }
@@ -271,9 +273,10 @@ final class Catalog
                 $artist = self::text($data['artist'] ?? '',240,'Исполнитель');
                 $description = self::text($data['description'] ?? '',4000,'Описание');
                 $releaseDate = self::releaseDate($data['release_date'] ?? '');
+                $genre=(new Genres())->validateId($data['genre_id'] ?? null);
                 if ($cover && (int)($cover['error'] ?? UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_NO_FILE) $savedCover = $storage->upload($cover,$this->owner,true);
                 $now = date('Y-m-d H:i:s');
-                db()->query('INSERT INTO reel_albums(owner_id,title,artist,description,release_date,cover_path,cover_mime,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?)', [$this->owner,$title,$artist,$description,$releaseDate,$savedCover['path'] ?? null,$savedCover['mime'] ?? null,$now,$now]);
+                db()->query('INSERT INTO reel_albums(owner_id,title,artist,description,release_date,genre_id,cover_path,cover_mime,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)', [$this->owner,$title,$artist,$description,$releaseDate,$genre,$savedCover['path'] ?? null,$savedCover['mime'] ?? null,$now,$now]);
                 $id = (int)db()->getInsertId();
                 $this->setTracks($id,self::trackIds($data['tracks'] ?? []),false);
                 db()->query('INSERT INTO reel_album_saves(owner_id,album_id,created_at) VALUES(?,?,?)', [$this->owner,$id,$now]);
@@ -285,8 +288,9 @@ final class Catalog
                         $artist = self::text($data['artist'] ?? $album['artist'],240,'Исполнитель');
                         $description = self::text($data['description'] ?? $album['description'],4000,'Описание');
                         $releaseDate = self::releaseDate($data['release_date'] ?? $album['release_date']);
+                        $genre=(new Genres())->validateId($data['genre_id'] ?? $album['genre_id']);
                         if ($cover && (int)($cover['error'] ?? UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_NO_FILE) { $savedCover = $storage->upload($cover,$this->owner,true); $oldCover = $album['cover_path']; }
-                        db()->query('UPDATE reel_albums SET title=?,artist=?,description=?,release_date=?,cover_path=?,cover_mime=?,updated_at=? WHERE id=? AND owner_id=?', [$title,$artist,$description,$releaseDate,$savedCover['path'] ?? $album['cover_path'],$savedCover['mime'] ?? $album['cover_mime'],date('Y-m-d H:i:s'),$id,$this->owner]);
+                        db()->query('UPDATE reel_albums SET title=?,artist=?,description=?,release_date=?,genre_id=?,cover_path=?,cover_mime=?,updated_at=? WHERE id=? AND owner_id=?', [$title,$artist,$description,$releaseDate,$genre,$savedCover['path'] ?? $album['cover_path'],$savedCover['mime'] ?? $album['cover_mime'],date('Y-m-d H:i:s'),$id,$this->owner]);
                         if (array_key_exists('tracks',$data)) $this->setTracks($id,self::trackIds($data['tracks']),(bool)$album['published']);
                         break;
                     case 'album.tracks':
@@ -299,12 +303,14 @@ final class Catalog
                         break;
                     case 'album.publish':
                         $published = self::flag($data['published'] ?? 1);
-                        if (!$this->canPublish) throw new \InvalidArgumentException('Публиковать альбомы может только создатель сайта.');
+                        
                         if ($published && !(int)db()->query('SELECT COUNT(*) FROM reel_album_tracks WHERE album_id=?', [$id])->getColumn()) throw new \InvalidArgumentException('Сначала добавьте треки в альбом.');
-                        db()->query('UPDATE reel_albums SET published=?,updated_at=? WHERE id=? AND owner_id=?', [$published,date('Y-m-d H:i:s'),$id,$this->owner]);
+                        db()->query("UPDATE reel_albums SET published=?,moderation_status=?,moderation_note='',reviewed_by=NULL,reviewed_at=NULL,moderation_version=moderation_version+1,updated_at=? WHERE id=? AND owner_id=?", [$published,$published ? 'pending' : 'draft',date('Y-m-d H:i:s'),$id,$this->owner]);
                         break;
                 }
             }
+            if (in_array($name,['album.update','album.tracks'],true)) db()->query('UPDATE reel_albums SET moderation_version=moderation_version+1 WHERE id=?',[$id]);
+            if (in_array($name,['album.update','album.tracks'],true) && !empty($album['published'])) db()->query("UPDATE reel_albums SET moderation_status='pending',reviewed_by=NULL,reviewed_at=NULL WHERE id=?",[$id]);
             db()->commit();
         } catch (\Throwable $error) { db()->rollBack(); if ($savedCover) $storage->delete($savedCover['path']); throw $error; }
         if ($oldCover) $storage->delete($oldCover);

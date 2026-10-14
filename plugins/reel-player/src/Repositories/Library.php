@@ -10,7 +10,7 @@ final class Library
 
     public function state(): array
     {
-        $tracks = db()->query('SELECT t.id, t.title, t.artist, t.filename, t.mime, t.duration, t.file_size, t.cover_path, t.cover_mime, t.source, t.favorite, t.created_at, COALESCE(s.listens,0) AS listen_count FROM reel_tracks t LEFT JOIN reel_track_stats s ON s.track_id=t.id WHERE t.owner_id = ? ORDER BY t.id DESC', [$this->owner])->get() ?: [];
+        $tracks = db()->query('SELECT t.id, t.title, t.artist, t.filename, t.mime, t.duration, t.file_size, t.cover_path, t.cover_mime, t.source, t.favorite, t.created_at, t.album_title, t.album_artist, t.genre_tag, t.metadata_loaded, COALESCE(s.listens,0) AS listen_count FROM reel_tracks t LEFT JOIN reel_track_stats s ON s.track_id=t.id WHERE t.owner_id = ? ORDER BY t.id DESC', [$this->owner])->get() ?: [];
         $chapters = (new Chapters($this->owner))->all();
         foreach ($tracks as &$track) {
             $track['id'] = (int)$track['id'];
@@ -118,6 +118,41 @@ final class Library
         return count($files);
     }
 
+    private function recheckAlbums(int $track): void
+    {
+        db()->query("UPDATE reel_albums SET moderation_status='pending',reviewed_by=NULL,reviewed_at=NULL,moderation_version=moderation_version+1 WHERE published=1 AND EXISTS(SELECT 1 FROM reel_album_tracks at WHERE at.album_id=reel_albums.id AND at.track_id=?)",[$track]);
+    }
+
+    public function metadataTrack(int $id): array
+    {
+        $track=$this->track($id);
+        return ['id'=>$id,'title'=>$track['title'],'artist'=>$track['artist'],'duration'=>(float)$track['duration'],'album_title'=>$track['album_title'],'album_artist'=>$track['album_artist'],'genre_tag'=>$track['genre_tag'],'metadata_loaded'=>(bool)$track['metadata_loaded'],'cover'=>$track['cover_path'] ? base_href('/tape-room/cover/'.$id).'?v='.basename($track['cover_path']) : ''];
+    }
+
+    public function applyMetadata(int $id,array $metadata): array
+    {
+        $saved=null; $storage=new MediaStorage();
+        db()->beginTransaction();
+        try {
+            $track=$this->track($id,true);
+            if ($track['source']!=='drive') throw new \InvalidArgumentException('Выберите песню Google Drive.');
+            $parts=explode(' - ',pathinfo($track['filename'],PATHINFO_FILENAME),2);
+            $defaultTitle=mb_substr(trim(count($parts)>1?$parts[1]:$parts[0])?:'Без названия',0,240);
+            $defaultArtist=mb_substr(count($parts)>1?trim($parts[0]):'',0,240);
+            // The optional probe cannot overwrite edits made by the owner meanwhile.
+            $title=$track['title']===$defaultTitle && !empty($metadata['title']) ? $metadata['title'] : $track['title'];
+            $artist=$track['artist']===$defaultArtist && !empty($metadata['artist']) ? $metadata['artist'] : $track['artist'];
+            $duration=(float)$track['duration'] ?: (float)($metadata['duration'] ?? 0);
+            if (!$track['cover_path'] && !empty($metadata['cover'])) {
+                try { $saved=$storage->storeArtwork($metadata['cover'],$this->owner); } catch (\InvalidArgumentException) { /* A malformed embedded image must not discard valid tags. */ }
+            }
+            db()->query('UPDATE reel_tracks SET title=?,artist=?,duration=?,album_title=?,album_artist=?,genre_tag=?,metadata_loaded=1,cover_path=?,cover_mime=? WHERE id=? AND owner_id=?',[$title,$artist,$duration,$metadata['album'] ?? $track['album_title'],$metadata['albumArtist'] ?? $track['album_artist'],$metadata['genre'] ?? $track['genre_tag'],$saved['path'] ?? $track['cover_path'],$saved['mime'] ?? $track['cover_mime'],$id,$this->owner]);
+            if($title!==$track['title'] || $artist!==$track['artist'] || $saved) $this->recheckAlbums($id);
+            db()->commit();
+        } catch (\Throwable $error) { db()->rollBack(); if($saved)$storage->delete($saved['path']);throw $error; }
+        return $this->metadataTrack($id);
+    }
+
     public function action(string $action, array $data, ?array $cover = null): ?int
     {
         $id = (int)($data['id'] ?? 0);
@@ -186,6 +221,7 @@ final class Library
                     $saved = $cover && (int)$cover['error'] !== UPLOAD_ERR_NO_FILE ? $storage->upload($cover, $this->owner, true) : null;
                     db()->query('UPDATE reel_tracks SET title = ?, artist = ?, duration = ?, cover_path = ?, cover_mime = ? WHERE id = ? AND owner_id = ?',
                         [$title, $artist, $duration, $saved['path'] ?? $track['cover_path'], $saved['mime'] ?? $track['cover_mime'], $id, $this->owner]);
+                    $this->recheckAlbums($id);
                     db()->commit();
                 } catch (\Throwable $error) { db()->rollBack(); if ($saved) $storage->delete($saved['path']); throw $error; }
                 if ($saved) $storage->delete($track['cover_path']);

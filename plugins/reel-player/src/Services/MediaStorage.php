@@ -44,6 +44,20 @@ final class MediaStorage
         return ['path' => $relative, 'mime' => $mime, 'size' => (int)filesize($this->root . '/' . $relative)];
     }
 
+    public function storeArtwork(string $bytes, int $owner): array
+    {
+        if ($owner<1 || $bytes==='' || strlen($bytes)>8*1048576) throw new \InvalidArgumentException('Обложка должна быть до 8 МБ.');
+        $info=@getimagesizefromstring($bytes);
+        $extension=match($info['mime'] ?? '') { 'image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp',default=>'' };
+        if (!$info || $extension==='' || $info[0]*$info[1]>20000000) throw new \InvalidArgumentException('Обложка не является поддерживаемым изображением.');
+        $directory=$this->root.'/'.$owner;
+        if (!is_dir($directory) && !mkdir($directory,0700,true) && !is_dir($directory)) throw new \RuntimeException('Не удалось сохранить обложку.');
+        $relative=$owner.'/'.bin2hex(random_bytes(20)).'.'.$extension;
+        if (file_put_contents($this->root.'/'.$relative,$bytes,LOCK_EX)!==strlen($bytes)) { @unlink($this->root.'/'.$relative); throw new \RuntimeException('Не удалось сохранить обложку.'); }
+        chmod($this->root.'/'.$relative,0600);
+        return ['path'=>$relative,'mime'=>$info['mime']];
+    }
+
     public function path(string $relative): string
     {
         if (!preg_match('~^[1-9]\d*/[a-f0-9]{40}\.(?:mp3|wav|flac|ogg|opus|m4a|aac|webm|jpg|png|webp)$~D', $relative)) {

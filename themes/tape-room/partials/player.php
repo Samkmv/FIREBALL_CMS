@@ -52,6 +52,7 @@ $button = static function (string $action, string $label, string $name, string $
     <symbol id="rp-i-moon" viewBox="0 0 24 24"><path d="M20.9 13.2A9 9 0 0 1 10.8 3.1 9 9 0 1 0 20.9 13.2Z"/></symbol>
     <symbol id="rp-i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
     <symbol id="rp-i-music" viewBox="0 0 24 24"><path d="M9 18V5l11-2v13M9 8l11-2"/><ellipse cx="6" cy="18" rx="3" ry="3"/><ellipse cx="17" cy="16" rx="3" ry="3"/></symbol>
+    <symbol id="rp-i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 22v-3a8 8 0 0 1 16 0v3"/></symbol>
     <symbol id="rp-i-microphone" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="13" rx="4"/><path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v4M8 22h8"/></symbol>
     <symbol id="rp-i-disc" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2"/><path d="M7 7a7 7 0 0 1 5-2m0 14a7 7 0 0 0 5-2"/></symbol>
     <symbol id="rp-i-trending" viewBox="0 0 24 24"><path d="m3 17 6-6 4 4 8-11M15 4h6v6"/></symbol>
@@ -63,6 +64,7 @@ $button = static function (string $action, string $label, string $name, string $
         <a class="rp-back" href="<?= htmlSC($back_url) ?>" aria-label="Вернуться в CMS" title="Вернуться в CMS"><span class="rp-icon-button rp-back-control"><?= $icon('back') ?></span><span class="rp-back-label">FIREBALL</span></a>
         <div class="rp-brand">TAPE ROOM<span>ЛИЧНАЯ МУЗЫКАЛЬНАЯ КОМНАТА</span></div>
         <div class="rp-header-actions">
+            <a class="rp-icon-button" href="<?= htmlSC(base_href('/profile')) ?>" aria-label="Аккаунт" title="Аккаунт"><?= $icon('user') ?></a>
             <?php if (!empty($config['drive']['canManage'])): ?><?= $button('player-settings', 'Настройки плеера', 'settings') ?><?php endif; ?>
             <?= $button('theme', 'Включить тёмную тему', 'moon') ?>
         </div>
@@ -186,6 +188,7 @@ $button = static function (string $action, string $label, string $name, string $
                 <button type="button" class="rp-catalog-nav-button" data-action="catalog-view" data-view="overview"><?= $icon('music') ?><span>Обзор</span></button>
                 <button type="button" class="rp-catalog-nav-button" data-action="catalog-view" data-view="albums"><?= $icon('folder') ?><span>Альбомы</span><span class="rp-catalog-nav-count" data-catalog-album-count></span></button>
                 <button type="button" class="rp-catalog-nav-button" data-action="catalog-view" data-view="artists"><?= $icon('microphone') ?><span>Артисты</span></button>
+                <button type="button" class="rp-catalog-nav-button" data-action="catalog-view" data-view="genres"><?= $icon('list') ?><span>Жанры</span></button>
                 <button type="button" class="rp-catalog-nav-button" data-action="catalog-view" data-view="new"><?= $icon('disc') ?><span>Новинки</span></button>
                 <button type="button" class="rp-catalog-nav-button" data-action="catalog-view" data-view="popular"><?= $icon('trending') ?><span>Популярное</span></button>
                 <button type="button" class="rp-catalog-nav-button" data-action="catalog-view" data-view="mine"><?= $icon('heart') ?><span>Моя музыка</span><span class="rp-catalog-nav-count" data-catalog-saved-count></span></button>
@@ -240,6 +243,7 @@ $button = static function (string $action, string $label, string $name, string $
 <script src="<?= htmlSC($collections_url) ?>" defer></script>
 <script src="<?= htmlSC($images_url) ?>" defer></script>
 <script src="<?= htmlSC($catalog_url) ?>" defer></script>
+<script src="<?= htmlSC($genres_url) ?>" defer></script>
 <script src="<?= htmlSC($js_url) ?>" defer></script>
 </body>
 </html>

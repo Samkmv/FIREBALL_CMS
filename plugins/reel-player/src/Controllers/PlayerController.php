@@ -23,11 +23,7 @@ final class PlayerController
     /** The plugin entry in the CMS is an overview; the theme owns the player UI. */
     public function index(): string
     {
-        header('Cache-Control: private, no-store');
-        return plugin_view('reel-player', 'overview', [
-            'title' => 'Tape Room · Обзор',
-            'theme_active' => theme()->getActiveTheme()['slug'] === 'tape-room',
-        ]);
+        return (new AdminCatalogController())->index();
     }
 
     /** Supplies account data to the standalone Tape Room theme. */
@@ -85,6 +81,7 @@ final class PlayerController
             'quality_url' => theme_asset_versioned('js/quality.js'),
             'collections_url' => theme_asset_versioned('js/collections.js'),
             'catalog_url' => theme_asset_versioned('js/catalog.js'),
+            'genres_url' => theme_asset_versioned('js/genres.js'),
             'images_url' => theme_asset_versioned('js/images.js'),
         ];
     }
@@ -188,6 +185,27 @@ final class PlayerController
     public function media(): void { $this->stream(false); }
     public function cover(): void { $this->stream(true); }
 
+    public function reviewMedia(): void
+    {
+        try { $album=(new \Fireball\ReelPlayer\Repositories\AdminCatalog())->album((int)get_route_param('album')); }
+        catch (\InvalidArgumentException $error) { abort($error->getMessage(),404); }
+        $id=(int)get_route_param('id');
+        if (!in_array($id,array_map('intval',array_column($album['tracks'],'id')),true)) abort('Трек не входит в этот альбом.',404);
+        $track=db()->query('SELECT * FROM reel_tracks WHERE id=?',[$id])->getOne();
+        if (!$track) abort('Трек не найден.',404);
+        $this->deliverTrack($track,false);
+    }
+
+    public function reviewCover(): void
+    {
+        try { $album=(new \Fireball\ReelPlayer\Repositories\AdminCatalog())->album((int)get_route_param('id')); }
+        catch (\InvalidArgumentException $error) { abort($error->getMessage(),404); }
+        $cover=$album['cover_path'] ? $album : db()->query('SELECT t.cover_path,t.cover_mime FROM reel_album_tracks at JOIN reel_tracks t ON t.id=at.track_id WHERE at.album_id=? AND t.cover_path IS NOT NULL ORDER BY at.position,at.track_id LIMIT 1',[(int)$album['id']])->getOne();
+        if (!$cover || !$cover['cover_path']) abort('Обложка не найдена.',404);
+        session()->close();
+        (new MediaStorage())->streamCover($cover['cover_path'],$cover['cover_mime'],320);
+    }
+
     public function quality(): void
     {
         header('Cache-Control: private, no-store');
@@ -263,6 +281,18 @@ final class PlayerController
             $drive = $this->drive();
             session()->close();
             return $folder !== '' ? $drive->browse($page, $folder) : $drive->files($page);
+        });
+    }
+
+    public function driveMetadata(): void
+    {
+        $this->respond(function (): array {
+            $id=(int)request()->post('id',0); $library=$this->library();$track=$library->track($id);
+            if($track['source']!=='drive')throw new \InvalidArgumentException('Выберите песню Google Drive.');
+            $artwork=request()->post('artwork','0')==='1';
+            if($track['metadata_loaded'] && (!$artwork || $track['cover_path'])) return ['track'=>$library->metadataTrack($id)];
+            $drive=$this->drive(); session()->close();
+            return ['track'=>$library->applyMetadata($id,$drive->metadata($track['source_id'],$artwork))];
         });
     }
 

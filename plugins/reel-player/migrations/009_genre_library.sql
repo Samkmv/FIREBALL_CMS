@@ -1,0 +1,30 @@
+UPDATE reel_genres SET name_key=SHA2(LOWER(TRIM(name)),256) WHERE name_key='';
+UPDATE reel_genres SET slug=CONCAT('genre-',id) WHERE slug='';
+UPDATE reel_genres SET created_at=IF(YEAR(created_at)=0,NOW(),created_at),updated_at=IF(YEAR(updated_at)=0,NOW(),updated_at);
+INSERT IGNORE INTO reel_genres (name,name_key,slug,created_at,updated_at) VALUES
+('Поп','61e1fa90083e87ff34b3038880f684784da00af66bcf56c6c2e306e36816660c','genre-61e1fa90083e',NOW(),NOW()),
+('Рок','f2e540df449623538d5f2ec34f0bf7f14d2e9409c65d418fe51bee05756e9772','genre-f2e540df4496',NOW(),NOW()),
+('Джаз','d6321b6dd0b3a9189d629a928afd453301dae1a9aaa71280ebb4f11602ece76d','genre-d6321b6dd0b3',NOW(),NOW()),
+('Блюз','9c2f45947e8980115cf06639a61ae0ed94c93a15ae56bdca2a77bb75f11a06c5','genre-9c2f45947e89',NOW(),NOW()),
+('Классическая музыка','6fad0d7ffd6e4007e640ff4e5c4f4a6e573752c3817ea8938e03ccbba84ea46f','genre-6fad0d7ffd6e',NOW(),NOW()),
+('Электронная музыка','e1e2e0ee49e947d895db6b0a6cf6e8f2639aefc69cb1995686eca1c2c87fbb3e','genre-e1e2e0ee49e9',NOW(),NOW()),
+('Хип-хоп','6fb688ca809f1c044b179d2ba7f0c425eb6522828a74f3873769dd43bf269863','genre-6fb688ca809f',NOW(),NOW()),
+('R&B','34fdfbd290e08eeb4017166c58a30ca612e99fde53586e0b662d2fe73b43f38c','genre-34fdfbd290e0',NOW(),NOW()),
+('Соул','cff71927dedc7e2640b211029624203496d99fec764b22b953cba4887c4733cd','genre-cff71927dedc',NOW(),NOW()),
+('Фанк','0141a84e0b51166c07796f8269fa0c3b05507fc2aee59cea3988ee2984244c3c','genre-0141a84e0b51',NOW(),NOW()),
+('Диско','66d3e22ab3fa2dda4e99556ac32c5d0c522d213edb755f23e6dbd149a6bf4be3','genre-66d3e22ab3fa',NOW(),NOW()),
+('Хаус','5d7c64a051e7c22ecd1103dbf8788dc967d79988567315f3dd4120202e25dab2','genre-5d7c64a051e7',NOW(),NOW()),
+('Техно','920ee3ca444783e4554055168842a5c8ed77e37388f5f7e0f31dbfda499827ba','genre-920ee3ca4447',NOW(),NOW()),
+('Транс','cdc472fef44f0ee1d302c470e680bd78240ee086303941e88652ae1147551223','genre-cdc472fef44f',NOW(),NOW()),
+('Эмбиент','c4bd44bb517d72e956d78c074cb11fa4e5ee2d840a5ab2d4f100aa44315382cf','genre-c4bd44bb517d',NOW(),NOW()),
+('Фолк','79330ae5ff9028fc6bf34b45dc13afde8e9cb7ecbeaae4eaf7a65e5e6cf96bc9','genre-79330ae5ff90',NOW(),NOW()),
+('Кантри','a7d64d9c95089a81e8ef79e77dc997f37355ffeee50a8ae94d17b8cefe28de91','genre-a7d64d9c9508',NOW(),NOW()),
+('Регги','688f79a371bc13f3cf35bd473ed74810b0b63577f3fa23b76459e55307828699','genre-688f79a371bc',NOW(),NOW()),
+('Метал','c4adaf984f1794421b270b253af73f9972973633725ce3a5d94569ffb933e494','genre-c4adaf984f17',NOW(),NOW()),
+('Панк','092db4e6c7cec52165c2824cb4bd596b568981385efa5563e2c87cd0655fe0fe','genre-092db4e6c7ce',NOW(),NOW()),
+('Инди','95599b83103957606b8a78568e32e40949cba905e623a9549d216712c3d79f70','genre-95599b831039',NOW(),NOW()),
+('Латиноамериканская музыка','dce4645a8da3cc3f6d82b22eb56f70e97e27a34613248601475c43036b47b97f','genre-dce4645a8da3',NOW(),NOW()),
+('Музыка мира','bb4a3b75c0a638a25e2545234670e4d28131543f7eb4fff8109ed68af32e6c63','genre-bb4a3b75c0a6',NOW(),NOW()),
+('Саундтрек','c9f674b806ea27b1f0525a837eaaf941bde513395578ea9806c98f88b1ce891e','genre-c9f674b806ea',NOW(),NOW()),
+('Аудиокнига','c6e5efe6f3e40d053aa5856c24bf307bfc5dc9a50b79ce3ca314d51d07cbc4e9','genre-c6e5efe6f3e4',NOW(),NOW()),
+('Другое','fc9a9fb25db90e68a730a64e31488923f216bd5ca7cf83426359d441fd681182','genre-fc9a9fb25db9',NOW(),NOW());

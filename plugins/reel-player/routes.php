@@ -43,6 +43,12 @@ $router->get('/plugins/reel-player/assets/(?P<file>player\.(?:css|js)|preload\.j
 });
 
 $router->get('/admin/reel-player', [PlayerController::class, 'index'])->middleware(['auth', 'admin']);
+$router->get('/admin/reel-player/genres', [\Fireball\ReelPlayer\Controllers\AdminCatalogController::class, 'genres'])->middleware(['auth','admin']);
+$router->post('/admin/reel-player/genres/save', [\Fireball\ReelPlayer\Controllers\AdminCatalogController::class, 'saveGenre'])->middleware(['auth','admin']);
+$router->get('/admin/reel-player/albums/(?P<id>\d+)', [\Fireball\ReelPlayer\Controllers\AdminCatalogController::class, 'album'])->middleware(['auth','admin']);
+$router->post('/admin/reel-player/albums/review', [\Fireball\ReelPlayer\Controllers\AdminCatalogController::class, 'review'])->middleware(['auth','admin']);
+$router->get('/admin/reel-player/review-media/(?P<album>\d+)/(?P<id>\d+)', [PlayerController::class, 'reviewMedia'])->middleware(['auth','admin']);
+$router->get('/admin/reel-player/review-cover/(?P<id>\d+)', [PlayerController::class, 'reviewCover'])->middleware(['auth','admin']);
 
 // New browser requests use the front-end URLs. Keep administrator aliases for
 // existing sessions and the registered OAuth callback URL for Google Drive.
@@ -58,6 +64,7 @@ foreach (['/tape-room' => ['auth'], '/admin/reel-player' => ['auth', 'admin']] a
     $router->get($prefix . '/cover/(?P<id>\d+)', [PlayerController::class, 'cover'])->middleware($guard);
     $router->get($prefix . '/api/drive/status', [PlayerController::class, 'driveStatus'])->middleware($guard);
     $router->get($prefix . '/api/drive/files', [PlayerController::class, 'driveFiles'])->middleware($guard);
+    $router->post($prefix . '/api/drive/metadata', [PlayerController::class, 'driveMetadata'])->middleware($guard);
     $router->get($prefix . '/drive/callback', [PlayerController::class, 'driveCallback'])->middleware(['auth']);
     $router->get($prefix . '/catalog/media/(?P<id>\d+)', [PlayerController::class, 'catalogMedia'])->middleware($guard);
     $router->get($prefix . '/catalog/cover/(?P<id>\d+)', [PlayerController::class, 'catalogCover'])->middleware($guard);
