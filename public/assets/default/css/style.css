@@ -4251,6 +4251,10 @@ html.pwa-standalone body [data-admin-shell-sidebar] {
     --admin-update-border: color-mix(in srgb, var(--cz-border-color) 78%, transparent);
     display: grid;
     gap: 1rem;
+    grid-template-columns: minmax(0, 1fr);
+    min-width: 0;
+    width: 100%;
+    overflow-wrap: anywhere;
 }
 
 .admin-update-overview,
@@ -4270,7 +4274,9 @@ html.pwa-standalone body [data-admin-shell-sidebar] {
 
 .admin-update-overview {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 1rem;
+    overflow-wrap: anywhere;
 }
 
 .admin-update-overview__header {
@@ -4302,14 +4308,16 @@ html.pwa-standalone body [data-admin-shell-sidebar] {
 .admin-update-status {
     display: inline-flex;
     align-items: center;
-    flex: 0 0 auto;
+    flex: 0 1 auto;
+    max-width: 100%;
+    overflow-wrap: anywhere;
     min-height: 2rem;
     padding: .4rem .75rem;
     border: 1px solid transparent;
     border-radius: 999px;
     font-size: .75rem;
     font-weight: 700;
-    line-height: 1;
+    line-height: 1.35;
 }
 
 .admin-update-status--secondary {
@@ -4406,6 +4414,15 @@ html.pwa-standalone body [data-admin-shell-sidebar] {
     padding: .9rem 1rem;
     border: 1px solid var(--admin-update-border);
     border-radius: 1rem;
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+.admin-update-result > div,
+.admin-update-notice > div {
+    flex: 1;
+    min-width: 0;
 }
 
 .admin-update-result__icon {
@@ -4469,6 +4486,13 @@ html.pwa-standalone body [data-admin-shell-sidebar] {
 
 .admin-update-actions form {
     margin: 0;
+    min-width: 0;
+}
+
+.admin-update-actions .btn {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 .admin-update-overview__meta {

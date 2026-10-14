@@ -2508,7 +2508,11 @@ class UpdateCenter
         $commitHash = trim($this->runCommand('git rev-parse HEAD', ROOT)['stdout']);
         $exactTag = trim($this->runCommand('git describe --tags --exact-match', ROOT)['stdout']);
         $describe = trim($this->runCommand('git describe --tags --always', ROOT)['stdout']);
-        $statusOutput = trim($this->runCommand('git status --porcelain', ROOT)['stdout']);
+        $status = $this->runCommand('git status --porcelain=v1 -z --untracked-files=all', ROOT);
+        if ($status['exit_code'] !== 0) {
+            throw new RuntimeException('Unable to inspect local Git changes.');
+        }
+        $statusOutput = (string)($status['stdout_raw'] ?? $status['stdout']);
         $dirtyFiles = $statusOutput === '' ? [] : $this->normalizeDirtyFiles($statusOutput);
         $blockingDirtyFiles = $this->filterBlockingDirtyFiles($dirtyFiles);
         $ignoredDirtyFiles = array_values(array_diff($dirtyFiles, $blockingDirtyFiles));
@@ -2763,6 +2767,7 @@ class UpdateCenter
         return [
             'command' => $command,
             'stdout' => trim((string)$stdout),
+            'stdout_raw' => (string)$stdout,
             'stderr' => trim((string)$stderr),
             'exit_code' => (int)proc_close($process),
         ];
@@ -2987,30 +2992,31 @@ class UpdateCenter
     }
 
     /**
-     * Преобразует вывод git status в список путей.
+     * Преобразует NUL-разделённый porcelain v1 в пути без обрезки и C-экранирования.
      */
     protected function normalizeDirtyFiles(string $statusOutput): array
     {
         $files = [];
 
-        foreach (preg_split('/\R/', $statusOutput) ?: [] as $line) {
-            $line = rtrim($line);
-            if ($line === '') {
-                continue;
+        if ($statusOutput === '') return [];
+        if (!str_ends_with($statusOutput, "\0")) {
+            throw new RuntimeException('Incomplete local Git status.');
+        }
+        $records = explode("\0", $statusOutput);
+        array_pop($records);
+        for ($index = 0; $index < count($records); $index++) {
+            $record = $records[$index];
+            if (!preg_match('/^[ MADRCUT?!]{2} /', $record) || strlen($record) <= 3) {
+                throw new RuntimeException('Invalid local Git status.');
             }
-
-            $path = strlen($line) > 3 ? substr($line, 3) : $line;
-            if (str_contains($path, ' -> ')) {
-                $parts = explode(' -> ', $path);
-                $path = (string)end($parts);
+            $files[] = substr($record, 3);
+            if (strpbrk(substr($record, 0, 2), 'RC') !== false) {
+                $source = $records[++$index] ?? '';
+                if ($source === '') throw new RuntimeException('Incomplete Git rename status.');
+                // Both endpoints matter: a core file moved into a protected
+                // directory still changes core code and must block an update.
+                $files[] = $source;
             }
-
-            $path = ltrim(trim($path), './');
-            if ($path === '') {
-                continue;
-            }
-
-            $files[] = $path;
         }
 
         return array_values(array_unique($files));
@@ -3031,6 +3037,7 @@ class UpdateCenter
      */
     protected function shouldIgnoreDirtyFile(string $path): bool
     {
+        if ($path !== trim($path) || str_contains($path, '\\')) return false;
         $normalizedPath = ltrim(str_replace('\\', '/', trim($path)), '/');
         if ($this->shouldPreservePath($normalizedPath)) return true;
 
