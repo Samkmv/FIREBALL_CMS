@@ -23,7 +23,7 @@ final class AdminCatalog
     {
         $album=db()->query('SELECT a.*,u.name AS owner_name,g.name AS genre_name FROM reel_albums a JOIN users u ON u.id=a.owner_id LEFT JOIN reel_genres g ON g.id=a.genre_id WHERE a.id=? AND a.published=1',[$id])->getOne();
         if (!$album) throw new \InvalidArgumentException('Альбом не отправлен на модерацию или больше недоступен.');
-        $album['tracks']=db()->query('SELECT t.id,t.title,t.artist,t.duration,t.source FROM reel_album_tracks at JOIN reel_tracks t ON t.id=at.track_id WHERE at.album_id=? ORDER BY at.position,at.track_id',[$id])->get() ?: [];
+        $album['tracks']=db()->query('SELECT t.id,t.title,t.artist,t.duration,t.source,g.name AS genre FROM reel_album_tracks at JOIN reel_tracks t ON t.id=at.track_id LEFT JOIN reel_genres g ON g.id=t.genre_id WHERE at.album_id=? ORDER BY at.position,at.track_id',[$id])->get() ?: [];
         $album['cover_available']=(bool)$album['cover_path'] || (bool)db()->query('SELECT t.cover_path FROM reel_album_tracks at JOIN reel_tracks t ON t.id=at.track_id WHERE at.album_id=? AND t.cover_path IS NOT NULL LIMIT 1',[$id])->getColumn();
         return $album;
     }

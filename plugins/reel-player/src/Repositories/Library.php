@@ -10,10 +10,13 @@ final class Library
 
     public function state(): array
     {
-        $tracks = db()->query('SELECT t.id, t.title, t.artist, t.filename, t.mime, t.duration, t.file_size, t.cover_path, t.cover_mime, t.source, t.favorite, t.created_at, t.album_title, t.album_artist, t.genre_tag, t.metadata_loaded, COALESCE(s.listens,0) AS listen_count FROM reel_tracks t LEFT JOIN reel_track_stats s ON s.track_id=t.id WHERE t.owner_id = ? ORDER BY t.id DESC', [$this->owner])->get() ?: [];
+        $tracks = db()->query('SELECT t.id, t.title, t.artist, t.filename, t.mime, t.duration, t.file_size, t.cover_path, t.cover_mime, t.source, t.favorite, t.created_at, t.album_title, t.album_artist, t.genre_tag, t.metadata_loaded, t.genre_id, g.name AS genre, COALESCE(s.listens,0) AS listen_count FROM reel_tracks t LEFT JOIN reel_track_stats s ON s.track_id=t.id LEFT JOIN reel_genres g ON g.id=t.genre_id WHERE t.owner_id = ? ORDER BY t.id DESC', [$this->owner])->get() ?: [];
         $chapters = (new Chapters($this->owner))->all();
         foreach ($tracks as &$track) {
             $track['id'] = (int)$track['id'];
+            $track['genreId'] = (int)($track['genre_id'] ?? 0);
+            $track['genre'] = $track['genre'] ?? '';
+            unset($track['genre_id']);
             $track['duration'] = (float)$track['duration'];
             $track['file_size'] = (int)$track['file_size'];
             $track['favorite'] = (bool)$track['favorite'];
@@ -120,7 +123,7 @@ final class Library
 
     private function recheckAlbums(int $track): void
     {
-        db()->query("UPDATE reel_albums SET moderation_status='pending',reviewed_by=NULL,reviewed_at=NULL,moderation_version=moderation_version+1 WHERE published=1 AND EXISTS(SELECT 1 FROM reel_album_tracks at WHERE at.album_id=reel_albums.id AND at.track_id=?)",[$track]);
+        db()->query("UPDATE reel_albums SET moderation_status='pending',moderation_note='',reviewed_by=NULL,reviewed_at=NULL,moderation_version=moderation_version+1 WHERE published=1 AND EXISTS(SELECT 1 FROM reel_album_tracks at WHERE at.album_id=reel_albums.id AND at.track_id=?)",[$track]);
     }
 
     public function metadataTrack(int $id): array
@@ -143,6 +146,8 @@ final class Library
             $title=$track['title']===$defaultTitle && !empty($metadata['title']) ? $metadata['title'] : $track['title'];
             $artist=$track['artist']===$defaultArtist && !empty($metadata['artist']) ? $metadata['artist'] : $track['artist'];
             $duration=(float)$track['duration'] ?: (float)($metadata['duration'] ?? 0);
+            try { Chapters::validateEntries((new Chapters($this->owner))->list($id),$duration); }
+            catch (\InvalidArgumentException) { $duration=(float)$track['duration']; }
             if (!$track['cover_path'] && !empty($metadata['cover'])) {
                 try { $saved=$storage->storeArtwork($metadata['cover'],$this->owner); } catch (\InvalidArgumentException) { /* A malformed embedded image must not discard valid tags. */ }
             }
@@ -216,11 +221,12 @@ final class Library
                     $track = $this->track($id,true);
                     $title = self::text($data['title'] ?? $track['title'], 240, 'Название');
                     $artist = self::text($data['artist'] ?? $track['artist'], 240, 'Исполнитель', false);
+                    $genre = (new Genres())->validateId($data['genre_id'] ?? $track['genre_id']);
                     $duration = self::duration($data['duration'] ?? $track['duration']);
                     Chapters::validateEntries((new Chapters($this->owner))->list($id),$duration);
                     $saved = $cover && (int)$cover['error'] !== UPLOAD_ERR_NO_FILE ? $storage->upload($cover, $this->owner, true) : null;
-                    db()->query('UPDATE reel_tracks SET title = ?, artist = ?, duration = ?, cover_path = ?, cover_mime = ? WHERE id = ? AND owner_id = ?',
-                        [$title, $artist, $duration, $saved['path'] ?? $track['cover_path'], $saved['mime'] ?? $track['cover_mime'], $id, $this->owner]);
+                    db()->query('UPDATE reel_tracks SET title = ?, artist = ?, duration = ?, genre_id = ?, cover_path = ?, cover_mime = ? WHERE id = ? AND owner_id = ?',
+                        [$title, $artist, $duration, $genre, $saved['path'] ?? $track['cover_path'], $saved['mime'] ?? $track['cover_mime'], $id, $this->owner]);
                     $this->recheckAlbums($id);
                     db()->commit();
                 } catch (\Throwable $error) { db()->rollBack(); if ($saved) $storage->delete($saved['path']); throw $error; }

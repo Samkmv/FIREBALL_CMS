@@ -721,3 +721,10 @@ html.pwa-standalone .rp-dialog::backdrop{backdrop-filter:none;-webkit-backdrop-f
 
 /* Genres use the existing room palette and keep menu navigation in the page. */
 .rp-genre-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-top:20px}.rp-genre-card{display:flex;flex-direction:column;gap:12px;text-align:left;background:transparent;color:var(--rp-ink);border:1px solid var(--rp-line);border-radius:10px;padding:20px;min-height:95px}.rp-genre-card span{font-size:11px;color:var(--rp-muted)}.rp-genre-picker{position:relative}.rp-genre-options{position:absolute;top:70px;left:0;right:0;z-index:5;background:var(--rp-paper);border:1px solid var(--rp-line);border-radius:8px;max-height:220px;overflow:auto;box-shadow:0 8px 20px #0002;padding:5px}.rp-genre-options button{display:block;width:100%;border:0;background:transparent;text-align:left;padding:10px;color:var(--rp-ink);border-radius:5px}.rp-genre-options button:hover,.rp-genre-options button:focus-visible{background:var(--rp-line)}.rp-genre-options p{font-size:12px;padding:10px}.rp-album-metadata{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin:12px 0}.rp-album-metadata small{color:var(--rp-muted);font-size:11px}
+
+/* A quiet edition stamp beside the wordmark, in both room palettes. */
+.rp-genre-card{min-width:0;overflow-wrap:anywhere}
+.rp-track-genre{display:block;margin-top:4px;font-size:9px;line-height:1.4;color:var(--rp-accent);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rp-brand-name{display:flex;align-items:center;justify-content:center;gap:10px;font-weight:inherit;white-space:nowrap}
+.rp-beta{display:inline-flex;align-items:center;padding:4px 6px;border:1px solid var(--rp-accent);border-radius:3px;background:var(--rp-line);color:var(--rp-accent);font-size:8px;font-weight:500;line-height:1;letter-spacing:1px}
+@media(max-width:480px){.rp-brand-name{gap:6px}.rp-beta{font-size:6px;padding:3px 4px;letter-spacing:.7px}}

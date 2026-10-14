@@ -366,7 +366,13 @@ final class GoogleDrive
         $previous=$this->analysisDeadline;$this->analysisDeadline=microtime(true)+8;
         try {
             $file=self::assertAudio($this->file($id));$size=(int)$file['size'];$cache=$this->cache();$prefix=$cache->prefix($file);
-            $head=$prefix ? (string)file_get_contents($prefix,false,null,0,AudioMetadata::MAX_BYTES) : $this->rangeBytes($file,0,min($size,AudioMetadata::MAX_BYTES)-1);
+            try { $head=$prefix ? (string)file_get_contents($prefix,false,null,0,AudioMetadata::MAX_BYTES) : $this->rangeBytes($file,0,min($size,AudioMetadata::MAX_BYTES)-1); }
+            catch (\RuntimeException $error) {
+                if (empty($file['headRevisionId']) || !in_array($error->getCode(),[403,404],true) || microtime(true)>=$this->analysisDeadline-1) throw $error;
+                // Shared files may allow the current file but deny revision reads.
+                unset($file['headRevisionId']);try{$cache->saveMetadata($file);}catch(\Throwable){}
+                $head=$this->rangeBytes($file,0,min($size,AudioMetadata::MAX_BYTES)-1);
+            }
             if(!$prefix && !empty($file['headRevisionId']) && strlen($head)===min($size,DriveCache::PREFIX_BYTES)) {
                 try { $cache->savePrefix($file,$head); } catch(\Throwable) { /* Metadata is usable without a playback cache. */ }
             }

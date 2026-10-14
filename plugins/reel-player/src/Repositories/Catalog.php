@@ -24,6 +24,7 @@ final class Catalog
         $chapters = db()->query('SELECT c.id,c.track_id,c.title,c.artist,c.start_time FROM reel_chapters c JOIN reel_tracks t ON t.id=c.track_id WHERE EXISTS(SELECT 1 FROM reel_album_tracks at JOIN reel_albums a ON a.id=at.album_id WHERE at.track_id=t.id AND (a.owner_id=? OR (a.published=1 AND a.moderation_status=\'approved\'))) ORDER BY c.track_id,c.start_time,c.id', [$this->owner])->get() ?: [];
         $trackChapters = [];
         foreach ($chapters as $chapter) $trackChapters[(int)$chapter['track_id']][] = ['id'=>(int)$chapter['id'],'track_id'=>(int)$chapter['track_id'],'title'=>$chapter['title'],'artist'=>$chapter['artist'],'start'=>(float)$chapter['start_time']];
+        $genres=(new Genres())->all(); $genreNames=array_column($genres,'name','id');
         $publicTracks = []; $coverByTrack = [];
         foreach ($tracks as $track) {
             $id = (int)$track['id']; $shared = (int)$track['owner_id'] !== $this->owner;
@@ -32,6 +33,7 @@ final class Catalog
             $publicTracks[] = [
                 'id'=>$id,'title'=>$track['title'],'artist'=>$track['artist'],'filename'=>$track['filename'],
                 'mime'=>$track['mime'],'duration'=>(float)$track['duration'],'file_size'=>(int)$track['file_size'],
+                'genreId'=>(int)($track['genre_id'] ?? 0),'genre'=>$genreNames[(int)($track['genre_id'] ?? 0)] ?? '',
                 'source'=>$track['source'],'album_title'=>$track['album_title'],'album_artist'=>$track['album_artist'],'genre_tag'=>$track['genre_tag'],'metadata_loaded'=>(bool)$track['metadata_loaded'],'cover_mime'=>$track['cover_mime'],'favorite'=>(bool)$track['viewer_favorite'],
                 'created_at'=>$track['created_at'],'url'=>base_href($prefix.'media/'.$id),
                 'cover'=>$track['cover_path'] ? base_href($prefix.'cover/'.$id).'?v='.basename($track['cover_path']) : '',
@@ -41,7 +43,6 @@ final class Catalog
                 'listen_count'=>(int)$track['listen_count'],
             ];
         }
-        $genres=(new Genres())->all(); $genreNames=array_column($genres,'name','id');
         $publicAlbums = [];
         foreach ($albums as $album) {
             $id = (int)$album['id']; $ids = $albumTracks[$id] ?? [];
@@ -310,7 +311,7 @@ final class Catalog
                 }
             }
             if (in_array($name,['album.update','album.tracks'],true)) db()->query('UPDATE reel_albums SET moderation_version=moderation_version+1 WHERE id=?',[$id]);
-            if (in_array($name,['album.update','album.tracks'],true) && !empty($album['published'])) db()->query("UPDATE reel_albums SET moderation_status='pending',reviewed_by=NULL,reviewed_at=NULL WHERE id=?",[$id]);
+            if (in_array($name,['album.update','album.tracks'],true) && !empty($album['published'])) db()->query("UPDATE reel_albums SET moderation_status='pending',moderation_note='',reviewed_by=NULL,reviewed_at=NULL WHERE id=?",[$id]);
             db()->commit();
         } catch (\Throwable $error) { db()->rollBack(); if ($savedCover) $storage->delete($savedCover['path']); throw $error; }
         if ($oldCover) $storage->delete($oldCover);

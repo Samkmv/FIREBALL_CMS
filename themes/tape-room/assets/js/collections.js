@@ -4,9 +4,9 @@
     // This model has no audio or DOM side effects.
     class TapeRoomCollections {
         static descriptor(value, fallback = {type:'songs'}) {
-            const types = ['songs','favorites','playlist','album','artist','popular'];
+            const types = ['songs','favorites','playlist','album','artist','popular','genre'];
             if (!value || !types.includes(value.type)) return {...fallback};
-            if (['playlist','album'].includes(value.type)) return Number.isSafeInteger(Number(value.id)) && Number(value.id) > 0 ? {type:value.type,id:Number(value.id)} : {...fallback};
+            if (['playlist','album','genre'].includes(value.type)) return Number.isSafeInteger(Number(value.id)) && Number(value.id) > 0 ? {type:value.type,id:Number(value.id)} : {...fallback};
             if (value.type === 'artist') return typeof value.artist === 'string' && value.artist.trim() ? {type:'artist',artist:value.artist.trim().slice(0,240)} : {...fallback};
             return {type:value.type};
         }
@@ -27,6 +27,12 @@
             if (descriptor.type === 'album') return (this.album(data,descriptor.id)?.tracks || []).map(id=>byId.get(Number(id))).filter(Boolean);
             if (descriptor.type === 'playlist') return this.sort(((data.playlists || []).find(item=>Number(item.id)===descriptor.id)?.tracks || []).map(id=>byId.get(Number(id))).filter(Boolean),sort);
             if (descriptor.type === 'favorites') return this.sort(pool.filter(track=>track.favorite),sort);
+            if (descriptor.type === 'genre') {
+                const albums=(data.catalog?.albums || []).filter(album=>album.published || album.editable);
+                const publicIds=new Set(albums.flatMap(album=>album.tracks).map(Number));
+                const inheritedIds=new Set(albums.filter(album=>Number(album.genreId)===descriptor.id).flatMap(album=>album.tracks).map(Number));
+                return this.sort(pool.filter(track=>(track.shared===false || publicIds.has(Number(track.id))) && (Number(track.genreId)===descriptor.id || (!Number(track.genreId) && inheritedIds.has(Number(track.id))))),sort);
+            }
             if (descriptor.type === 'popular') {
                 const publicIds = new Set((data.catalog?.albums || []).filter(album=>album.published).flatMap(album=>album.tracks).map(Number));
                 return pool.filter(track=>publicIds.has(Number(track.id)) && Number(track.listen_count)>0).sort((a,b)=>Number(b.listen_count)-Number(a.listen_count) || b.id-a.id);
@@ -42,6 +48,7 @@
         static name(data,value) {
             const descriptor = this.descriptor(value);
             if (descriptor.type === 'album') return this.album(data,descriptor.id)?.title || 'Альбом';
+            if (descriptor.type === 'genre') return (data.catalog?.genres || []).find(genre=>Number(genre.id)===descriptor.id)?.name || 'Жанр';
             if (descriptor.type === 'playlist') return (data.playlists || []).find(item=>Number(item.id)===descriptor.id)?.name || 'Лента';
             return descriptor.type === 'favorites' ? 'Избранное' : descriptor.type === 'popular' ? 'Популярные песни' : descriptor.type === 'artist' ? descriptor.artist : 'Моя музыка';
         }

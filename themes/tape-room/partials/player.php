@@ -15,7 +15,7 @@ $button = static function (string $action, string $label, string $name, string $
     <meta name="color-scheme" content="light">
     <?= $pwa_head ?? '' ?>
     <meta name="theme-color" content="#f7f5f0">
-    <title>Tape Room — личная музыкальная комната</title>
+    <title>Tape Room · Бета — личная музыкальная комната</title>
     <script>
         (() => {
             let theme = 'light';
@@ -62,7 +62,7 @@ $button = static function (string $action, string $label, string $name, string $
 <main class="rp-app" data-player>
     <header class="rp-header">
         <a class="rp-back" href="<?= htmlSC($back_url) ?>" aria-label="Вернуться в CMS" title="Вернуться в CMS"><span class="rp-icon-button rp-back-control"><?= $icon('back') ?></span><span class="rp-back-label">FIREBALL</span></a>
-        <div class="rp-brand">TAPE ROOM<span>ЛИЧНАЯ МУЗЫКАЛЬНАЯ КОМНАТА</span></div>
+        <div class="rp-brand"><b class="rp-brand-name">TAPE ROOM<small class="rp-beta">БЕТА</small></b><span>ЛИЧНАЯ МУЗЫКАЛЬНАЯ КОМНАТА</span></div>
         <div class="rp-header-actions">
             <a class="rp-icon-button" href="<?= htmlSC(base_href('/profile')) ?>" aria-label="Аккаунт" title="Аккаунт"><?= $icon('user') ?></a>
             <?php if (!empty($config['drive']['canManage'])): ?><?= $button('player-settings', 'Настройки плеера', 'settings') ?><?php endif; ?>

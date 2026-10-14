@@ -21,10 +21,13 @@ final class AdminCatalogController
     public function genres(): string
     {
         header('Cache-Control: private, no-store');
-        $id=max(0,(int)request()->get('id',0)); $genre=$id ? (new Genres())->find($id) : null;
+        $id=max(0,(int)request()->get('id',0));
+        try { $genre=$id ? (new Genres())->find($id) : null; }
+        catch (\InvalidArgumentException $error) { abort($error->getMessage(),404); }
         $overview=$id ? (new AdminCatalog())->overview(0,$id,(int)request()->get('page',1)) : ['albums'=>[],'page'=>1,'total'=>0];
         return plugin_view('reel-player','genres',[
             'title'=>'Tape Room · Жанры','genre'=>$genre,'query'=>(string)request()->get('q',''),
+            'tracks'=>$id ? (new Genres())->tracks($id) : [],
             'genres'=>(new Genres())->counts((string)request()->get('q','')),
             'albums'=>$overview['albums'],'page'=>$overview['page'],'total'=>$overview['total'],
         ]);

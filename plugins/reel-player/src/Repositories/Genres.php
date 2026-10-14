@@ -38,6 +38,11 @@ final class Genres
 
     public function counts(string $query = ''): array
     {
-        return db()->query('SELECT g.*,COUNT(DISTINCT a.id) AS albums,COUNT(DISTINCT at.track_id) AS tracks FROM reel_genres g LEFT JOIN reel_albums a ON a.genre_id=g.id AND a.published=1 LEFT JOIN reel_album_tracks at ON at.album_id=a.id WHERE g.name LIKE ? GROUP BY g.id,g.name,g.description ORDER BY g.name,g.id', ['%'.mb_substr(trim($query),0,100).'%'])->get() ?: [];
+        return db()->query('SELECT g.*,(SELECT COUNT(*) FROM reel_albums a WHERE a.genre_id=g.id AND a.published=1) AS albums,(SELECT COUNT(DISTINCT t.id) FROM reel_tracks t JOIN reel_album_tracks at ON at.track_id=t.id JOIN reel_albums a ON a.id=at.album_id WHERE a.published=1 AND (t.genre_id=g.id OR (t.genre_id IS NULL AND a.genre_id=g.id))) AS tracks FROM reel_genres g WHERE g.name LIKE ? ORDER BY g.name,g.id', ['%'.mb_substr(trim($query),0,100).'%'])->get() ?: [];
+    }
+
+    public function tracks(int $id): array
+    {
+        return db()->query('SELECT t.id,t.title,t.artist,a.id AS album_id,a.title AS album_title FROM reel_tracks t JOIN reel_album_tracks at ON at.track_id=t.id JOIN reel_albums a ON a.id=at.album_id WHERE a.published=1 AND (t.genre_id=? OR (t.genre_id IS NULL AND a.genre_id=?)) ORDER BY t.title,a.id LIMIT 200',[$id,$id])->get() ?: [];
     }
 }

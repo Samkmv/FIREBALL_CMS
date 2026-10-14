@@ -2,7 +2,7 @@
     'use strict';
     const escape = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     class TapeRoomGenrePicker {
-        constructor(genres) { this.genres=genres; this.selected=0; }
+        constructor(genres) { this.genres=genres.map(item=>({...item,id:Number(item.id)})); this.selected=0; }
         markup(id) {
             this.selected=Number(id)||0;
             const genre=this.genres.find(item=>item.id===this.selected);
@@ -22,16 +22,20 @@
                 if(['ArrowDown','ArrowUp','Home','End'].includes(event.key)){event.preventDefault();buttons[event.key==='Home'?0:event.key==='End'?buttons.length-1:(index+(event.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length]?.focus();}
                 if(event.key==='Escape'){event.preventDefault();event.stopPropagation();this.close();this.input.focus();}
             });
-            dialog.querySelector('.rp-genre-picker').addEventListener('focusout',event=>{if(!event.currentTarget.contains(event.relatedTarget))this.close();});
+            const picker=dialog.querySelector('.rp-genre-picker');
+            // Touch browsers may blur the search field before delivering the
+            // option click, with no relatedTarget. Keep that option available.
+            picker.addEventListener('focusout',event=>{if(event.relatedTarget && !picker.contains(event.relatedTarget))this.close();});
+            dialog.addEventListener('pointerdown',event=>{if(!picker.contains(event.target))this.close();});
         }
         render() {
-            const query=this.input.value.trim().toLocaleLowerCase(),list=this.genres.filter(item=>item.name.toLocaleLowerCase().includes(query));
+            const query=this.selected ? '' : this.input.value.trim().toLocaleLowerCase(),list=this.genres.filter(item=>item.name.toLocaleLowerCase().includes(query));
             this.options.innerHTML=list.length ? list.map(item=>`<button type="button" data-genre-id="${item.id}">${escape(item.name)}</button>`).join('') : '<p>Жанр не найден. Измените запрос или оставьте поле пустым.</p>';
             this.options.hidden=false;this.input.setAttribute('aria-expanded','true');
         }
         close(){this.options.hidden=true;this.input.setAttribute('aria-expanded','false');}
         select(id){const genre=this.genres.find(item=>item.id===id);this.selected=genre?.id || 0;this.input.value=genre?.name || '';this.close();}
-        value(){if(this.input.value.trim()&&!this.selected)throw new Error('Выберите жанр из результатов поиска.');return this.selected;}
+        value(){const name=this.input.value.trim();if(!name)return 0;if(!this.selected){const genre=this.genres.find(item=>item.name.toLocaleLowerCase()===name.toLocaleLowerCase());if(!genre)throw new Error('Выберите жанр из результатов поиска.');this.select(genre.id);}return this.selected;}
         match(name) {
             const aliases={rock:'Рок',pop:'Поп',jazz:'Джаз',blues:'Блюз',classical:'Классическая музыка',electronic:'Электронная музыка',ambient:'Эмбиент',metal:'Метал',folk:'Фолк',country:'Кантри','hip-hop':'Хип-хоп',soul:'Соул',funk:'Фанк'};
             const normalized=String(name||'').trim().toLocaleLowerCase(),target=(aliases[normalized] || name || '').toLocaleLowerCase();

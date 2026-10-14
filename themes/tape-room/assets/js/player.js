@@ -173,6 +173,8 @@
             if (!t.cover) cover.dataset.defaultCover = '';
             const info = element('div', 'rp-track-info');
             info.append(element('span', 'rp-track-title', t.title), element('span', 'rp-track-artist', `${t.artist || 'Неизвестный исполнитель'}${t.source === 'drive' ? ' · Google Drive' : ''}`));
+            const genre=t.genre || (libraryView.type==='album' ? album(libraryView.id)?.genre : libraryView.type==='genre' ? collections.name(data,selectedSource()) : '');
+            if(genre){const label=element('span','rp-track-genre',genre);label.title=`Жанр: ${genre}`;info.append(label);}
             const actions = element('div', 'rp-track-actions');
             const canReorder = selected > 0 && playlistSort === 'playlist';
             actions.innerHTML = (canReorder ? button('move-up', 'Переместить выше', 'up', t.id, 'rp-reorder') + button('move-down', 'Переместить ниже', 'down', t.id, 'rp-reorder') : '') + button('favorite', t.favorite ? 'Убрать из избранного' : 'Добавить в избранное', 'heart', t.id, `rp-favorite${t.favorite ? ' is-active' : ''}`) + button('add-to-playlist', 'Добавить в плейлист', 'plus', t.id) + (!t.shared ? button('edit-track', 'Изменить трек', 'edit', t.id) : '') + (selected > 0 ? button('remove-track','Убрать из плейлиста','trash',t.id) : !t.shared && libraryView.type === 'songs' ? button('delete-track','Удалить из библиотеки','trash',t.id) : '');
@@ -850,21 +852,28 @@
     }
     const metadataJobs=new Map();
     async function refreshDriveMetadata(ids,artwork=false) {
-        const candidates=[...new Set(ids)].map(track).filter(item=>item && !item.shared && item.source==='drive' && (!item.metadata_loaded || (artwork && !item.cover)));
-        let index=0,failed=0;
-        const worker=async()=>{
-            while(index<candidates.length){
-                const item=candidates[index++],key=`${item.id}:${artwork}`;
-                if(!metadataJobs.has(key)) metadataJobs.set(key,(async()=>{
-                    const form=new FormData();form.set('id',item.id);form.set('artwork',artwork?'1':'0');form.set('needCSRFToken',config.csrf);
-                    const result=await api('drive/metadata',form);
-                    for(const list of [data.tracks,data.catalog?.tracks || []])for(const existing of list)if(existing.id===result.track.id)Object.assign(existing,result.track);
-                    trackPool=collections.tracks(data);trackMap=new Map(trackPool.map(t=>[t.id,t]));render();
-                })().finally(()=>metadataJobs.delete(key)));
-                try {await metadataJobs.get(key);}catch(_){failed++;}
-            }
-        };
-        await Promise.all([worker(),worker()]);return failed;
+        return mutate(async()=>{
+            const candidates=[...new Set(ids)].map(track).filter(item=>item && !item.shared && item.source==='drive' && (!item.metadata_loaded || (artwork && !item.cover)));
+            if(!candidates.length)return 0;
+            let index=0,failed=0;
+            const worker=async()=>{
+                while(index<candidates.length){
+                    const item=candidates[index++],key=`${item.id}:${artwork}`;
+                    if(!metadataJobs.has(key)) metadataJobs.set(key,(async()=>{
+                        const form=new FormData();form.set('id',item.id);form.set('artwork',artwork?'1':'0');form.set('needCSRFToken',config.csrf);
+                        const result=await api('drive/metadata',form);
+                        for(const list of [data.tracks,data.catalog?.tracks || []])for(const existing of list)if(existing.id===result.track.id)Object.assign(existing,result.track);
+                        trackPool=collections.tracks(data);trackMap=new Map(trackPool.map(t=>[t.id,t]));render();
+                    })().finally(()=>metadataJobs.delete(key)));
+                    try {await metadataJobs.get(key);}catch(_){failed++;}
+                }
+            };
+            await Promise.all([worker(),worker()]);
+            // Metadata can return a submitted album to moderation. Refresh the
+            // catalogue in this same write queue before later edits take their turn.
+            try {applyState(await api('state'));}catch(_){failed++;}
+            return failed;
+        });
     }
     function setupAlbumMetadata(value,genrePicker) {
         const holder=element('div','rp-album-metadata'),button=element('button','rp-button','Получить данные и обложку из песен'),note=element('small','','Если в файлах есть теги или обложка, они будут предложены для альбома.');
@@ -879,7 +888,7 @@
             if(first?.album_title)dialog.querySelector('[name="title"]').value=first.album_title;
             const artist=first?.album_artist || (items.every(item=>item.artist===first?.artist)?first?.artist:'');
             if(artist)dialog.querySelector('[name="artist"]').value=artist;
-            if(first?.genre_tag)genrePicker.match(first.genre_tag);
+            if(first?.genre || first?.genre_tag)genrePicker.match(first.genre || first.genre_tag);
             const cover=items.find(item=>item.cover)?.cover;
             if(cover && !dialog.querySelector('[name="cover"]').files.length){window.TapeRoomImages.apply(dialog.querySelector('[data-cover-preview]'),cover,config,theme,'cover',true);dialog.querySelector('[data-cover-filename]').textContent='Обложка из выбранной песни';}
             note.textContent=failed ? 'Часть данных недоступна. Остальные поля можно заполнить вручную.' : 'Доступные данные подставлены. Проверьте их перед сохранением.';button.disabled=false;
@@ -910,7 +919,10 @@
     }
     function editTrack(id) {
         const t = track(id); if (!t || t.shared) return;
-        openDialog('О композиции', field('title','Название',t.title) + field('artist','Исполнитель',t.artist) + `<div class="rp-cover-field"><span class="rp-field-label">Обложка</span><label class="rp-cover-picker"><input class="rp-file-input" type="file" name="cover" accept="image/jpeg,image/png,image/webp" aria-label="Выбрать обложку">${previewImage(t.cover,'Предварительный просмотр обложки')}<span class="rp-cover-picker-info"><span class="rp-cover-picker-button">${icon('upload')}Выбрать обложку</span><span data-cover-filename>JPG, PNG или WebP · до 8 МБ</span></span></label></div><div class="rp-chapter-editor-actions"><button type="button" class="rp-button" data-action="chapter-add" data-track-id="${t.id}">${icon('plus')}Добавить таймкод</button><button type="button" class="rp-button" data-action="chapter-tools" data-track-id="${t.id}">${icon('list')}CUE и автопоиск</button></div>`, form => action('track.update',{id,title:form.get('title'),artist:form.get('artist')},form.get('cover')));
+        const genrePicker=new window.TapeRoomGenrePicker(data.catalog?.genres || []);
+        openDialog('О композиции', field('title','Название',t.title) + field('artist','Исполнитель',t.artist) + genrePicker.markup(t.genreId) + `<div class="rp-cover-field"><span class="rp-field-label">Обложка</span><label class="rp-cover-picker"><input class="rp-file-input" type="file" name="cover" accept="image/jpeg,image/png,image/webp" aria-label="Выбрать обложку">${previewImage(t.cover,'Предварительный просмотр обложки')}<span class="rp-cover-picker-info"><span class="rp-cover-picker-button">${icon('upload')}Выбрать обложку</span><span data-cover-filename>JPG, PNG или WebP · до 8 МБ</span></span></label></div><div class="rp-chapter-editor-actions"><button type="button" class="rp-button" data-action="chapter-add" data-track-id="${t.id}">${icon('plus')}Добавить таймкод</button><button type="button" class="rp-button" data-action="chapter-tools" data-track-id="${t.id}">${icon('list')}CUE и автопоиск</button></div>`, form => action('track.update',{id,title:form.get('title'),artist:form.get('artist'),genre_id:genrePicker.value()},form.get('cover')));
+        genrePicker.mount(dialog);
+        if(!t.genreId && t.genre_tag)genrePicker.match(t.genre_tag);
         dialog.querySelector('[name="cover"]').addEventListener('change', event => {
             const file = event.target.files[0]; if (!file) return;
             if (file.size > 8 * 1048576 || !/\.(jpe?g|png|webp)$/i.test(file.name)) {

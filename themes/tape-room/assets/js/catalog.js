@@ -69,7 +69,7 @@
                     result = this.cardsPage(personalAlbums, 'Моя музыка', 'Ваша коллекция', 'Ваша коллекция альбомов пока пуста', 'Откройте альбом в каталоге и нажмите «В коллекцию» или создайте альбом из своих песен.', `<button class="rp-catalog-text-button" type="button" data-action="catalog-view" data-view="songs">Все мои песни</button>`);
                     break;
                 case 'genres': result = this.genresPage(); break;
-                case 'genre': { const genre=(catalog.genres || []).find(item=>Number(item.id)===Number(view.id)); result=this.cardsPage(publicAlbums.filter(item=>Number(item.genreId)===Number(view.id)),genre?.name || 'Жанр','Альбомы жанра','В этом жанре пока нет альбомов','Одобренные альбомы появятся здесь.'); break; }
+                case 'genre': result=this.genrePage(view.id); break;
                 case 'artists': result = this.artistsPage(); break;
                 case 'new': result = this.newPage(); break;
                 case 'popular': {
@@ -105,11 +105,19 @@
         genresPage() {
             const genres=(this.latest.data.catalog?.genres || []).filter(item=>!this.latest.search || normalized(item.name).includes(this.latest.search));
             this.html(`<div class="rp-genre-grid">${genres.map(genre=>{
-                const albums=this.latest.publicAlbums.filter(album=>Number(album.genreId)===Number(genre.id));
-                const tracks=new Set(albums.flatMap(album=>album.tracks || []));
-                return `<button type="button" class="rp-genre-card" data-action="catalog-genre" data-id="${Number(genre.id)}"><strong>${this.escape(genre.name)}</strong><span>${this.escape(countLabel(albums.length,'альбом','альбома','альбомов'))} · ${this.escape(countLabel(tracks.size,'песня','песни','песен'))}</span></button>`;
+                const albums=this.latest.albums.filter(album=>(album.published || album.editable) && Number(album.genreId)===Number(genre.id));
+                const tracks=window.TapeRoomCollections.collection(this.latest.data,{type:'genre',id:genre.id});
+                return `<button type="button" class="rp-genre-card" data-action="catalog-genre" data-id="${Number(genre.id)}"><strong>${this.escape(genre.name)}</strong><span>${this.escape(countLabel(albums.length,'альбом','альбома','альбомов'))} · ${this.escape(countLabel(tracks.length,'песня','песни','песен'))}</span></button>`;
             }).join('')}</div>`);
             return {listMode:false,title:'Жанры',summary:'Библиотека жанров'};
+        }
+
+        genrePage(id) {
+            const genre=(this.latest.data.catalog?.genres || []).find(item=>Number(item.id)===Number(id));
+            const albums=this.latest.albums.filter(item=>(item.published || item.editable) && Number(item.genreId)===Number(id));
+            const tracks=window.TapeRoomCollections.collection(this.latest.data,{type:'genre',id:Number(id)});
+            this.html(`<section class="rp-catalog-section">${this.sectionHeading('Альбомы жанра','Ваша музыка и одобренные альбомы каталога')}${this.albumGrid(albums.filter(item=>this.matches(item)),'В этом жанре пока нет альбомов','Выберите жанр при создании или редактировании своего альбома.')}</section>${this.sectionHeading('Песни жанра')}`);
+            return {listMode:true,title:genre?.name || 'Жанр',tracks,summary:`${countLabel(albums.length,'альбом','альбома','альбомов')} · ${countLabel(tracks.length,'песня','песни','песен')}`,emptyTitle:'В этом жанре пока нет песен',emptyDescription:'Назначьте жанр своей песне в редакторе композиции.'};
         }
 
         matches(album) {

@@ -5,7 +5,7 @@
     <p><strong>Пользователь:</strong> <?= htmlSC($album['owner_name']) ?> · <strong>Исполнитель:</strong> <?= htmlSC($album['artist']) ?> · <strong>Жанр:</strong> <?= htmlSC($album['genre_name'] ?: 'Не указан') ?></p>
     <p><?= nl2br(htmlSC($album['description'])) ?></p>
     <h2 class="h5">Песни</h2><div class="vstack gap-3">
-        <?php foreach ($album['tracks'] as $item): ?><div><strong><?= htmlSC($item['title']) ?></strong><span class="text-body-secondary"> · <?= htmlSC($item['artist']) ?></span><audio class="d-block w-100 mt-2" controls preload="none" src="<?= htmlSC(base_href('/admin/reel-player/review-media/'.(int)$album['id'].'/'.(int)$item['id'])) ?>"></audio></div><?php endforeach; ?>
+        <?php foreach ($album['tracks'] as $item): ?><div><strong><?= htmlSC($item['title']) ?></strong><span class="text-body-secondary"> · <?= htmlSC($item['artist']) ?><?= ($item['genre'] ?: $album['genre_name']) ? ' · '.htmlSC($item['genre'] ?: $album['genre_name']) : '' ?></span><audio class="d-block w-100 mt-2" controls preload="none" src="<?= htmlSC(base_href('/admin/reel-player/review-media/'.(int)$album['id'].'/'.(int)$item['id'])) ?>"></audio></div><?php endforeach; ?>
     </div>
     <?php if ($album['moderation_status']==='pending'): ?>
     <form class="mt-4" action="<?= htmlSC(base_href('/admin/reel-player/albums/review')) ?>" method="post">
