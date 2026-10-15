@@ -15,19 +15,24 @@ if ($privacyUrl === '') {
     }
 }
 ?>
-<section class="tr-card">
-    <h1>Ваша музыкальная комната</h1>
-    <p>Создайте аккаунт, чтобы слушать музыку и собирать свою коллекцию.</p>
-    <?= $this->partial('form-errors') ?>
-    <form class="tr-form" action="<?= htmlSC(base_href('/register')) ?>" method="post">
-        <?= get_csrf_field() ?>
-        <?= $this->partial('field', ['name' => 'name', 'label' => 'Имя', 'autocomplete' => 'name']) ?>
-        <?= $this->partial('field', ['name' => 'login', 'label' => 'Логин', 'autocomplete' => 'nickname', 'minlength' => 3, 'pattern' => '[a-zA-Z0-9-]+']) ?>
-        <?= $this->partial('field', ['name' => 'email', 'label' => 'Электронная почта', 'type' => 'email', 'autocomplete' => 'email']) ?>
-        <?= $this->partial('field', ['name' => 'password', 'label' => 'Пароль', 'type' => 'password', 'autocomplete' => 'new-password', 'minlength' => 8]) ?>
-        <?= $this->partial('field', ['name' => 'password_confirmation', 'label' => 'Повторите пароль', 'type' => 'password', 'autocomplete' => 'new-password', 'minlength' => 8]) ?>
-        <label class="tr-check"><input name="privacy_accepted" type="checkbox" value="1" required><span>Я принимаю <?php if ($privacyUrl): ?><a href="<?= htmlSC($privacyUrl) ?>" target="_blank" rel="noopener noreferrer">политику конфиденциальности</a><?php else: ?>политику конфиденциальности<?php endif; ?></span></label>
-        <button class="rp-button rp-button--primary" type="submit">Создать аккаунт</button>
-    </form>
-    <div class="tr-links"><a href="<?= htmlSC(base_href('/login')) ?>">Уже есть аккаунт? Войти</a></div>
-</section>
+<div class="row g-4 g-xl-5 align-items-center tr-auth-layout">
+    <?= $this->partial('auth-intro') ?>
+    <section class="col-lg-6">
+        <div class="card tr-auth-card mx-auto"><div class="card-body p-4 p-sm-5">
+            <span class="tr-eyebrow">ВАШ НОВЫЙ РИТМ</span>
+            <h1 class="tr-auth-title">Ваша музыкальная комната</h1>
+            <p class="text-body-secondary mb-4">Создайте аккаунт и соберите свою коллекцию.</p>
+            <?= $this->partial('form-errors') ?>
+            <form class="vstack gap-3" action="<?= htmlSC(base_href('/register')) ?>" method="post">
+                <?= get_csrf_field() ?>
+                <div class="row g-3"><div class="col-sm-6"><?= $this->partial('field',['name'=>'name','label'=>'Имя','autocomplete'=>'name']) ?></div><div class="col-sm-6"><?= $this->partial('field',['name'=>'login','label'=>'Логин','autocomplete'=>'nickname','minlength'=>3,'pattern'=>'[a-zA-Z0-9-]+']) ?></div></div>
+                <?= $this->partial('field',['name'=>'email','label'=>'Электронная почта','type'=>'email','autocomplete'=>'email']) ?>
+                <?= $this->partial('field',['name'=>'password','label'=>'Пароль','type'=>'password','autocomplete'=>'new-password','minlength'=>8]) ?>
+                <?= $this->partial('field',['name'=>'password_confirmation','label'=>'Повторите пароль','type'=>'password','autocomplete'=>'new-password','minlength'=>8]) ?>
+                <div class="form-check tr-privacy"><input class="form-check-input" id="tr-privacy" name="privacy_accepted" type="checkbox" value="1" required><label class="form-check-label" for="tr-privacy">Я принимаю <?php if($privacyUrl): ?><a href="<?= htmlSC($privacyUrl) ?>" target="_blank" rel="noopener noreferrer">политику конфиденциальности</a><?php else: ?>политику конфиденциальности<?php endif; ?></label></div>
+                <button class="btn btn-primary btn-lg w-100 mt-2" type="submit">Создать аккаунт <?= $this->partial('site-icon',['name'=>'arrow']) ?></button>
+            </form>
+            <div class="tr-auth-switch">Уже есть аккаунт? <a href="<?= htmlSC(base_href('/login')) ?>">Войти</a></div>
+        </div></div>
+    </section>
+</div>

@@ -10,4 +10,4 @@ if (!class_exists(\Fireball\ReelPlayer\Controllers\PlayerController::class)) {
 }
 
 extract((new \Fireball\ReelPlayer\Controllers\PlayerController())->pageData(), EXTR_SKIP);
-require dirname(__DIR__) . '/partials/player.php';
+require dirname(__DIR__) . '/includes/player-shell.php';

@@ -105,7 +105,7 @@
         genresPage() {
             const genres=(this.latest.data.catalog?.genres || []).filter(item=>!this.latest.search || normalized(item.name).includes(this.latest.search));
             this.html(`<div class="rp-genre-grid">${genres.map(genre=>{
-                const albums=this.latest.albums.filter(album=>(album.published || album.editable) && Number(album.genreId)===Number(genre.id));
+                const albums=this.latest.albums.filter(album=>(album.published || album.editable || album.browserLocal) && Number(album.genreId)===Number(genre.id));
                 const tracks=window.TapeRoomCollections.collection(this.latest.data,{type:'genre',id:genre.id});
                 return `<button type="button" class="rp-genre-card" data-action="catalog-genre" data-id="${Number(genre.id)}"><strong>${this.escape(genre.name)}</strong><span>${this.escape(countLabel(albums.length,'альбом','альбома','альбомов'))} · ${this.escape(countLabel(tracks.length,'песня','песни','песен'))}</span></button>`;
             }).join('')}</div>`);
@@ -114,7 +114,7 @@
 
         genrePage(id) {
             const genre=(this.latest.data.catalog?.genres || []).find(item=>Number(item.id)===Number(id));
-            const albums=this.latest.albums.filter(item=>(item.published || item.editable) && Number(item.genreId)===Number(id));
+            const albums=this.latest.albums.filter(item=>(item.published || item.editable || item.browserLocal) && Number(item.genreId)===Number(id));
             const tracks=window.TapeRoomCollections.collection(this.latest.data,{type:'genre',id:Number(id)});
             this.html(`<section class="rp-catalog-section">${this.sectionHeading('Альбомы жанра','Ваша музыка и одобренные альбомы каталога')}${this.albumGrid(albums.filter(item=>this.matches(item)),'В этом жанре пока нет альбомов','Выберите жанр при создании или редактировании своего альбома.')}</section>${this.sectionHeading('Песни жанра')}`);
             return {listMode:true,title:genre?.name || 'Жанр',tracks,summary:`${countLabel(albums.length,'альбом','альбома','альбомов')} · ${countLabel(tracks.length,'песня','песни','песен')}`,emptyTitle:'В этом жанре пока нет песен',emptyDescription:'Назначьте жанр своей песне в редакторе композиции.'};
@@ -143,7 +143,7 @@
             const esc = this.escape, tracks = this.tracksFor(album);
             const date = timestamp(album.release_date), year = date ? new Date(date).getFullYear() : '';
             const total = tracks.reduce((sum,track) => sum + (Number(track.duration)||0),0);
-            const meta = [year || (!album.published ? (album.moderation === 'pending' ? 'На модерации' : album.moderation === 'rejected' ? 'Отклонён' : 'Личный альбом') : 'Без даты релиза'), countLabel(tracks.length,'трек','трека','треков'),total ? duration(total) : ''].filter(Boolean).join(' · ');
+            const meta = [year || (!album.published ? (album.moderation === 'pending' ? 'На модерации' : album.moderation === 'rejected' ? 'Отклонён' : album.browserLocal ? 'Torrent · в браузере' : 'Личный альбом') : 'Без даты релиза'), countLabel(tracks.length,'трек','трека','треков'),total ? duration(total) : ''].filter(Boolean).join(' · ');
             const active = tracks.some(track => Number(track.id) === this.latest.current) && this.latest.playing;
             return `<article data-album-id="${Number(album.id)}" class="rp-album-card${active ? ' is-playing' : ''}">
                 <div class="rp-album-artwork">
@@ -153,7 +153,7 @@
                 </div>
                 <button type="button" class="rp-album-title" data-action="catalog-album" data-id="${Number(album.id)}">${esc(album.title)}</button>
                 ${album.artist ? `<button type="button" class="rp-album-artist" data-action="catalog-artist" data-artist="${esc(album.artist)}">${esc(album.artist)}</button>` : '<span class="rp-album-artist">Исполнитель не указан</span>'}
-                ${album.genre ? `<button class="rp-catalog-text-button" type="button" data-action="catalog-genre" data-id="${Number(album.genreId)}">${esc(album.genre)}</button>` : ''}<span class="rp-album-meta">${esc(meta)}</span>
+                ${album.genre && !album.genreId ? `<span class="rp-album-meta">${esc(album.genre)}</span>` : album.genre ? `<button class="rp-catalog-text-button" type="button" data-action="catalog-genre" data-id="${Number(album.genreId)}">${esc(album.genre)}</button>` : ''}<span class="rp-album-meta">${esc(meta)}</span>
             </article>`;
         }
 
@@ -253,9 +253,9 @@
             this.html(`<div class="rp-catalog-detail-back">${this.viewLink(album.published ? 'albums' : 'mine','К альбомам')}</div>
                 <section class="rp-album-detail"><div class="rp-album-detail-cover">${this.image(this.albumCover(album),'','cover',true)}</div><div class="rp-album-detail-info">
                 <span class="rp-catalog-eyebrow">${album.published ? 'Альбом · каталог сайта' : 'Личный альбом'}</span><h3>${esc(album.title)}</h3>
-                ${album.artist ? `<button class="rp-catalog-artist-link" type="button" data-action="catalog-artist" data-artist="${esc(album.artist)}">${esc(album.artist)}</button>` : ''}<p class="rp-album-detail-meta">${esc(meta)}</p>
+                ${album.browserLocal && album.artist ? `<span class="rp-catalog-artist-link">${esc(album.artist)}</span>` : album.artist ? `<button class="rp-catalog-artist-link" type="button" data-action="catalog-artist" data-artist="${esc(album.artist)}">${esc(album.artist)}</button>` : ''}<p class="rp-album-detail-meta">${esc(meta)}</p>
                 ${album.editable && album.moderation !== 'draft' ? `<p class="rp-catalog-note">${esc(album.moderation === 'pending' ? 'Альбом ожидает проверки. В общем каталоге он появится после одобрения.' : album.moderation === 'rejected' ? 'Публикация отклонена. Исправьте альбом и отправьте его повторно.' : 'Публикация одобрена.')} ${esc(album.moderationNote || '')}</p>` : ''}${album.description ? `<p class="rp-album-description">${esc(album.description)}</p>` : ''}
-                <div class="rp-album-detail-actions"><button type="button" class="rp-button rp-button--primary rp-catalog-play" data-action="catalog-play-album" data-id="${Number(album.id)}" ${tracks.length ? '' : 'disabled'}>${this.icon('play')}<span>Слушать альбом</span></button><button type="button" class="rp-button rp-catalog-save${album.saved ? ' is-saved' : ''}" data-action="catalog-save" data-id="${Number(album.id)}" aria-pressed="${Boolean(album.saved)}">${this.icon(album.saved ? 'heart' : 'plus')}<span>${album.saved ? 'В коллекции' : 'В коллекцию'}</span></button>${album.editable ? `<button class="rp-icon-button" type="button" data-action="catalog-edit" data-id="${Number(album.id)}" title="Изменить альбом" aria-label="Изменить альбом">${this.icon('edit')}</button>` : ''}</div>
+                <div class="rp-album-detail-actions"><button type="button" class="rp-button rp-button--primary rp-catalog-play" data-action="catalog-play-album" data-id="${Number(album.id)}" ${tracks.length ? '' : 'disabled'}>${this.icon('play')}<span>Слушать альбом</span></button>${album.browserLocal ? `<button class="rp-button" type="button" data-torrent-edit="${esc(album.torrentHash)}">${this.icon('edit')}Изменить torrent</button>` : `<button type="button" class="rp-button rp-catalog-save${album.saved ? ' is-saved' : ''}" data-action="catalog-save" data-id="${Number(album.id)}" aria-pressed="${Boolean(album.saved)}">${this.icon(album.saved ? 'heart' : 'plus')}<span>${album.saved ? 'В коллекции' : 'В коллекцию'}</span></button>`}${album.editable ? `<button class="rp-icon-button" type="button" data-action="catalog-edit" data-id="${Number(album.id)}" title="Изменить альбом" aria-label="Изменить альбом">${this.icon('edit')}</button>` : ''}</div>
                 ${album.editable ? `<div class="rp-album-detail-management">${canPublish ? `<button type="button" class="rp-catalog-publish" data-action="catalog-publish" data-id="${Number(album.id)}" data-published="${album.submitted ? 0 : 1}">${album.submitted ? 'Отозвать публикацию' : 'Отправить на модерацию'}</button>` : ''}<button type="button" class="rp-catalog-delete" data-action="catalog-delete" data-id="${Number(album.id)}">${this.icon('trash')}Удалить альбом</button></div>` : ''}
                 </div></section><div class="rp-catalog-track-heading"><h3>Песни альбома</h3><span>Порядок альбома</span></div>`);
             return {listMode:true,title:'Альбом',summary:'',tracks,emptyTitle:'В альбоме пока нет песен',emptyDescription:album.editable ? 'Откройте редактор альбома и выберите песни из своей библиотеки.' : 'Песни появятся после добавления владельцем альбома.'};

@@ -28,7 +28,7 @@
             if (descriptor.type === 'playlist') return this.sort(((data.playlists || []).find(item=>Number(item.id)===descriptor.id)?.tracks || []).map(id=>byId.get(Number(id))).filter(Boolean),sort);
             if (descriptor.type === 'favorites') return this.sort(pool.filter(track=>track.favorite),sort);
             if (descriptor.type === 'genre') {
-                const albums=(data.catalog?.albums || []).filter(album=>album.published || album.editable);
+                const albums=(data.catalog?.albums || []).filter(album=>album.published || album.editable || album.browserLocal);
                 const publicIds=new Set(albums.flatMap(album=>album.tracks).map(Number));
                 const inheritedIds=new Set(albums.filter(album=>Number(album.genreId)===descriptor.id).flatMap(album=>album.tracks).map(Number));
                 return this.sort(pool.filter(track=>(track.shared===false || publicIds.has(Number(track.id))) && (Number(track.genreId)===descriptor.id || (!Number(track.genreId) && inheritedIds.has(Number(track.id))))),sort);

@@ -4,25 +4,18 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="color-scheme" content="light dark">
     <meta name="theme-color" content="#f7f5f0">
     <?= get_csrf_meta() ?>
     <title><?= htmlSC($title ?? 'Tape Room') ?> · Tape Room · Бета</title>
     <?= $this->partial('pwa-head') ?>
-    <link rel="stylesheet" href="<?= htmlSC(theme_asset_versioned('css/player.css')) ?>">
-    <link rel="stylesheet" href="<?= htmlSC(theme_asset_versioned('css/shell.css')) ?>">
+    <?= $this->partial('shell-assets') ?>
 </head>
-<body class="rp-body">
-<div class="tr-shell">
-    <header class="tr-header"><a class="rp-brand" href="<?= htmlSC(base_href('/')) ?>"><b class="rp-brand-name">TAPE ROOM<small class="rp-beta">БЕТА</small></b><span>ЛИЧНАЯ МУЗЫКАЛЬНАЯ КОМНАТА</span></a>
-        <?php if (!check_auth()): ?><nav class="tr-auth-nav" aria-label="Вход и регистрация">
-            <a href="<?= htmlSC(base_href('/login')) ?>" aria-label="Войти" title="Войти"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3h6v18h-6M3 12h12m-5-5 5 5-5 5"/></svg><span>Войти</span></a>
-            <a href="<?= htmlSC(base_href('/register')) ?>" aria-label="Зарегистрироваться" title="Зарегистрироваться"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="7" r="4"/><path d="M2 22v-4a7 7 0 0 1 14 0v4m4-13v8m-4-4h8"/></svg><span>Регистрация</span></a>
-        </nav><?php endif; ?>
-    </header>
-    <?php require __DIR__ . '/menu.php'; ?>
-    <main class="tr-main">
-        <?php foreach (['error', 'success', 'warning', 'info'] as $tone): ?>
-            <?php if ($message = session()->getFlash($tone)): ?>
-                <p class="tr-notice tr-notice--<?= $tone ?>" role="status"><?= htmlSC((string)$message) ?></p>
-            <?php endif; ?>
-        <?php endforeach; ?>
+<body class="tr-body">
+<div class="tr-bootstrap tr-page-shell" data-tr-shell data-bs-theme="light">
+    <div class="container-fluid tr-site-container">
+        <?= $this->partial('navbar') ?>
+        <main class="tr-main <?= !empty($tr_wide_page)?'tr-main--wide':'' ?>" id="tr-main">
+            <?php foreach (['error','success','warning','info'] as $tone): ?>
+                <?php if ($message=session()->getFlash($tone)): ?><div class="alert alert-<?= $tone==='error'?'danger':$tone ?> tr-notice" role="status"><?= htmlSC((string)$message) ?></div><?php endif; ?>
+            <?php endforeach; ?>

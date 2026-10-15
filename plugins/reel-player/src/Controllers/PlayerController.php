@@ -69,6 +69,7 @@ final class PlayerController
                 'state' => $this->library()->state(),
                 'drive' => $this->drive()->status(),
                 'pwa' => ['enabled' => !empty($pwa['enabled']), 'worker' => $pwa['service_worker_url'] ?? ''],
+                'torrent' => ['worker' => base_url('/tape-room/torrent-worker.js'), 'scope' => base_url('/')],
             ],
             'back_url' => base_href(check_admin() ? '/admin' : '/profile'),
             'pwa_head' => theme()->partial('pwa-head'),

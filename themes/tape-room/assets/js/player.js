@@ -17,7 +17,7 @@
     const defaultCover = () => config.defaultCovers?.[theme] || config.defaultCover;
     const defaultArtist = () => config.defaultArtists?.[theme] || '';
     const imageSources = (source,kind = 'cover',compact = false) => window.TapeRoomImages.sources(source,config,theme,kind,compact);
-    let data = config.state, saved = {};
+    let data = config.state, serverState = config.state, browserLibrary = {tracks:[],albums:[]}, browserRestored = false, sourceJob = null, saved = {};
     try { saved = JSON.parse(localStorage.getItem(config.storageKey) || '{}'); } catch (_) {}
     if (!saved || typeof saved !== 'object' || Array.isArray(saved)) saved = {};
     let audibleVolume = Number(saved.audibleVolume) > 0 ? Math.min(1, Number(saved.audibleVolume)) : Number(saved.volume) > 0 ? Math.min(1, Number(saved.volume)) : .8;
@@ -52,7 +52,7 @@
         return s >= 3600 ? `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}` : `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
     };
     const esc = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
-    const icon = name => `<svg class="rp-icon" aria-hidden="true"><use href="#rp-i-${name}"></use></svg>`;
+    const icon = name => `<i class="rp-icon ci-${window.TapeRoomIconMap[name] || 'music'}" data-icon="${name}" aria-hidden="true"></i>`;
     const previewImage = (source,alt,kind = 'cover') => {
         const value=imageSources(source,kind,true);
         return `<img data-cover-preview data-library-image="${kind}" data-compact-image ${source ? '' : `data-default-${kind}`} ${value.srcset ? `srcset="${esc(value.srcset)}"` : ''} ${value.src ? `src="${esc(value.src)}"` : 'hidden'} alt="${esc(alt)}" width="72" height="72" decoding="async">`;
@@ -77,7 +77,7 @@
     const selectedSource = () => collections.descriptor(libraryView,descriptorForPlaylist(selected));
     const selectedTracks = () => collections.collection(data,selectedSource(),selectedSort());
     const element = (tag, className, text) => { const node = document.createElement(tag); node.className = className; if (text !== undefined) node.textContent = text; return node; };
-    const setIcon = (node, name) => node.querySelector('use').setAttribute('href', `#rp-i-${name}`);
+    const setIcon = (node, name) => { const item=node.querySelector('.rp-icon');if(!item)return;for(const value of [...item.classList])if(value.startsWith('ci-'))item.classList.remove(value);item.classList.add(`ci-${window.TapeRoomIconMap[name] || 'music'}`);item.dataset.icon=name; };
     const rangeFill = (node, fraction) => node.style.setProperty('--fill', `${Math.max(0, Math.min(1, fraction)) * 100}%`);
     const catalogUI = new window.TapeRoomCatalogUI({app,icon,escape:esc,defaultCover,defaultArtist,imageSources});
 
@@ -141,7 +141,7 @@
         queue = collections.collection(data,queueSource,queueSort).map(t => t.id);
         queueName = collections.name(data,queueSource);
         bag = bag.filter(id => queue.includes(id)); futureBag = futureBag.filter(id => queue.includes(id)); history = history.filter(id => Boolean(track(id)));
-        if (current && !activeTrack()) { audio.pause(); audio.removeAttribute('src'); audio.load(); current = 0; updateNow(); }
+        if (current && !activeTrack()) { window.TapeRoomTorrents?.release();audio.pause(); audio.removeAttribute('src'); audio.load(); current = 0; updateNow(); }
         const nav = $('[data-playlists]'); nav.replaceChildren();
         for (const item of [{id:0, name:'Все мои песни', tracks:collections.myTracks(data)}, {id:-1, name:'Избранное', tracks:collectionTracks(-1)}, ...data.playlists]) {
             const active = ['songs','favorites','playlist'].includes(libraryView.type) && item.id === selected;
@@ -172,13 +172,14 @@
             window.TapeRoomImages.apply(cover,t.cover,config,theme,'cover',true);
             if (!t.cover) cover.dataset.defaultCover = '';
             const info = element('div', 'rp-track-info');
-            info.append(element('span', 'rp-track-title', t.title), element('span', 'rp-track-artist', `${t.artist || 'Неизвестный исполнитель'}${t.source === 'drive' ? ' · Google Drive' : ''}`));
+            info.append(element('span', 'rp-track-title', t.title), element('span', 'rp-track-artist', `${t.artist || 'Неизвестный исполнитель'}${t.source === 'drive' ? ' · Google Drive' : t.browserLocal ? ' · Torrent' : ''}`));
             const genre=t.genre || (libraryView.type==='album' ? album(libraryView.id)?.genre : libraryView.type==='genre' ? collections.name(data,selectedSource()) : '');
             if(genre){const label=element('span','rp-track-genre',genre);label.title=`Жанр: ${genre}`;info.append(label);}
             const actions = element('div', 'rp-track-actions');
             const canReorder = selected > 0 && playlistSort === 'playlist';
             actions.innerHTML = (canReorder ? button('move-up', 'Переместить выше', 'up', t.id, 'rp-reorder') + button('move-down', 'Переместить ниже', 'down', t.id, 'rp-reorder') : '') + button('favorite', t.favorite ? 'Убрать из избранного' : 'Добавить в избранное', 'heart', t.id, `rp-favorite${t.favorite ? ' is-active' : ''}`) + button('add-to-playlist', 'Добавить в плейлист', 'plus', t.id) + (!t.shared ? button('edit-track', 'Изменить трек', 'edit', t.id) : '') + (selected > 0 ? button('remove-track','Убрать из плейлиста','trash',t.id) : !t.shared && libraryView.type === 'songs' ? button('delete-track','Удалить из библиотеки','trash',t.id) : '');
             actions.querySelector('[data-action="favorite"]').setAttribute('aria-pressed', String(t.favorite));
+            if(t.browserLocal)actions.querySelector('[data-action="add-to-playlist"]')?.remove();
             if (canReorder) {
                 actions.querySelector('[data-action="move-up"]').disabled = index === 0;
                 actions.querySelector('[data-action="move-down"]').disabled = index === list.length - 1;
@@ -210,7 +211,7 @@
     async function requestQuality() {
         cancelQuality();
         const t = activeTrack();
-        if (!t || qualityCache.has(t.id)) return;
+        if (!t || t.browserLocal || qualityCache.has(t.id)) return;
         const version = generation, id = t.id, controller = new AbortController();
         const job = {controller,timer:setTimeout(() => controller.abort(),9000)};
         qualityJob = job;
@@ -478,9 +479,19 @@
             setQueue(); load(first.id);
         }
         configureAudioSession();
-        if (audio.error) load(current,playbackPosition());
+        if (audio.error || (activeTrack()?.browserLocal && !audio.hasAttribute('src'))) load(current,playbackPosition());
         if (audio.ended) audio.currentTime = 0;
+        if(activeTrack()?.browserLocal && !audio.hasAttribute('src')){
+            const t=activeTrack(),sourceVersion=generation;
+            sourceJob=window.TapeRoomTorrents.resolve(t).then(url=>{if(sourceVersion===generation){audio.src=url;audio.load();}});
+            sourceJob.catch(()=>{});
+        }
         const version = generation;
+        if (sourceJob) {
+            try { await sourceJob; }
+            catch(error) { if(version===generation){setBuffering(false);toast(error.message,true);}return; }
+            if(version!==generation)return;
+        }
         // Keep play() inside the tap's activation; meter setup never gates sound.
         try { const playback = audio.play(); resumeMeters(origin,event); await playback; }
         catch (error) { if (version === generation && error.name !== 'AbortError') { setBuffering(false); stopMeters('native-error'); toast('Не удалось воспроизвести трек. Проверьте формат, соединение и доступ к файлу.', true); } }
@@ -524,7 +535,12 @@
         sampleListening(); listening = null;
         preloader.cancel(); generation++; audio.pause(); stopMeters('track-change'); current = t.id; restoreTime = time; setBuffering(false);
         chapterKey = ''; chapterIndex = -2; chapterDuration = -1;
-        audio.src = t.url; audio.load(); render(); drawProgress(); save(); requestQuality();
+        if(t.browserLocal){
+            window.TapeRoomTorrents?.release();sourceJob=null;audio.removeAttribute('src');audio.load();
+        }else{
+            window.TapeRoomTorrents?.release();sourceJob=null;audio.src=t.url;audio.load();
+        }
+        render(); drawProgress(); save(); requestQuality();
     }
     function next(automatic = false, origin = 'automatic', event) {
         if (!current) return;
@@ -554,7 +570,30 @@
         const id = shuffle && history.length ? history.pop() : queue[(Math.max(0, queue.indexOf(current)) - 1 + queue.length) % queue.length];
         if (id) { futureBag = []; load(id); play(origin,event); }
     }
-    function applyState(result) { data = {tracks:result.tracks, playlists:result.playlists,catalog:result.catalog || {albums:[],tracks:[]}}; trackPool = collections.tracks(data); trackMap = new Map(trackPool.map(t=>[t.id,t])); render(); save(); }
+    function applyState(result) {
+        serverState=result;
+        data={...result,tracks:[...result.tracks,...browserLibrary.tracks],playlists:result.playlists,catalog:{...(result.catalog || {}),albums:[...(result.catalog?.albums || []),...browserLibrary.albums]}};
+        trackPool=collections.tracks(data);trackMap=new Map(trackPool.map(t=>[t.id,t]));render();save();
+    }
+    app.addEventListener('tape-room:browser-library',event=>{
+        browserLibrary=event.detail.library;applyState(serverState);
+        if(!browserRestored){
+            browserRestored=true;
+            if(saved.libraryView?.id>=4e15 && album(saved.libraryView.id))browse(saved.libraryView);
+            if(saved.current>=4e15 && track(saved.current)){queueSource=collections.descriptor(saved.queueSource);load(saved.current,Number(saved.time)||0);}
+        }
+        if(event.detail.select){browse({type:'album',id:event.detail.select});app.querySelector('.rp-library').scrollIntoView({block:'start'});}
+    });
+    app.addEventListener('tape-room:library-refresh', async event => {
+        try {
+            await mutate(async () => {
+                applyState(await api('state'));
+                const albumId=Number(event.detail?.albumId);
+                if(event.detail?.select!==false)browse(albumId && album(albumId) ? {type:'album',id:albumId} : {type:'songs'});
+            });
+            if(event.detail?.select!==false)app.querySelector('.rp-library').scrollIntoView({block:'start'});
+        } catch (error) { toast(error.message,true); }
+    });
     function mutate(operation) {
         // Library snapshots must be applied in commit order. Metadata, uploads
         // and button actions share this queue so an older reply cannot erase rows.
@@ -578,7 +617,7 @@
         finally { clearTimeout(timer); }
     }
     function startListening() {
-        if (!current || listening?.generation===generation) return;
+        if (!current || activeTrack()?.browserLocal || listening?.generation===generation) return;
         const job={id:current,generation,seconds:0,position:audio.currentTime,wall:performance.now(),token:'',threshold:Infinity,counted:false,busy:false,errors:0,retryTimer:null,deadline:Infinity};
         listening=job;
         listeningRequest({action:'start',id:job.id}).then(result=>{
@@ -611,6 +650,7 @@
         });
     }
     async function action(name, values = {}, cover) {
+        if(track(values.id)?.browserLocal)return window.TapeRoomTorrents.action(name,values,cover);
         const form = new FormData(); form.set('action', name); form.set('needCSRFToken', config.csrf);
         for (const [key,value] of Object.entries(values)) {
             if (Array.isArray(value)) value.forEach(item => form.append(`${key}[]`, item)); else form.set(key, value);
@@ -683,7 +723,7 @@
             $('[data-chapter-search]').value = '';
         }
         panel.hidden = !items.length;
-        panel.querySelector('.rp-chapter-tools').hidden = Boolean(t?.shared);
+        panel.querySelector('.rp-chapter-tools').hidden = Boolean(t?.shared || t?.browserLocal);
         $('[data-chapter-source]').textContent = t ? [t.artist,t.title].filter(Boolean).join(' — ') : '';
         const query = $('[data-chapter-search]').value.trim().toLocaleLowerCase();
         const visible = items.map((item,index) => ({item,index})).filter(({item}) => `${item.title} ${item.artist || ''}`.toLocaleLowerCase().includes(query));
@@ -828,7 +868,7 @@
         const genrePicker=new window.TapeRoomGenrePicker(data.catalog?.genres || []);
         const order = [...(value.tracks || []), ...data.tracks.map(t=>t.id).filter(trackId=>!(value.tracks || []).includes(trackId))];
         const members = new Set(value.tracks || []);
-        const rows = order.map(track).filter(t=>t && !t.shared).map(t=>`<div class="rp-album-member" data-album-member="${t.id}"><label><input type="checkbox" name="album_tracks[]" value="${t.id}" ${members.has(t.id) ? 'checked' : ''}><span><strong>${esc(t.title)}</strong><small>${esc(t.artist || t.filename)}</small></span></label><div>${button('album-order-up','Переместить выше','up',t.id)}${button('album-order-down','Переместить ниже','down',t.id)}</div></div>`).join('');
+        const rows = order.map(track).filter(t=>t && !t.shared && !t.browserLocal).map(t=>`<div class="rp-album-member" data-album-member="${t.id}"><label><input type="checkbox" name="album_tracks[]" value="${t.id}" ${members.has(t.id) ? 'checked' : ''}><span><strong>${esc(t.title)}</strong><small>${esc(t.artist || t.filename)}</small></span></label><div>${button('album-order-up','Переместить выше','up',t.id)}${button('album-order-down','Переместить ниже','down',t.id)}</div></div>`).join('');
         const fields = field('title','Название альбома',value.title || '') + field('artist','Артист / исполнитель альбома',value.artist || '') + genrePicker.markup(value.genreId || value.genre_id || 0) + `<label class="rp-field">Дата релиза (если известна)<input type="date" name="release_date" value="${esc(value.release_date || '')}"></label><label class="rp-field">Описание<textarea name="description" maxlength="4000" rows="3">${esc(value.description || '')}</textarea></label><div class="rp-cover-field"><span class="rp-field-label">Обложка альбома</span><label class="rp-cover-picker"><input class="rp-file-input" type="file" name="cover" accept="image/jpeg,image/png,image/webp" aria-label="Выбрать обложку альбома">${previewImage(value.cover,'Обложка альбома')}<span class="rp-cover-picker-info"><span class="rp-cover-picker-button">${icon('upload')}Выбрать обложку</span><span data-cover-filename>JPG, PNG или WebP · до 8 МБ</span></span></label></div><div class="rp-album-members-heading"><h3>Песни и порядок</h3><small>Используются ваши исходные файлы</small></div><label class="rp-search">${icon('search')}<input type="search" data-album-track-search placeholder="Найти песню для альбома" aria-label="Найти песню для альбома"></label><div class="rp-album-members">${rows || '<p>Сначала добавьте музыку в CMS или из Google Drive.</p>'}</div>`;
         openDialog(existing ? 'Редактировать альбом' : 'Новый альбом',fields,async form => {
             const ids = [...dialog.querySelectorAll('[data-album-member] input:checked')].map(input=>Number(input.value));
@@ -922,6 +962,7 @@
         const genrePicker=new window.TapeRoomGenrePicker(data.catalog?.genres || []);
         openDialog('О композиции', field('title','Название',t.title) + field('artist','Исполнитель',t.artist) + genrePicker.markup(t.genreId) + `<div class="rp-cover-field"><span class="rp-field-label">Обложка</span><label class="rp-cover-picker"><input class="rp-file-input" type="file" name="cover" accept="image/jpeg,image/png,image/webp" aria-label="Выбрать обложку">${previewImage(t.cover,'Предварительный просмотр обложки')}<span class="rp-cover-picker-info"><span class="rp-cover-picker-button">${icon('upload')}Выбрать обложку</span><span data-cover-filename>JPG, PNG или WebP · до 8 МБ</span></span></label></div><div class="rp-chapter-editor-actions"><button type="button" class="rp-button" data-action="chapter-add" data-track-id="${t.id}">${icon('plus')}Добавить таймкод</button><button type="button" class="rp-button" data-action="chapter-tools" data-track-id="${t.id}">${icon('list')}CUE и автопоиск</button></div>`, form => action('track.update',{id,title:form.get('title'),artist:form.get('artist'),genre_id:genrePicker.value()},form.get('cover')));
         genrePicker.mount(dialog);
+        if(t.browserLocal)dialog.querySelector('.rp-chapter-editor-actions')?.remove();
         if(!t.genreId && t.genre_tag)genrePicker.match(t.genre_tag);
         dialog.querySelector('[name="cover"]').addEventListener('change', event => {
             const file = event.target.files[0]; if (!file) return;
@@ -1060,7 +1101,7 @@
                 }
                 case 'rename-playlist': openDialog('Название ленты', field('name','Название плейлиста',playlist(selected).name,160), form => action('playlist.rename',{id:selected,name:form.get('name')})); break;
                 case 'delete-playlist': openDialog('Удалить ленту?', '', () => action('playlist.delete',{id:selected}), `Плейлист «${playlist(selected).name}» будет удалён. Музыка останется в общей библиотеке.`, 'Удалить', true); break;
-                case 'delete-track': openDialog('Удалить композицию?', '', () => action('track.delete',{id}), `«${track(id).title}» будет удалена из библиотеки и всех плейлистов.${track(id).source === 'drive' ? ' Файл на Google Drive останется.' : ' Загруженный аудиофайл будет удалён с сервера.'}`, 'Удалить', true); break;
+                case 'delete-track': openDialog('Удалить композицию?', '', () => action('track.delete',{id}), `«${track(id).title}» будет удалена из библиотеки.${track(id).browserLocal ? ' Ссылка на torrent удалится только в этом браузере.' : track(id).source === 'drive' ? ' Файл на Google Drive останется.' : ' Загруженный аудиофайл будет удалён с сервера.'}`, 'Удалить', true); break;
                 case 'remove-track': control.disabled = true; await action('playlist.remove',{id:selected,track_id:id}); break;
                 case 'add-to-playlist':
                     if (!data.playlists.length) { createPlaylist(); break; }
@@ -1252,7 +1293,7 @@
     window.addEventListener('online', () => { preloader.connectivity(true); meterController.network(true); prepareUpcoming(); if (!audio.paused) resumeMeters(); });
     window.addEventListener('pageshow', () => { drawProgress(); if (!audio.paused) { resumeMeters(); startAnimation(); } });
     window.addEventListener('focus', () => { if (!audio.paused) { resumeMeters(); startAnimation(); } });
-    if (config.pwa?.enabled && config.pwa.worker && 'serviceWorker' in navigator && window.isSecureContext) {
+    if (!config.torrent && config.pwa?.enabled && config.pwa.worker && 'serviceWorker' in navigator && window.isSecureContext) {
         navigator.serviceWorker.register(config.pwa.worker, {scope:'/', updateViaCache:'none'}).catch(() => {});
     }
 
@@ -1416,7 +1457,7 @@
     applyTheme();
     render();
     if (track(saved.current)) { queue = Array.isArray(saved.queue) ? saved.queue.filter(id => Boolean(track(id))) : []; if (!queue.length) setQueue(); queueName = saved.queueName || 'Вся музыка'; load(saved.current,Number(saved.time) || 0); }
-    else if (data.tracks.length) { setQueue(); load(selectedTracks()[0]?.id || data.tracks[0].id); }
+    else if (data.tracks.length && !(saved.current>=4e15)) { setQueue(); load(selectedTracks()[0]?.id || data.tracks[0].id); }
     drawProgress(); drawMeters(false);
     const params = new URLSearchParams(location.search);
     if (params.has('drive')) { toast(params.get('drive') === 'connected' ? 'Google Drive подключён. Можно добавить музыку.' : 'Google Drive не подключён. Проверьте OAuth-настройки и попробуйте снова.',params.get('drive') !== 'connected'); window.history.replaceState({},'',location.pathname); }

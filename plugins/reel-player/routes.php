@@ -43,6 +43,11 @@ $router->get('/plugins/reel-player/assets/(?P<file>player\.(?:css|js)|preload\.j
 });
 
 $router->get('/admin/reel-player', [PlayerController::class, 'index'])->middleware(['auth', 'admin']);
+$router->get('/tape-room/torrent-worker.js', [\Fireball\ReelPlayer\Services\TorrentWorker::class, 'script']);
+$router->get('/tape-room/ui-kit', static function (): string {
+    if (theme()->getActiveTheme()['slug'] !== 'tape-room') abort('Страница недоступна.',404);
+    return theme()->render('ui-kit',['title'=>'UI-компоненты Tape Room','tr_wide_page'=>true]);
+})->middleware(['auth','admin']);
 $router->get('/admin/reel-player/genres', [\Fireball\ReelPlayer\Controllers\AdminCatalogController::class, 'genres'])->middleware(['auth','admin']);
 $router->post('/admin/reel-player/genres/save', [\Fireball\ReelPlayer\Controllers\AdminCatalogController::class, 'saveGenre'])->middleware(['auth','admin']);
 $router->get('/admin/reel-player/albums/(?P<id>\d+)', [\Fireball\ReelPlayer\Controllers\AdminCatalogController::class, 'album'])->middleware(['auth','admin']);
