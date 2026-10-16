@@ -74,20 +74,37 @@ final class Library
         $duration = self::duration($duration);
         $storage = new MediaStorage();
         $saved = $storage->upload($file, $this->owner);
+        $artwork=null;$transaction=false;
         try {
             $name = mb_substr(basename(str_replace('\\', '/', (string)$file['name'])), 0, 240);
             $base = pathinfo($name, PATHINFO_FILENAME);
             $parts = explode(' - ', $base, 2);
             $artist = count($parts) === 2 ? trim($parts[0]) : '';
             $title = trim(count($parts) === 2 ? $parts[1] : $base) ?: 'Без названия';
-            db()->query('INSERT INTO reel_tracks (owner_id, title, artist, filename, file_path, mime, file_size, duration, favorite, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                [$this->owner, mb_substr($title, 0, 240), mb_substr($artist, 0, 240), $name, $saved['path'], $saved['mime'], $saved['size'], $duration, (int)$favorite, date('Y-m-d H:i:s')]);
+            try { $metadata=\Fireball\ReelPlayer\Services\AudioMetadata::local($storage->path($saved['path']),$name); }
+            catch (\Throwable) { $metadata=[]; } // Optional malformed tags must not reject valid audio.
+            if (!empty($metadata['cover'])) {
+                try { $artwork=$storage->storeArtwork($metadata['cover'],$this->owner); }
+                catch (\Throwable) { /* Preserve the song and text tags if its picture is invalid. */ }
+            }
+            $genres=new Genres();$genreIds=$genres->fromTag((string)($metadata['genre'] ?? ''));
+            db()->beginTransaction();$transaction=true;
+            db()->query('INSERT INTO reel_tracks (owner_id,title,artist,filename,file_path,mime,file_size,duration,favorite,album_title,album_artist,genre_tag,genre_id,metadata_loaded,cover_path,cover_mime,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                [$this->owner, ($metadata['title'] ?? '') ?: mb_substr($title,0,240), $metadata['artist'] ?? mb_substr($artist,0,240), $name, $saved['path'], $saved['mime'], $saved['size'], $metadata['duration'] ?? $duration, (int)$favorite, $metadata['album'] ?? '', $metadata['albumArtist'] ?? '', $metadata['genre'] ?? '', $genreIds[0] ?? null, 1, $artwork['path'] ?? null, $artwork['mime'] ?? null, date('Y-m-d H:i:s')]);
             $id = (int)db()->getInsertId();
+            if ($genreIds) $genres->sync('track',$id,$genreIds);
+            if ($playlist) {
+                $this->playlist($playlist,true);
+                $position=(int)db()->query('SELECT COALESCE(MAX(position),-1)+1 FROM reel_playlist_tracks WHERE playlist_id=?',[$playlist])->getColumn();
+                db()->query('INSERT IGNORE INTO reel_playlist_tracks(playlist_id,track_id,position) VALUES(?,?,?)',[$playlist,$id,$position]);
+            }
+            db()->commit();$transaction=false;
         } catch (\Throwable $error) {
+            if ($transaction) db()->rollBack();
             $storage->delete($saved['path']);
+            if ($artwork) $storage->delete($artwork['path']);
             throw $error;
         }
-        if ($playlist) $this->add($playlist, $id);
         return $id;
     }
 

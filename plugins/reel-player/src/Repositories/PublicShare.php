@@ -16,6 +16,7 @@ final class PublicShare
             if (!$item) throw new \InvalidArgumentException('Песня не опубликована или больше недоступна.');
             $tracks=[$item];
         } else throw new \InvalidArgumentException('Запись не найдена.');
+        $albumId=$kind==='album' ? $id : (int)db()->query("SELECT at.album_id FROM reel_album_tracks at JOIN reel_albums a ON a.id=at.album_id WHERE at.track_id=? AND a.published=1 AND a.moderation_status='approved' ORDER BY a.id LIMIT 1",[$id])->getColumn();
         if (!$tracks) throw new \InvalidArgumentException('В альбоме нет доступных песен.');
         $cover=$item['cover_path'] ? base_href('/tape-room/catalog/'.($kind==='album'?'album-cover/':'cover/').$id).'?v='.basename($item['cover_path']) : '';
         foreach ($tracks as &$track) {
@@ -25,6 +26,6 @@ final class PublicShare
             unset($track['cover_path']);
         }
         unset($track,$item['cover_path']);
-        return ['kind'=>$kind,'id'=>$id,'title'=>$item['title'],'artist'=>$item['artist'],'cover'=>$cover ?: ($tracks[0]['cover'] ?? ''),'tracks'=>$tracks];
+        return ['kind'=>$kind,'id'=>$id,'albumId'=>$albumId,'title'=>$item['title'],'artist'=>$item['artist'],'cover'=>$cover ?: ($tracks[0]['cover'] ?? ''),'tracks'=>$tracks];
     }
 }

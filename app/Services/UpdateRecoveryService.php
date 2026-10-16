@@ -130,7 +130,7 @@ final class UpdateRecoveryService
     private function restoreFiles(string $stage): void
     {
         // Remove only runtime files introduced by the failed version. Local data is retained.
-        foreach (['app', 'core', 'helpers', 'vendor', 'config', 'database', 'plugins', 'themes', 'public', 'bin'] as $directory) {
+        foreach (['app', 'core', 'helpers', 'vendor', 'config', 'database', 'plugins', 'themes', 'public', 'bin', 'storage/component-installations'] as $directory) {
             $base = $this->root . '/' . $directory;
             if (is_link($base)) throw new RuntimeException('Symlink in runtime recovery root.');
             if (!is_dir($base)) continue;

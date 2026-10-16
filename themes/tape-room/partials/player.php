@@ -213,6 +213,7 @@ $button = static function (string $action, string $label, string $name, string $
 <script src="<?= htmlSC($images_url) ?>" defer></script>
 <script src="<?= htmlSC($catalog_url) ?>" defer></script>
 <script src="<?= htmlSC($genres_url) ?>" defer></script>
+<script src="<?= htmlSC(theme_asset_versioned('js/media-recovery.js')) ?>" defer></script>
 <script src="<?= htmlSC($js_url) ?>" defer></script>
 </body>
 </html>

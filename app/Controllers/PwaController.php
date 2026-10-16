@@ -24,6 +24,39 @@ class PwaController extends BaseController
         exit(json_encode($this->pwa->manifest($startPath), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT));
     }
 
+    /** Public image response for the iOS installer, independent of a login cookie. */
+    public function appleTouchIcon(): void
+    {
+        $path = $this->pwa->appleTouchIconPath();
+        if ($path === null || ($stream = @fopen($path, 'rb')) === false) {
+            http_response_code(404);
+            header('Cache-Control: no-store');
+            header('Content-Length: 0');
+            exit;
+        }
+        try {
+            $stat = fstat($stream);
+            $hash = hash_init('sha256');
+            hash_update_stream($hash, $stream);
+            $etag = '"' . hash_final($hash) . '"';
+            rewind($stream);
+            header_remove('Pragma');
+            header_remove('Expires');
+            header('Content-Type: image/png');
+            header('X-Content-Type-Options: nosniff');
+            header('Cache-Control: public, max-age=0, must-revalidate');
+            header('ETag: ' . $etag);
+            $provided = array_map(static fn($value) => preg_replace('/^W\//', '', trim($value)), explode(',', (string)($_SERVER['HTTP_IF_NONE_MATCH'] ?? '')));
+            if (in_array($etag, $provided, true) || in_array('*', $provided, true)) {
+                http_response_code(304);
+            } else {
+                header('Content-Length: ' . (string)$stat['size']);
+                if (strtoupper((string)($_SERVER['REQUEST_METHOD'] ?? 'GET')) !== 'HEAD') fpassthru($stream);
+            }
+        } finally { fclose($stream); }
+        exit;
+    }
+
     public function serviceWorker(): void
     {
         header('Content-Type: application/javascript; charset=utf-8');

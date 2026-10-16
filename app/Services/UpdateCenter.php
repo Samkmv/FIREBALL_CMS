@@ -20,6 +20,17 @@ class UpdateCenter
     protected SiteSetting $siteSettings;
     protected array $engineRelease;
     protected bool $installationMutated = false;
+    protected ?array $componentPolicy = null;
+    protected bool $componentPolicyFrozen = false;
+
+    protected function preservedPlugins(): array
+    {
+        if ($this->componentPolicy === null) {
+            $branch = isset($this->siteSettings) ? $this->resolveBranch($this->siteSettings->all(), 'main') : 'main';
+            $this->componentPolicy = (new ManagedPluginInstallations(ROOT))->preserved($branch);
+        }
+        return $this->componentPolicy;
+    }
 
     public function __construct(?SiteSetting $siteSettings = null)
     {
@@ -357,12 +368,18 @@ class UpdateCenter
 
     protected function performUpdate(): array
     {
+        $this->componentPolicyFrozen = false;
+        $this->componentPolicy = null;
         $settings = $this->siteSettings->all();
         $localGitState = $this->getLocalGitState();
         $repository = $this->resolveRepository($settings, $localGitState['origin_url'] ?? '');
         $branch = $this->resolveBranch($settings, $localGitState['branch'] ?? '');
         $channel = $this->resolveUpdateChannel($settings);
 
+        if (!empty($localGitState['is_git_repo']) && $this->canRunProcesses()) {
+            $this->fetchRemoteBranch($branch);
+            $localGitState = $this->getLocalGitState();
+        }
         foreach ($this->buildUpdateBlockers($repository, $localGitState, $channel) as $blocker) {
             throw new RuntimeException($blocker);
         }
@@ -429,6 +446,7 @@ class UpdateCenter
             }
 
             $this->runPendingMigrations();
+            $this->verifyInstalledUpdate($manifest, $currentCommit);
             $this->clearRuntimeCache();
             $this->siteSettings->setMany([
                 'updater_last_updated_at' => date('Y-m-d H:i:s'),
@@ -597,12 +615,14 @@ class UpdateCenter
             $this->validateUpdateManifest($manifest, $packageRoot);
             $this->assertPackageComposerReady($packageRoot, $composerFingerprintBefore);
             $this->createPreUpdateBackups();
+            $this->migrateArchivePwa($packageRoot);
             $this->ensureLocalConfigExists();
             $this->installationMutated = true;
             $this->copyPackageToRoot($packageRoot, ROOT, $manifest);
 
             $this->runComposerIfDependencyFilesChanged($composerFingerprintBefore);
             $this->runPendingMigrations();
+            $this->verifyInstalledUpdate($manifest);
             $this->clearRuntimeCache();
 
             $this->siteSettings->setMany([
@@ -720,6 +740,7 @@ class UpdateCenter
             $this->restorePreservedGitPaths($previousCommit, $releaseCommit, $manifest);
             $this->runComposerIfNeeded($previousCommit, $releaseCommit);
             $this->runPendingMigrations();
+            $this->verifyInstalledUpdate($manifest, $releaseCommit);
             $this->clearRuntimeCache();
             $this->siteSettings->setMany([
                 'updater_last_updated_at' => date('Y-m-d H:i:s'),
@@ -790,12 +811,14 @@ class UpdateCenter
             $this->validateUpdateManifest($manifest, $packageRoot);
             $this->assertPackageComposerReady($packageRoot, $composerFingerprintBefore);
             $this->createPreUpdateBackups();
+            $this->migrateArchivePwa($packageRoot);
             $this->ensureLocalConfigExists();
             $this->installationMutated = true;
             $this->copyPackageToRoot($packageRoot, ROOT, $manifest);
 
             $this->runComposerIfDependencyFilesChanged($composerFingerprintBefore);
             $this->runPendingMigrations();
+            $this->verifyInstalledUpdate($manifest);
             $this->clearRuntimeCache();
             $this->siteSettings->setMany([
                 'updater_last_updated_at' => date('Y-m-d H:i:s'),
@@ -1849,6 +1872,7 @@ class UpdateCenter
             } finally { if (is_string($temporary) && is_file($temporary)) @unlink($temporary); }
         }
         foreach ((array)($manifest['remove'] ?? []) as $relativePath) {
+            if ($this->shouldPreservePath($relativePath, $manifest)) continue;
             $this->assertUpdateDestination($targetRoot, $relativePath);
             $target = $targetRoot . '/' . $relativePath;
             if (is_dir($target)) throw new RuntimeException('Update removal must name an individual file.');
@@ -1891,6 +1915,7 @@ class UpdateCenter
             'uploads',
             'public/uploads',
             'themes/custom',
+            ...array_map(fn($slug) => 'plugins/' . $slug, array_keys($this->preservedPlugins())),
             ...array_map(
                 static fn($path): string => trim(str_replace('\\', '/', (string)$path), '/'),
                 (array)($manifest['protected'] ?? [])
@@ -1963,6 +1988,7 @@ class UpdateCenter
             }
         }
         foreach ((array)($manifest['remove'] ?? []) as $path) {
+            if (preg_match('~^plugins/([^/]+)/~', $path, $match) && isset($this->preservedPlugins()[$match[1]])) continue;
             if ($this->shouldPreservePath($path, $manifest) || !$this->shouldUpdatePath($path, $manifest)) throw new RuntimeException('Unsafe removal path.');
             if ($packageRoot !== null && file_exists($packageRoot . '/' . $path)) throw new RuntimeException('Removed file is also present in update package.');
         }
@@ -1982,10 +2008,70 @@ class UpdateCenter
             if ($packageVersion !== $version) {
                 throw new RuntimeException('Update manifest version does not match config/version.php.');
             }
+            $iterator = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($packageRoot, \FilesystemIterator::SKIP_DOTS));
+            foreach ($iterator as $file) {
+                $relative = substr($file->getPathname(), strlen($packageRoot) + 1);
+                if (!$file->isFile() || $file->isLink() || !str_ends_with(strtolower($relative), '.php')
+                    || !$this->shouldUpdatePath($relative, $manifest) || $this->shouldPreservePath($relative, $manifest)) continue;
+                $this->validatePhpSource((string)file_get_contents($file->getPathname()), $relative);
+            }
+        }
+
+        foreach ($this->preservedPlugins() as $slug => $policy) {
+            $metadata = json_decode((string)file_get_contents(ROOT . '/plugins/' . $slug . '/plugin.json'), true);
+            foreach (['cms' => $version, 'php' => PHP_VERSION] as $kind => $target) {
+                $constraint = trim((string)($metadata['requires'][$kind] ?? ''));
+                if ($constraint === '') continue;
+                if (!preg_match('/^(>=|<=|>|<|==|=)?\\s*v?(\\d+(?:\\.\\d+){1,3}(?:-[a-z0-9.-]+)?)$/iD', $constraint, $match)
+                    || !version_compare($target, $match[2], ($match[1] ?? '') === '' ? '>=' : ($match[1] === '=' ? '==' : $match[1]))) {
+                    throw new RuntimeException('Плагин ' . $slug . ' несовместим с ' . $kind . ' ' . $target . '. Обновите плагин перед обновлением CMS.');
+                }
+            }
         }
 
         if ($minVersion !== '' && version_compare((string)($this->engineRelease['version'] ?? '0.0.0'), $minVersion, '<')) {
             throw new RuntimeException('Update requires FIREBALL CMS ' . $minVersion . ' or newer.');
+        }
+    }
+
+    protected function validatePhpSource(string $source, string $path): void
+    {
+        try { token_get_all($source, TOKEN_PARSE); }
+        catch (\ParseError $error) { throw new RuntimeException('Несовместимый PHP в обновлении: ' . $path . ': ' . $error->getMessage(), 0, $error); }
+    }
+
+    protected function migrateArchivePwa(string $packageRoot): void
+    {
+        $changed = false;
+        foreach (PwaIconStorage::names() as $name) {
+            $path = PwaIconStorage::PREFIX . $name;
+            if (is_file(ROOT . '/' . $path) && is_file($packageRoot . '/' . $path)
+                && hash_file('sha256', ROOT . '/' . $path) !== hash_file('sha256', $packageRoot . '/' . $path)) {
+                if (!PwaIconStorage::managed($path)) throw new RuntimeException('Invalid legacy PWA asset: ' . $path);
+                $changed = true;
+            }
+        }
+        if ($changed) {
+            $zip = $this->openUpdateSnapshot();
+            try { PwaIconStorage::migrate($zip, $this->siteSettings); } finally { $zip->close(); }
+        }
+    }
+
+    protected function verifyInstalledUpdate(array $manifest, string $commit = ''): void
+    {
+        foreach (['public/index.php', 'config/version.php', 'vendor/autoload.php'] as $path) {
+            if (!is_file(ROOT . '/' . $path) || is_link(ROOT . '/' . $path)) throw new RuntimeException('Update verification failed: ' . $path);
+        }
+        $version = $this->parseVersionPhpPayload((string)file_get_contents(ROOT . '/config/version.php'));
+        if (($version['version'] ?? '') !== ($manifest['version'] ?? '')) throw new RuntimeException('Installed version does not match update manifest.');
+        if (!$this->composerVendorMatchesLock(ROOT)) throw new RuntimeException('Installed dependencies do not match composer.lock.');
+        if ($commit !== '') {
+            $head = $this->runCommand('git rev-parse HEAD', ROOT);
+            if ($head['exit_code'] !== 0 || trim($head['stdout']) !== $commit) throw new RuntimeException('Installed Git commit differs from the validated update.');
+        }
+        $installations = new ManagedPluginInstallations(ROOT);
+        foreach ($this->preservedPlugins() as $slug => $policy) {
+            if (($policy['kind'] ?? '') !== 'local-component' && !$installations->isVerified($slug)) throw new RuntimeException('Plugin preservation verification failed: ' . $slug);
         }
     }
 
@@ -2089,24 +2175,22 @@ class UpdateCenter
             throw new RuntimeException(return_translation('admin_update_release_invalid'));
         }
 
-        $result = $this->runCommand(
-            'git diff --name-only HEAD ' . escapeshellarg($ref),
-            ROOT
-        );
-        if ($result['exit_code'] !== 0) {
-            throw new RuntimeException('Unable to validate stable release files against update.json.');
-        }
-
-        foreach (preg_split('/\r\n|\r|\n/', trim((string)$result['stdout'])) ?: [] as $path) {
-            $path = trim($path);
-            if ($path === '') {
-                continue;
+        foreach ($this->gitChangedPaths('HEAD', $ref) as $path) {
+            if ($path !== trim($path) || str_contains($path, ':') || preg_match('/[\\x00-\\x1f\\x7f\\\\]/', $path) || array_intersect(explode('/', $path), ['', '.', '..'])) {
+                throw new RuntimeException('Unsafe incoming update path.');
             }
+            $entry = $this->runCommand('git --literal-pathspecs ls-tree ' . escapeshellarg($ref) . ' -- ' . escapeshellarg($path), ROOT);
+            if ($entry['exit_code'] !== 0 || preg_match('/^(?:120000|160000) /', $entry['stdout'])) throw new RuntimeException('Unsafe incoming Git object: ' . $path);
             if ($this->shouldPreservePath($path, $manifest)) {
                 continue;
             }
             if (!$this->shouldUpdatePath($path, $manifest) && !$this->isDevelopmentPath($path)) {
                 throw new RuntimeException('Stable release contains a path not allowed by update.json: ' . $path);
+            }
+            if (str_ends_with(strtolower($path), '.php') && !$this->isDevelopmentPath($path)) {
+                $blob = $this->runCommand('git show ' . escapeshellarg($ref . ':' . $path), ROOT);
+                // Deleted files have no blob in the incoming commit.
+                if ($blob['exit_code'] === 0) $this->validatePhpSource((string)($blob['stdout_raw'] ?? $blob['stdout']), $path);
             }
         }
     }
@@ -2461,6 +2545,7 @@ class UpdateCenter
      */
     protected function getLocalGitState(): array
     {
+        if (!$this->componentPolicyFrozen) $this->componentPolicy = null;
         $defaults = [
             'git_available' => false,
             'is_git_repo' => false,
@@ -3064,13 +3149,29 @@ class UpdateCenter
         return false;
     }
 
-    /** Reproducible dependencies and non-executable component documentation. */
+    /** One-time bootstrap files are safe only if byte-identical to fetched main. */
+    protected function isVerifiedBootstrapFile(string $path): bool
+    {
+        if (!in_array($path, [
+            'app/Services/UpdateCenter.php', 'app/Services/UpdateRecoveryService.php',
+            'app/Services/PluginUpdateService.php', 'app/Services/PwaService.php',
+            'app/Services/PwaIconStorage.php', 'app/Services/ManagedPluginInstallations.php',
+            'core/Plugins/PluginManager.php',
+        ], true) || !is_file(ROOT . '/' . $path)) return false;
+        $result = $this->runCommand('git --literal-pathspecs ls-tree refs/remotes/origin/main -- ' . escapeshellarg($path), ROOT);
+        if ($result['exit_code'] !== 0 || !preg_match('/^100(?:644|755) blob ([a-f0-9]{40})\\t/', $result['stdout'], $match)) return false;
+        $hash = hash_init('sha1');
+        hash_update($hash, 'blob ' . filesize(ROOT . '/' . $path) . "\0");
+        return hash_update_file($hash, ROOT . '/' . $path) && hash_equals($match[1], hash_final($hash));
+    }
+
+    /** Reproducible dependencies, generated icons and verified bootstrap sources. */
     protected function isManagedDirtyFile(string $path): bool
     {
         if ($path !== trim($path) || preg_match('/[\x00-\x1f\x7f\\\\]/', $path)
             || str_starts_with($path, '/') || str_contains($path, ':')
             || array_intersect(explode('/', $path), ['', '.', '..'])) return false;
-        $managed = $path === 'composer.lock' || str_starts_with($path, 'vendor/')
+        $managed = $this->isVerifiedBootstrapFile($path) || PwaIconStorage::managed($path) || $path === 'composer.lock' || str_starts_with($path, 'vendor/')
             || preg_match('~^(?:plugins|themes)/[a-zA-Z0-9_-]+/(?:docs/(?:[^/]+/)*[^/]+\.(?:md|txt|rst)|(?:README|CHANGELOG|LICENSE)(?:\.(?:md|txt|rst))?)$~iD', $path);
         if (!$managed) return false;
         // A Composer path repository or symlink cannot be captured by our ZIP
@@ -3101,7 +3202,7 @@ class UpdateCenter
             }
             $paths = array_values(array_unique($paths));
         }
-        if ($paths === []) return;
+        if ($paths === []) { $this->preservedPlugins(); $this->componentPolicyFrozen = true; return; }
         $zip = $this->openUpdateSnapshot();
         $tracked = [];
         $untracked = [];
@@ -3127,6 +3228,15 @@ class UpdateCenter
                     throw new RuntimeException('Local file was removed after the update snapshot: ' . $path);
                 }
                 if (isset($headPaths[$path])) $tracked[] = $path; else $untracked[] = $path;
+            }
+            $this->componentPolicyFrozen = true;
+            foreach ($this->preservedPlugins() as $slug => $policy) {
+                if (($policy['kind'] ?? '') === 'verified-git-package') {
+                    (new ManagedPluginInstallations(ROOT))->record($slug, $policy);
+                }
+            }
+            if (array_filter($paths, fn($path) => str_starts_with($path, PwaIconStorage::PREFIX))) {
+                PwaIconStorage::migrate($zip, $this->siteSettings);
             }
             foreach (array_chunk($tracked, 50) as $batch) {
                 $result = $this->runCommand('git --literal-pathspecs restore --source=HEAD --staged --worktree -- '

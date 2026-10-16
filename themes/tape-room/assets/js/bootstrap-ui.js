@@ -6,6 +6,7 @@
         for(const button of nodes('button')){
             if(button.closest('[data-player-shell]') || button.matches('.btn-close,.dropdown-item'))continue;
             button.classList.add('btn');
+            if(button.matches('.btn-primary,.btn-secondary,.btn-outline-secondary,.btn-danger,.btn-outline-danger,.btn-link'))continue;
             if(button.matches('.rp-button--primary,[data-action="upload"],[data-action="auth"]'))button.classList.add('btn-primary');
             else if(button.matches('.rp-button,.rp-upload-button,.rp-catalog-save'))button.classList.add('btn-outline-secondary');
         }

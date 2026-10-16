@@ -43,3 +43,8 @@ html.tr-embed-document[data-theme=dark]{color-scheme:dark}
 .tr-embed :is(button,a):focus-visible{outline:2px solid var(--tr-accent);outline-offset:-2px}
 @media(max-width:400px){.tr-embed{padding:17px}.tr-embed-now{gap:13px}.tr-embed-now img{width:60px;height:60px}.tr-embed-now h1{font-size:21px}.tr-embed-controls{gap:7px}.tr-embed-tracks button{gap:9px;padding:10px}.tr-embed-track-number{width:12px}}
 @media(max-width:330px){.tr-embed{padding:14px}.tr-embed-controls>[data-embed-previous]{display:none}.tr-embed-tracks button{gap:7px}.tr-embed-track-duration{display:none}}
+
+.tr-bootstrap .tr-embed-play[aria-pressed=true]{background:var(--tr-button);border-color:var(--tr-button);color:var(--tr-button-text)}
+.tr-embed .tr-icon,.tr-embed-track-control>i{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;font-size:20px;line-height:1;font-style:normal;text-align:center}
+.tr-embed .tr-icon:before,.tr-embed-track-control>i:before{display:block;line-height:1}
+.tr-embed .ci-play-filled:before{transform:translateX(1px)}

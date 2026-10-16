@@ -70,7 +70,8 @@ class PwaService
             'background_color' => $this->color('pwa_background_color', '#ffffff'),
             'favicon_url' => $icons['favicon']['src'],
             'favicon_type' => $icons['favicon']['type'],
-            'apple_touch_icon_url' => $icons['apple']['src'],
+            // A stable, revalidated PNG also serves Safari's root discovery.
+            'apple_touch_icon_url' => base_url('/apple-touch-icon.png'),
             'app_icon_192_url' => $icons['sizes'][192] ?? '',
             'startup_image_url' => $this->startupImageUrl(),
             'vapid_public_key' => $this->settings->get('pwa_vapid_public_key', ''),
@@ -176,22 +177,32 @@ class PwaService
             $url = $this->withVersion($this->assetUrlFromLocalPath($source['path']) ?: base_url('/assets/img/fbl_logo.png'), $source['path']);
             // iOS home-screen icons require a raster touch icon. A vector must
             // never be advertised as a 512px PNG maskable icon in the manifest.
-            $fallbackDir=WWW.'/assets/default/pwa';$sizes=[];
+            $fallbackDir=PwaIconStorage::legacyDirectory($this->settings) ?? WWW.'/assets/default/pwa';$fallbackPublic=substr($fallbackDir,strlen(WWW));$sizes=[];
             foreach ([48,72,96,128,144,152,192,384,512] as $size) {
                 $file=$fallbackDir.'/icon-'.$size.'.png';
-                if (is_file($file)) $sizes[$size]=$this->withVersion(base_url('/assets/default/pwa/icon-'.$size.'.png'),$file);
+                if (is_file($file)) $sizes[$size]=$this->withVersion(base_url($fallbackPublic.'/icon-'.$size.'.png'),$file);
             }
             return [
                 'source' => $source,
                 'favicon' => ['src' => $url, 'type' => 'image/svg+xml'],
-                'apple' => ['src' => $this->withVersion(base_url('/assets/default/pwa/apple-touch-icon.png'),$fallbackDir.'/apple-touch-icon.png'), 'type' => 'image/png'],
+                'apple' => ['src' => $this->withVersion(base_url($fallbackPublic.'/apple-touch-icon.png'),$fallbackDir.'/apple-touch-icon.png'), 'type' => 'image/png'],
                 'sizes' => $sizes,
-                'maskable' => is_file($fallbackDir.'/icon-maskable-512.png') ? $this->withVersion(base_url('/assets/default/pwa/icon-maskable-512.png'),$fallbackDir.'/icon-maskable-512.png') : '',
+                'maskable' => is_file($fallbackDir.'/icon-maskable-512.png') ? $this->withVersion(base_url($fallbackPublic.'/icon-maskable-512.png'),$fallbackDir.'/icon-maskable-512.png') : '',
                 'svg' => $url,
             ];
         }
 
-        $publicDir = ($source['kind'] ?? 'default') === 'default' ? '/assets/default/pwa' : '/uploads/pwa';
+        $legacy = PwaIconStorage::legacyDirectory($this->settings);
+        $publicDir = '/assets/default/pwa';
+        if ($legacy !== null) {
+            $publicDir = substr($legacy, strlen(WWW));
+        } elseif (($source['kind'] ?? 'default') !== 'default') {
+            $generated = $this->settings->get('pwa_generated_icon_set', '');
+            $matches = preg_match('/^generated-[a-f0-9]{64}$/D', $generated)
+                && hash_equals(PwaIconStorage::fingerprint($this->settings), $this->settings->get('pwa_generated_icon_fingerprint', ''));
+            $candidate = $matches ? '/uploads/pwa/' . $generated : '/uploads/pwa';
+            $publicDir = $this->iconSetComplete(WWW . $candidate) ? $candidate : '/uploads/pwa';
+        }
         $targetDir = WWW . $publicDir;
 
         // Raster generation belongs to syncIcons() on settings/upload operations.
@@ -209,7 +220,7 @@ class PwaService
         }
 
         $defaultVectorPath = WWW . '/assets/default/icons/fireball-cms.svg';
-        $useDefaultVector = ($source['kind'] ?? 'default') === 'default' && is_file($defaultVectorPath);
+        $useDefaultVector = ($source['kind'] ?? 'default') === 'default' && $legacy === null && is_file($defaultVectorPath);
 
         return [
             'source' => $source,
@@ -236,13 +247,55 @@ class PwaService
     public function syncIcons(): void
     {
         $source = $this->resolveIconSource();
-        if (($source['type'] ?? '') !== 'svg') {
-            $target = ($source['kind'] ?? 'default') === 'default' ? WWW . '/assets/default/pwa' : WWW . '/uploads/pwa';
-            $this->generateRasterIcons((string)$source['path'], $target);
+        // Shipped assets are read-only, including when no custom icon is set.
+        if (($source['type'] ?? '') !== 'svg' && ($source['kind'] ?? 'default') !== 'default') {
+            $name = 'generated-' . hash_file('sha256', $source['path']);
+            $target = PwaIconStorage::directory($name);
+            if (!$this->iconSetComplete($target)) {
+                $stage = dirname($target) . '/.generate-' . bin2hex(random_bytes(8));
+                try {
+                    if (!$this->generateRasterIcons((string)$source['path'], $stage) || !$this->iconSetComplete($stage)) {
+                        throw new \RuntimeException('Не удалось создать полный набор PWA-иконок.');
+                    }
+                    if (!@rename($stage, $target) && !$this->iconSetComplete($target)) throw new \RuntimeException('Unable to publish PWA icons.');
+                } finally {
+                    if (is_dir($stage)) {
+                        foreach (PwaIconStorage::names() as $file) if (is_file($stage . '/' . $file)) unlink($stage . '/' . $file);
+                        rmdir($stage);
+                    }
+                }
+            }
+            $this->settings->setMany([
+                'pwa_generated_icon_set' => $name,
+                'pwa_generated_icon_fingerprint' => PwaIconStorage::fingerprint($this->settings),
+                'pwa_legacy_icon_set' => '', 'pwa_legacy_icon_fingerprint' => '',
+            ]);
         }
 
         \FBL\AssetManifest::invalidate();
         $this->settings->setMany(['pwa_cache_version' => (string)time()]);
+    }
+
+    /** Resolve only the selected raster asset; never generate on an icon request. */
+    public function appleTouchIconPath(): ?string
+    {
+        $path = $this->localPath((string)($this->icons()['apple']['src'] ?? ''));
+        $default = $this->localPath(base_url('/assets/default/pwa/apple-touch-icon.png'));
+        if ($path !== null && $path === $default && function_exists('theme')) {
+            // Themes already use this conventional asset in their HTML head.
+            // Keep root discovery consistent with the active theme's branding.
+            try {
+                $candidate = realpath(theme()->assetPath('images/apple-touch-icon.png'));
+                $themes = realpath(ROOT . '/themes');
+                if ($candidate && $themes && str_starts_with($candidate, $themes . '/')) $path = $candidate;
+            } catch (\Throwable) { /* The shipped PNG remains available without a theme. */ }
+        }
+        foreach (array_unique(array_filter([$path, $default])) as $candidate) {
+            if (is_link($candidate) || !is_file($candidate) || filesize($candidate) > 4 * 1048576) continue;
+            $image = @getimagesize($candidate);
+            if ($image && $image[2] === IMAGETYPE_PNG && $image[0] === 180 && $image[1] === 180) return $candidate;
+        }
+        return null;
     }
 
     public function serviceWorkerScript(): string
@@ -1429,6 +1482,12 @@ self.addEventListener("sync", () => {});
 
     protected function generateRasterIcons(string $source, string $targetDir): bool
     {
+        $parent = realpath(dirname($targetDir));
+        $runtime = realpath(WWW . '/uploads/pwa');
+        if (!$parent || !$runtime || $runtime !== realpath(WWW) . '/uploads/pwa' || $parent !== $runtime
+            || is_link(WWW . '/uploads') || is_link(WWW . '/uploads/pwa') || file_exists($targetDir) || is_link($targetDir)) {
+            throw new \RuntimeException('PWA generation is restricted to runtime uploads.');
+        }
         if (!extension_loaded('gd') || !is_file($source)) {
             return false;
         }
@@ -1439,18 +1498,20 @@ self.addEventListener("sync", () => {});
 
         foreach ($this->iconSizes as $size) {
             $file = $size === 180 ? 'apple-touch-icon.png' : 'icon-' . $size . '.png';
-            $this->resizePng($source, $targetDir . '/' . $file, $size, false);
+            if (!$this->resizePng($source, $targetDir . '/' . $file, $size, false)) return false;
         }
         $this->resizePng($source, $targetDir . '/favicon-16x16.png', 16, false);
         $this->resizePng($source, $targetDir . '/favicon-32x32.png', 32, false);
         $this->resizePng($source, $targetDir . '/icon-maskable-512.png', 512, true);
         $this->writeIco([$targetDir . '/favicon-16x16.png', $targetDir . '/favicon-32x32.png'], $targetDir . '/favicon.ico');
 
-        return true;
+        return $this->iconSetComplete($targetDir);
     }
 
     protected function iconSetComplete(string $targetDir): bool
     {
+        if (is_link($targetDir)) return false;
+        foreach (PwaIconStorage::names() as $name) if (is_link($targetDir . '/' . $name)) return false;
         foreach ([48, 72, 96, 128, 144, 152, 192, 384, 512] as $size) {
             if (!is_file($targetDir . '/icon-' . $size . '.png')) {
                 return false;
@@ -1543,9 +1604,11 @@ self.addEventListener("sync", () => {});
             }
         }
 
+        $basePath = rtrim((string)(parse_url(base_url('/'), PHP_URL_PATH) ?? ''), '/');
+        if ($basePath !== '' && str_starts_with($path, $basePath . '/')) $path = substr($path, strlen($basePath));
         $full = realpath(WWW . '/' . ltrim($path, '/'));
         $root = realpath(WWW);
-        if (!$full || !$root || !str_starts_with($full, $root)) {
+        if (!$full || !$root || !str_starts_with($full, $root . DIRECTORY_SEPARATOR)) {
             return null;
         }
 
@@ -1556,7 +1619,7 @@ self.addEventListener("sync", () => {});
     {
         $root = realpath(WWW);
         $full = realpath($path);
-        if (!$root || !$full || !str_starts_with($full, $root)) {
+        if (!$root || !$full || !str_starts_with($full, $root . DIRECTORY_SEPARATOR)) {
             return null;
         }
 
@@ -1596,6 +1659,10 @@ self.addEventListener("sync", () => {});
             'pwa_push_ttl',
             'pwa_vapid_subject',
             'pwa_cache_version',
+            'pwa_generated_icon_set',
+            'pwa_generated_icon_fingerprint',
+            'pwa_legacy_icon_set',
+            'pwa_legacy_icon_fingerprint',
             'default_locale',
         ] as $key) {
             $settings[$key] = $this->settings->get($key, '');

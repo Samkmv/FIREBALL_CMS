@@ -1147,6 +1147,7 @@ function pwa_head_tags(): string
         '<meta name="format-detection" content="telephone=no">',
         '<link rel="icon" type="' . htmlSC($pwa['favicon_type'] ?? 'image/png') . '" href="' . htmlSC($pwa['favicon_url'] ?? base_url('/assets/img/fbl_logo.png')) . '">',
         '<link rel="shortcut icon" href="' . htmlSC($pwa['favicon_url'] ?? base_url('/assets/img/fbl_logo.png')) . '">',
+        '<link rel="preload" as="image" type="image/png" href="' . htmlSC($pwa['apple_touch_icon_url'] ?? base_url('/apple-touch-icon.png')) . '">',
         '<link rel="apple-touch-icon" sizes="180x180" type="image/png" href="' . htmlSC($pwa['apple_touch_icon_url'] ?? base_url('/assets/img/fbl_logo.png')) . '">',
     ];
 

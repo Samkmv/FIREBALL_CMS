@@ -2,7 +2,7 @@
   "name": "Tape Room",
   "slug": "reel-player",
   "class": "FireballPluginReelPlayer",
-  "version": "1.7.0",
+  "version": "1.7.2",
   "type": "system",
   "description": "Reel-to-reel player with a shared album catalogue, artists, personal collections, playlists and audio chapters.",
   "name_i18n": {
@@ -16,26 +16,14 @@
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
-    "Keep images and focused controls in place during playback and library updates.",
-    "Add searchable album genres and an administrator genre library.",
-    "Review album submissions before they appear in the shared catalogue; show per-user album statistics.",
-    "Read bounded Google Drive audio tags, durations and embedded or folder cover art; reuse the playback cache.",
-    "Stream WebRTC torrents directly in the browser, with a local personal library, tags and artwork; no server audio storage."
+    "Separate chapter rows with consistent spacing and rounded borders in the player and UI gallery."
   ],
   "release_notes_i18n": {
     "en": [
-      "Keep images and focused controls in place during playback and library updates.",
-      "Add searchable album genres and an administrator genre library.",
-      "Review album submissions before they appear in the shared catalogue; show per-user album statistics.",
-      "Read bounded Google Drive audio tags, durations and embedded or folder cover art; reuse the playback cache.",
-      "Stream WebRTC torrents directly in the browser, with a local personal library, tags and artwork; no server audio storage."
+      "Separate chapter rows with consistent spacing and rounded borders in the player and UI gallery."
     ],
     "ru": [
-      "Обложки сохраняются на месте при воспроизведении и обновлении библиотеки.",
-      "Жанры альбомов с поиском и справочником в админке.",
-      "Публикация после модерации и статистика альбомов по пользователям.",
-      "Метаданные, длительность и обложки из Google Drive с ограниченным чтением и повторным использованием буфера.",
-      "Прямое прослушивание WebRTC torrent в браузере: личная библиотека, теги и обложки без передачи аудио через сервер."
+      "Строки тайм-кодов разделены отступами и скруглёнными границами в плеере и библиотеке UI."
     ]
   },
   "update": {

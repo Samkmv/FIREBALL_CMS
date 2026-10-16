@@ -188,6 +188,7 @@ final class PluginManager
             \App\Services\SchemaManifest::rebuild();
             \FBL\AssetManifest::rebuild();
             $this->invalidateRuntimeManifest();
+            (new \App\Services\ManagedPluginInstallations(ROOT))->record($metadata['slug'], ['kind'=>'installation','version'=>$metadata['version']]);
         } catch (Throwable $exception) {
             if (db()->inTransaction()) {
                 try {

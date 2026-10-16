@@ -50,6 +50,8 @@ $app->router->get('/api/v1/menu/(?P<type>[a-z_]+)', [MenuController::class, 'ind
 $app->router->post('/api/analytics/track', [AnalyticsController::class, 'track'])->withoutCSRFToken();
 $app->router->post('/api/streams/wake', [StreamController::class, 'wake'])->withoutCSRFToken();
 $app->router->get('/manifest.webmanifest', [PwaController::class, 'manifest']);
+$app->router->add('/apple-touch-icon\.png', [PwaController::class, 'appleTouchIcon'], ['GET', 'HEAD']);
+$app->router->add('/apple-touch-icon-precomposed\.png', [PwaController::class, 'appleTouchIcon'], ['GET', 'HEAD']);
 $app->router->get('/service-worker.js', [PwaController::class, 'serviceWorker']);
 $app->router->get('/sw.js', [PwaController::class, 'serviceWorker']);
 $app->router->get('/offline', [PwaController::class, 'offline']);

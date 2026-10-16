@@ -85,7 +85,22 @@
     const element = (tag, className, text) => { const node = document.createElement(tag); node.className = className; if (text !== undefined) node.textContent = text; return node; };
     const setIcon = (node, name) => { const item=node.querySelector('.rp-icon');if(!item)return;for(const value of [...item.classList])if(value.startsWith('ci-'))item.classList.remove(value);item.classList.add(`ci-${window.TapeRoomIconMap[name] || 'music'}`);item.dataset.icon=name; };
     const rangeFill = (node, fraction) => node.style.setProperty('--fill', `${Math.max(0, Math.min(1, fraction)) * 100}%`);
-    const catalogUI = new window.TapeRoomCatalogUI({app,icon,escape:esc,defaultCover,defaultArtist,imageSources});
+    const catalogUI = new window.TapeRoomCatalogUI({app,icon,escape:esc,defaultCover,defaultArtist,imageSources,renderTrack:(item,options)=>createTrackRow(track(item.id)||item,options).outerHTML});
+
+    let recoveryReady=false;
+    const recovery=new window.TapeRoomMediaRecovery({
+        retry:async({position,valid})=>{
+            if(!valid())return;
+            const url=new URL(activeTrack().url,location.href);url.searchParams.set('_tr_retry',String(Date.now()));
+            preloader.cancel();stopMeters('reconnect');restoreTime=position;errorProbe=-1;
+            audio.src=url.href;audio.load();if(!valid())return;
+            configureAudioSession();await audio.play();resumeMeters();
+        },
+        onState:()=>{if(recoveryReady)updateButtons();},
+        onStop:gesture=>toast(gesture?'Браузер ожидает нажатия. Нажмите воспроизведение, чтобы продолжить.':'Не удалось восстановить соединение после трёх попыток. Нажмите воспроизведение, чтобы повторить.',true)
+    });
+    recoveryReady=true;
+    function pausePlayback(){recovery.pause();audio.pause();updateButtons();}
 
     function applyTheme() {
         const dark = theme === 'dark', control = $('[data-action="theme"]');
@@ -143,6 +158,32 @@
         $('[data-sort-label]').textContent = label;
         $('[data-sort-trigger]').setAttribute('aria-label', `Сортировка музыки: ${label}`);
     }
+    function createTrackRow(t,{index=0,source='',genre='',canReorder=false,playlistId=0,viewType='',listLength=0}={}) {
+        const row = element('article', `rp-track${t.id === current ? ' is-current' : ''}`);
+        row.dataset.trackId = t.id;
+        const play = element('button', 'rp-track-play'); play.type = 'button'; play.dataset.action = 'play-track'; play.dataset.id = t.id;
+        if(source)play.dataset.source=source;
+        play.setAttribute('aria-label', `Воспроизвести ${t.title}`);
+        play.innerHTML = `<span class="rp-track-number">${String(index + 1).padStart(2, '0')}</span>${icon(t.id === current && !audio.paused ? 'pause' : 'play')}`;
+        const cover = element('img', 'rp-track-cover'); cover.alt = ''; cover.loading = 'lazy'; cover.decoding = 'async'; cover.width=48; cover.height=48;
+        cover.dataset.libraryImage='cover'; cover.dataset.compactImage='';
+        window.TapeRoomImages.apply(cover,t.cover,config,theme,'cover',true);
+        if (!t.cover) cover.dataset.defaultCover = '';
+        const info = element('div', 'rp-track-info');
+        info.append(element('span', 'rp-track-title', t.title), element('span', 'rp-track-artist', `${t.artist || 'Неизвестный исполнитель'}${t.source === 'drive' ? ' · Google Drive' : t.browserLocal ? ' · Torrent' : ''}`));
+        const labelGenre=t.genre || genre;
+        if(labelGenre){const label=element('span','rp-track-genre',labelGenre);label.title=`Жанр: ${labelGenre}`;info.append(label);}
+        const actions = element('div', 'rp-track-actions');
+        actions.innerHTML = button('share-track','Поделиться песней','share',t.id) + (canReorder ? button('move-up', 'Переместить выше', 'up', t.id, 'rp-reorder') + button('move-down', 'Переместить ниже', 'down', t.id, 'rp-reorder') : '') + button('favorite', t.favorite ? 'Убрать из избранного' : 'Добавить в избранное', t.favorite ? 'heart-filled' : 'heart', t.id, `rp-favorite${t.favorite ? ' is-active' : ''}`) + button('add-to-playlist', 'Добавить в плейлист', 'plus', t.id) + (!t.shared ? button('edit-track', 'Изменить трек', 'edit', t.id) : '') + (playlistId > 0 ? button('remove-track','Убрать из плейлиста','trash',t.id) : !t.shared && viewType === 'songs' ? button('delete-track','Удалить из библиотеки','trash',t.id) : '');
+        actions.querySelector('[data-action="favorite"]').setAttribute('aria-pressed', String(t.favorite));
+        if(t.browserLocal)actions.querySelector('[data-action="add-to-playlist"]')?.remove();
+        if (canReorder) {
+            actions.querySelector('[data-action="move-up"]').disabled = index === 0;
+            actions.querySelector('[data-action="move-down"]').disabled = index === listLength - 1;
+    }
+        row.append(play, cover, info, element('span', 'rp-track-duration', t.duration ? formatTime(t.duration) : '—'), actions);
+        return row;
+    }
     function render() {
         for(const item of trackPool)if(qualityCache.has(item.id))item.quality=qualityCache.get(item.id);
         if (selected > 0 && !playlist(selected)) selected = 0;
@@ -172,29 +213,7 @@
         renderSort();
         const rows = $('[data-tracks]'), fragment = document.createDocumentFragment();
         for (const t of visible) {
-            const index = list.indexOf(t), row = element('article', `rp-track${t.id === current ? ' is-current' : ''}`);
-            row.dataset.trackId = t.id;
-            const play = element('button', 'rp-track-play'); play.type = 'button'; play.dataset.action = 'play-track'; play.dataset.id = t.id;
-            play.setAttribute('aria-label', `Воспроизвести ${t.title}`);
-            play.innerHTML = `<span class="rp-track-number">${String(index + 1).padStart(2, '0')}</span>${icon(t.id === current && !audio.paused ? 'pause' : 'play')}`;
-            const cover = element('img', 'rp-track-cover'); cover.alt = ''; cover.loading = 'lazy'; cover.decoding = 'async'; cover.width=48; cover.height=48;
-            cover.dataset.libraryImage='cover'; cover.dataset.compactImage='';
-            window.TapeRoomImages.apply(cover,t.cover,config,theme,'cover',true);
-            if (!t.cover) cover.dataset.defaultCover = '';
-            const info = element('div', 'rp-track-info');
-            info.append(element('span', 'rp-track-title', t.title), element('span', 'rp-track-artist', `${t.artist || 'Неизвестный исполнитель'}${t.source === 'drive' ? ' · Google Drive' : t.browserLocal ? ' · Torrent' : ''}`));
-            const genre=t.genre || (libraryView.type==='album' ? album(libraryView.id)?.genre : libraryView.type==='genre' ? collections.name(data,selectedSource()) : '');
-            if(genre){const label=element('span','rp-track-genre',genre);label.title=`Жанр: ${genre}`;info.append(label);}
-            const actions = element('div', 'rp-track-actions');
-            const canReorder = selected > 0 && playlistSort === 'playlist';
-            actions.innerHTML = button('share-track','Поделиться песней','share',t.id) + (canReorder ? button('move-up', 'Переместить выше', 'up', t.id, 'rp-reorder') + button('move-down', 'Переместить ниже', 'down', t.id, 'rp-reorder') : '') + button('favorite', t.favorite ? 'Убрать из избранного' : 'Добавить в избранное', t.favorite ? 'heart-filled' : 'heart', t.id, `rp-favorite${t.favorite ? ' is-active' : ''}`) + button('add-to-playlist', 'Добавить в плейлист', 'plus', t.id) + (!t.shared ? button('edit-track', 'Изменить трек', 'edit', t.id) : '') + (selected > 0 ? button('remove-track','Убрать из плейлиста','trash',t.id) : !t.shared && libraryView.type === 'songs' ? button('delete-track','Удалить из библиотеки','trash',t.id) : '');
-            actions.querySelector('[data-action="favorite"]').setAttribute('aria-pressed', String(t.favorite));
-            if(t.browserLocal)actions.querySelector('[data-action="add-to-playlist"]')?.remove();
-            if (canReorder) {
-                actions.querySelector('[data-action="move-up"]').disabled = index === 0;
-                actions.querySelector('[data-action="move-down"]').disabled = index === list.length - 1;
-            }
-            row.append(play, cover, info, element('span', 'rp-track-duration', t.duration ? formatTime(t.duration) : '—'), actions); fragment.append(row);
+            fragment.append(createTrackRow(t,{index:list.indexOf(t),genre:libraryView.type==='album'?album(libraryView.id)?.genre:libraryView.type==='genre'?collections.name(data,selectedSource()):'',canReorder:selected>0&&playlistSort==='playlist',playlistId:selected,viewType:libraryView.type,listLength:list.length}));
         }
         window.TapeRoomUi?.decorate(fragment);
         window.TapeRoomImages.patch(rows,fragment);
@@ -270,13 +289,13 @@
         syncVolume(); save();
     }
     function updateButtons() {
-        const playing = !audio.paused && !audio.ended;
+        const playing = (!audio.paused && !audio.ended)||recovery.pending;
         document.body.classList.toggle('is-playing', playing && !loading);
         document.body.classList.toggle('is-buffering', bufferVisible);
         const play = $('[data-action="play"]'); setIcon(play, playing ? 'pause' : 'play');
-        play.setAttribute('aria-busy', String(loading));
+        play.setAttribute('aria-busy', String(loading||recovery.pending));
         play.setAttribute('aria-label', playing ? 'Пауза' : 'Воспроизвести'); play.title = playing ? 'Пауза' : 'Воспроизвести';
-        $('[data-play-status]').textContent = bufferVisible ? 'БУФЕРИЗАЦИЯ…' : playing ? 'ЛЕНТА В ДВИЖЕНИИ' : current ? 'ПАУЗА' : 'ГОТОВ К ПРОСЛУШИВАНИЮ';
+        $('[data-play-status]').textContent = recovery.pending ? 'ВОССТАНАВЛИВАЕМ СОЕДИНЕНИЕ…' : bufferVisible ? 'БУФЕРИЗАЦИЯ…' : playing ? 'ЛЕНТА В ДВИЖЕНИИ' : current ? 'ПАУЗА' : 'ГОТОВ К ПРОСЛУШИВАНИЮ';
         const sh = $('[data-action="shuffle"]'); sh.classList.toggle('is-active', shuffle); sh.setAttribute('aria-pressed', String(shuffle));
         sh.setAttribute('aria-label', `Случайный порядок: ${shuffle ? 'включён' : 'выключен'}`); sh.title = sh.getAttribute('aria-label');
         const re = $('[data-action="repeat"]'); re.classList.toggle('is-active', repeat !== 'off'); re.setAttribute('aria-label', `Повтор: ${repeat === 'off' ? 'выключен' : repeat === 'one' ? 'одного трека' : 'плейлиста'}`); re.title = re.getAttribute('aria-label'); $('[data-repeat-one]').hidden = repeat !== 'one';
@@ -493,6 +512,7 @@
         }
         configureAudioSession();
         if (audio.error || (activeTrack()?.browserLocal && !audio.hasAttribute('src'))) load(current,playbackPosition());
+        recovery.play(origin==='user'||origin==='system');
         if (audio.ended) audio.currentTime = 0;
         if(activeTrack()?.browserLocal && !audio.hasAttribute('src')){
             const t=activeTrack(),sourceVersion=generation;
@@ -509,7 +529,7 @@
         }
         // Keep play() inside the tap's activation; meter setup never gates sound.
         try { const playback = audio.play(); resumeMeters(origin,event); await playback; }
-        catch (error) { if (version === generation && error.name !== 'AbortError') { setBuffering(false); stopMeters('native-error'); toast(error.name==='NotAllowedError'?'Браузер ожидает подтверждения воспроизведения. Нажмите кнопку запуска ещё раз.':activeTrack()?.browserLocal?window.TapeRoomTorrents.playbackError(audio.error?.code||2):'Не удалось воспроизвести трек. Проверьте формат, соединение и доступ к файлу.', true); } }
+        catch (error) { if (version === generation && error.name !== 'AbortError') { if(error.name==='NotAllowedError')recovery.pause();else if(activeTrack()?.source==='drive'&&audio.error)return;setBuffering(false); stopMeters('native-error'); toast(error.name==='NotAllowedError'?'Браузер ожидает подтверждения воспроизведения. Нажмите кнопку запуска ещё раз.':activeTrack()?.browserLocal?window.TapeRoomTorrents.playbackError(audio.error?.code||2):'Не удалось воспроизвести трек. Проверьте формат, соединение и доступ к файлу.', true); } }
     }
     function shuffled(exclude) {
         const ids = queue.filter(id => id !== exclude);
@@ -548,6 +568,7 @@
     function load(id, time = 0) {
         const t = track(id); if (!t) return;
         sampleListening(); listening = null;
+        recovery.select(t.id,t.source==='drive'&&!t.browserLocal);
         preloader.cancel(); generation++; audio.pause(); stopMeters('track-change'); current = t.id; restoreTime = time; setBuffering(false);
         chapterKey = ''; chapterIndex = -2; chapterDuration = -1;
         if(t.browserLocal){
@@ -709,9 +730,9 @@
     }
     function syncDialogViewport() {
         const viewport = window.visualViewport;
-        const height = Math.min(window.innerHeight,viewport?.height || window.innerHeight);
+        const height = parseFloat(dialogShell.style.getPropertyValue('--tr-viewport-height')) || window.innerHeight;
         dialog.style.setProperty('--rp-dialog-viewport-height',`${height}px`);
-        dialog.style.setProperty('--rp-dialog-viewport-top',`${viewport?.offsetTop || 0}px`);
+        dialog.style.setProperty('--rp-dialog-viewport-top',`${parseFloat(dialogShell.style.getPropertyValue('--tr-viewport-top')) || 0}px`);
         dialog.classList.toggle('is-compact',height < 520);
         dialog.classList.toggle('is-short',height < 340);
     }
@@ -1053,10 +1074,10 @@
             if(config.authenticated===false && (['upload','create-playlist','favorite','add-to-playlist','catalog-create','catalog-save','drive','player-settings'].includes(name) || (name==='catalog-view' && ['mine','songs','favorites','playlist'].includes(control.dataset.view)))){showSignIn();return;}
             switch (name) {
                 case 'auth':showSignIn();break;
-                case 'play': if (audio.paused) await play('user',event); else audio.pause(); break;
+                case 'play': if (audio.paused&&!recovery.pending) await play('user',event); else pausePlayback(); break;
                 case 'prev': previous('user',event); break;
                 case 'next': next(false,'user',event); break;
-                case 'play-track': setQueue(control.dataset.source === 'popular' ? {type:'popular'} : selectedSource()); if (current === id) { if (audio.paused) await play('user',event); else audio.pause(); } else { load(id); await play('user',event); } break;
+                case 'play-track': setQueue(control.dataset.source === 'popular' ? {type:'popular'} : selectedSource()); if (current === id) { if (audio.paused&&!recovery.pending) await play('user',event); else pausePlayback(); } else { load(id); await play('user',event); } break;
                 case 'shuffle': shuffle = !shuffle; bag = []; futureBag = []; shuffleCycleStarted = false; history = []; preloader.reset(); updateButtons(); prepareUpcoming(); save(); break;
                 case 'repeat': repeat = {off:'all',all:'one',one:'off'}[repeat]; preloader.cancel(); futureBag = []; updateButtons(); prepareUpcoming(); save(); break;
                 case 'mute': toggleMute(); break;
@@ -1078,7 +1099,7 @@
                 }
                 case 'catalog-play-album': {
                     const item=album(id); if (!item?.tracks.length) break;
-                    if(item.tracks.some(trackId=>Number(trackId)===current)){if(audio.paused)await play('user',event);else audio.pause();break;}
+                    if(item.tracks.some(trackId=>Number(trackId)===current)){if(audio.paused&&!recovery.pending)await play('user',event);else pausePlayback();break;}
                     setQueue({type:'album',id}); load(item.tracks[0]); await play('user',event); break;
                 }
                 case 'catalog-save': control.disabled=true; await action('catalog.album.save',{id,saved:album(id)?.saved ? 0 : 1}); toast(album(id)?.saved ? 'Альбом в вашей коллекции.' : 'Альбом убран из коллекции.'); break;
@@ -1210,7 +1231,7 @@
     $('[data-audio-files]').addEventListener('change', event => uploadFiles([...event.target.files]));
     audio.addEventListener('loadedmetadata', () => {
         if (restoreTime) {
-            if (Number.isFinite(audio.duration)) audio.currentTime = restoreTime >= audio.duration - .25 ? 0 : Math.max(0, restoreTime);
+            if (Number.isFinite(audio.duration)) audio.currentTime = recovery.pending ? Math.min(Math.max(0,audio.duration-.1),restoreTime) : restoreTime >= audio.duration - .25 ? 0 : Math.max(0, restoreTime);
             restoreTime = 0;
         }
         drawProgress();
@@ -1220,19 +1241,19 @@
             action('track.duration',{id:t.id,duration:audio.duration}).catch(() => {});
         }
     });
-    audio.addEventListener('play', () => { setBuffering(audio.readyState < 3); startAnimation(); });
+    audio.addEventListener('play', () => { recovery.play();setBuffering(audio.readyState < 3); startAnimation(); });
     audio.addEventListener('playing', () => { setBuffering(false); resumeMeters(); startAnimation(); startListening(); });
-    audio.addEventListener('waiting', () => { setBuffering(true); });
+    audio.addEventListener('waiting', () => { recovery.waiting();setBuffering(true); });
     // stalled concerns downloading; only waiting proves playback is starved.
     audio.addEventListener('stalled', () => { drawProgress(); });
     audio.addEventListener('canplay', () => { if (audio.readyState >= 3) setBuffering(false); });
     audio.addEventListener('progress', () => { drawProgress(); prepareUpcoming(); });
     audio.addEventListener('seeking', () => { if (listening) { listening.position=audio.currentTime; listening.wall=performance.now(); } preloader.cancel(); if (audio.readyState < 3) setBuffering(true); drawProgress(); });
-    audio.addEventListener('pause', () => { preloader.cancel(); setBuffering(false); stopMeters(); save(); });
-    audio.addEventListener('timeupdate', () => { sampleListening(); drawProgress(); prepareUpcoming(); if (Date.now() - lastSave > 3000) { save(); lastSave = Date.now(); } });
+    audio.addEventListener('pause', () => { if(audio.paused&&!audio.error&&!recovery.pending)recovery.pause();preloader.cancel(); setBuffering(false); stopMeters(); save(); });
+    audio.addEventListener('timeupdate', () => { if(!audio.paused&&!audio.seeking)recovery.progress(audio.currentTime);sampleListening(); drawProgress(); prepareUpcoming(); if (Date.now() - lastSave > 3000) { save(); lastSave = Date.now(); } });
     audio.addEventListener('seeked', () => { if (listening) { listening.position=audio.currentTime; listening.wall=performance.now(); } meterController.seek(); drawProgress(true); syncMirror(); });
     audio.addEventListener('ratechange', () => { drawProgress(true); syncMirror(); });
-    audio.addEventListener('ended', () => { sampleListening(true); listening=null; setBuffering(false); stopMeters(); drawProgress(); next(true); });
+    audio.addEventListener('ended', () => { recovery.pause();sampleListening(true); listening=null; setBuffering(false); stopMeters(); drawProgress(); next(true); });
     let errorProbe = -1;
     audio.addEventListener('error', async () => {
         if (!current) return; preloader.cancel(); setBuffering(false); stopMeters('native-error'); meterController.nativeFailure(audio.error?.code || 0);
@@ -1240,10 +1261,12 @@
         if(t?.browserLocal){toast(window.TapeRoomTorrents.playbackError(audio.error?.code||2),true);return;}
         if (t?.source !== 'drive') { toast('Не удалось прочитать аудиофайл. Возможно, браузер не поддерживает его кодек.',true); return; }
         if (errorProbe === version) return; errorProbe = version;
+        const failurePosition=playbackPosition(),failureCode=audio.error?.code||2;let status=0,terminal=false;
         let message = 'Не удалось загрузить песню из Google Drive. Повторите воспроизведение или проверьте подключение.';
         const controller = new AbortController(), timeout = setTimeout(() => controller.abort(),10000);
         try {
             const response = await fetch(t.url,{credentials:'same-origin',cache:'no-store',headers:{Range:'bytes=0-1'},signal:controller.signal});
+            status=response.status;terminal=response.redirected;
             if (version === generation) meterController.nativeFailure(audio.error?.code || 0,response.status);
             if (response.redirected) message = 'Сессия завершена. Обновите страницу и войдите в CMS.';
             else if (!response.ok && response.headers.get('Content-Type')?.startsWith('text/plain')) message = (await response.text()).slice(0,500) || message;
@@ -1251,6 +1274,7 @@
             else if (response.ok && [3,4].includes(audio.error?.code)) message = 'Google Drive отдал начало файла, но воспроизведение прервалось. Возможны неполные данные или неподдерживаемый формат.';
             else if (response.ok) message = 'Соединение с Google Drive прервалось. Нажмите воспроизведение, чтобы повторить.';
         } catch (_) {} finally { clearTimeout(timeout); }
+        if(version===generation&&!terminal&&recovery.failed({code:failureCode,status,position:failurePosition}))return;
         if (version === generation) toast(message,true);
     });
     $('[data-cover]').addEventListener('error', event => {
@@ -1284,7 +1308,7 @@
     window.addEventListener('drop', event => { event.preventDefault(); dragDepth = 0; $('[data-drop-overlay]').hidden = true; uploadFiles([...(event.dataTransfer?.files || [])]); });
     document.addEventListener('keydown', event => {
         if (dialogOpen() || /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(event.target.tagName) || event.target.isContentEditable || event.altKey || event.ctrlKey || event.metaKey) return;
-        if (event.code === 'Space') { event.preventDefault(); if (audio.paused) play('user',event); else audio.pause(); }
+        if (event.code === 'Space') { event.preventDefault(); if (audio.paused&&!recovery.pending) play('user',event); else pausePlayback(); }
         if (['ArrowLeft','ArrowRight'].includes(event.code)) {
             event.preventDefault();
             if (event.shiftKey) event.code === 'ArrowLeft' ? previous('user',event) : next(false,'user',event);
@@ -1296,13 +1320,13 @@
         // seeking. Disable timed seek actions so this music player shows tracks.
         const handlers = {
             seekbackward:null, seekforward:null,
-            play:() => play('system'), pause:() => audio.pause(), previoustrack:() => previous('system'), nexttrack:() => next(false,'system'),
+            play:() => play('system'), pause:pausePlayback, previoustrack:() => previous('system'), nexttrack:() => next(false,'system'),
             seekto:event => seekTo(event.seekTime)
         };
         for (const [name,handler] of Object.entries(handlers)) { try { navigator.mediaSession.setActionHandler(name,handler); } catch (_) {} }
     }
     window.addEventListener('pagehide', () => {
-        save(); cancelQuality(); transport.reset(); visuals.reels.forEach(reel => reel.motion?.pause());
+        recovery.pause();save(); cancelQuality(); transport.reset(); visuals.reels.forEach(reel => reel.motion?.pause());
         cancelAnimationFrame(frameId); frameId = 0; frameTime = 0;
     });
     document.addEventListener('visibilitychange', () => {
@@ -1315,8 +1339,9 @@
         }
     });
     reducedMotion.addEventListener('change', () => { syncReels(); drawTape(); });
+    setInterval(()=>recovery.tick(),1000);
     window.addEventListener('offline', () => { preloader.connectivity(false); meterController.network(false); });
-    window.addEventListener('online', () => { preloader.connectivity(true); meterController.network(true); prepareUpcoming(); if (!audio.paused) resumeMeters(); });
+    window.addEventListener('online', () => { recovery.connected();preloader.connectivity(true); meterController.network(true); prepareUpcoming(); if (!audio.paused) resumeMeters(); });
     window.addEventListener('pageshow', () => { drawProgress(); if (!audio.paused) { resumeMeters(); startAnimation(); } });
     window.addEventListener('focus', () => { if (!audio.paused) { resumeMeters(); startAnimation(); } });
     if ((!config.torrent || config.authenticated===false) && config.pwa?.enabled && config.pwa.worker && 'serviceWorker' in navigator && window.isSecureContext) {
@@ -1502,11 +1527,14 @@
     audio.volume = Number.isFinite(Number(saved.volume)) ? Math.max(0,Math.min(1,Number(saved.volume))) : .8;
     audio.muted = Boolean(saved.muted); syncVolume();
     $('[data-upload-limit]').textContent = `${(config.maxUpload / 1048576).toFixed(0)} МБ`;
+    const params = new URLSearchParams(location.search);
+    const linkedAlbum=Number(params.get('album'));
+    if(Number.isSafeInteger(linkedAlbum)&&linkedAlbum>0)libraryView=album(linkedAlbum)?{type:'album',id:linkedAlbum}:{type:'albums'};
     applyTheme();
     render();
     if (track(saved.current)) { queue = Array.isArray(saved.queue) ? saved.queue.filter(id => Boolean(track(id))) : []; if (!queue.length) setQueue(); queueName = saved.queueName || 'Вся музыка'; load(saved.current,Number(saved.time) || 0); }
     else if (data.tracks.length && !(saved.current>=4e15)) { setQueue(); load(selectedTracks()[0]?.id || data.tracks[0].id); }
     drawProgress(); drawMeters(false);
-    const params = new URLSearchParams(location.search);
+    if(linkedAlbum>0)requestAnimationFrame(()=>$('.rp-library').scrollIntoView({block:'start'}));
     if (params.has('drive')) { toast(params.get('drive') === 'connected' ? 'Google Drive подключён. Можно добавить музыку.' : 'Google Drive не подключён. Проверьте OAuth-настройки и попробуйте снова.',params.get('drive') !== 'connected'); window.history.replaceState({},'',location.pathname); }
 })();

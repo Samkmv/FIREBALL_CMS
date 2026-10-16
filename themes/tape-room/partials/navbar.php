@@ -10,7 +10,7 @@ $roomLinks=[['overview','Обзор','grid'],['albums','Альбомы','disc'],
         <div class="container-fluid px-0 tr-navbar-inner">
             <button class="btn tr-nav-icon tr-menu-toggle" type="button" data-bs-toggle="offcanvas" data-bs-target="#tr-site-menu" aria-controls="tr-site-menu" aria-label="Открыть меню" title="Открыть меню"><?= $siteIcon('menu') ?></button>
             <a class="navbar-brand tr-wordmark m-0" href="<?= htmlSC(base_href('/')) ?>" <?= $isPlayer?'data-action="catalog-view" data-view="overview"':'' ?>><span class="tr-wordmark-name">TAPE ROOM<small class="tr-beta">БЕТА</small></span><span class="tr-wordmark-caption">ЛИЧНАЯ МУЗЫКАЛЬНАЯ КОМНАТА</span></a>
-            <div class="tr-navbar-actions d-flex align-items-center gap-1">
+            <div class="tr-navbar-actions d-flex align-items-center gap-2">
                 <div class="dropdown tr-account-dropdown">
                     <button class="btn tr-nav-icon tr-account-toggle" type="button" id="tr-account-toggle" data-bs-toggle="dropdown" aria-expanded="false" aria-controls="tr-account-menu" aria-label="Аккаунт" title="Аккаунт"><?= $siteIcon('user') ?></button>
                     <ul class="dropdown-menu dropdown-menu-end tr-account-menu" id="tr-account-menu" aria-labelledby="tr-account-toggle">

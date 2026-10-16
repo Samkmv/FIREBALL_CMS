@@ -1,11 +1,43 @@
 (() => {
     'use strict';
     const roots=[...document.querySelectorAll('[data-tr-shell]')];
+    let modalLayout=null;
+    const isTyping=element=>element?.matches('textarea,input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=hidden]):not([type=button]):not([type=submit])');
     const syncViewport=()=>{
-        const viewport=window.visualViewport;
-        document.documentElement.style.setProperty('--tr-viewport-height',`${Math.min(window.innerHeight,viewport?.height||window.innerHeight)}px`);
+        const viewport=window.visualViewport,visibleHeight=Math.min(window.innerHeight,viewport?.height||window.innerHeight);
+        document.documentElement.style.setProperty('--tr-viewport-height',`${visibleHeight}px`);
         document.documentElement.style.setProperty('--tr-viewport-top',`${viewport?.offsetTop||0}px`);
+        if(!modalLayout)return;
+        const {modal}=modalLayout,field=document.activeElement,editing=modal.contains(field)&&isTyping(field);
+        if(modalLayout.width!==window.innerWidth){modalLayout.width=window.innerWidth;modalLayout.height=window.innerHeight;modalLayout.top=0;modal.classList.remove('tr-modal-editing');}
+        // Each open modal keeps its layout viewport; the keyboard only changes the scrollable form area.
+        modal.style.setProperty('--tr-viewport-height',`${modalLayout.height}px`);
+        modal.style.setProperty('--tr-viewport-top',`${modalLayout.top}px`);
+        const covered=Math.max(0,modalLayout.height-visibleHeight);
+        modal.style.setProperty('--tr-keyboard-space',`${covered>120?covered:0}px`);
+        if(editing&&covered>120){
+            const body=field.closest('.modal-body');
+            if(body){const rect=field.getBoundingClientRect(),bottom=(viewport?.offsetTop||0)+visibleHeight-20;if(rect.bottom>bottom)body.scrollTop+=rect.bottom-bottom;}
+        }else if(!editing&&covered<120){modal.classList.remove('tr-modal-editing');modal.style.removeProperty('--tr-modal-content-height');}
     };
+    document.addEventListener('show.bs.modal',event=>{
+        const modal=event.target;if(!modal.closest('.tr-bootstrap'))return;
+        modalLayout={modal,width:window.innerWidth,height:window.innerHeight,top:window.visualViewport?.offsetTop||0};
+        modal.classList.add('tr-modal-locked');syncViewport();
+    });
+    document.addEventListener('hidden.bs.modal',event=>{
+        if(modalLayout?.modal!==event.target)return;
+        const modal=event.target;modal.classList.remove('tr-modal-locked','tr-modal-editing');
+        for(const name of ['--tr-viewport-height','--tr-viewport-top','--tr-keyboard-space','--tr-modal-content-height'])modal.style.removeProperty(name);
+        modalLayout=null;
+    });
+    document.addEventListener('focusin',event=>{
+        if(!modalLayout||!modalLayout.modal.contains(event.target)||!isTyping(event.target))return;
+        const modal=modalLayout.modal;
+        if(!modal.classList.contains('tr-modal-editing')){modal.style.setProperty('--tr-modal-content-height',`${modal.querySelector('.modal-content').getBoundingClientRect().height}px`);modal.classList.add('tr-modal-editing');}
+        requestAnimationFrame(syncViewport);
+    });
+    document.addEventListener('focusout',()=>{if(modalLayout)requestAnimationFrame(syncViewport);});
     syncViewport();
     window.addEventListener('resize',syncViewport);window.addEventListener('pageshow',syncViewport);
     window.visualViewport?.addEventListener('resize',syncViewport);window.visualViewport?.addEventListener('scroll',syncViewport);

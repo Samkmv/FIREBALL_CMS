@@ -149,7 +149,7 @@ html[data-theme=dark] .tr-bootstrap{--bs-body-color-rgb:238,233,219;--bs-primary
 /* Standalone iOS draws the status bar over the viewport on every page. */
 :root{--tr-safe-top:env(safe-area-inset-top,0px);--tr-safe-bottom:env(safe-area-inset-bottom,0px);--tr-safe-left:env(safe-area-inset-left,0px);--tr-safe-right:env(safe-area-inset-right,0px)}
 .tr-site-navigation{padding-top:var(--tr-safe-top);isolation:isolate}
-.tr-site-navigation::before{content:"";position:absolute;inset:0 calc(-1 * max(20px,var(--tr-safe-right))) 0 calc(-1 * max(20px,var(--tr-safe-left)));background:var(--tr-paper);z-index:-1;pointer-events:none}
+.tr-site-navigation::before{content:"";position:absolute;inset:0 calc(-1 * max(var(--tr-page-gutter),var(--tr-safe-right))) 0 calc(-1 * max(var(--tr-page-gutter),var(--tr-safe-left)));background:var(--tr-paper);z-index:-1;pointer-events:none}
 .rp-app.tr-bootstrap{padding-top:0}
 .tr-bootstrap .tr-side-menu{box-sizing:border-box;padding-top:var(--tr-safe-top);padding-bottom:var(--tr-safe-bottom);padding-left:var(--tr-safe-left);height:var(--tr-viewport-height,100dvh);max-height:100%;overflow:hidden}
 .tr-bootstrap .tr-side-menu .offcanvas-header{flex:0 0 auto}
@@ -224,3 +224,49 @@ html[data-theme=dark] .rp-app.tr-bootstrap .rp-catalog-delete.btn:is(:hover,:foc
 .tr-bootstrap select option{color:var(--tr-ink);background:var(--tr-card)}
 
 .tr-ui-embed-preview{display:block;width:100%;max-width:700px;height:520px;border:0;border-radius:18px;overflow:hidden}
+
+/* Mobile navigation and album actions keep symmetric columns. */
+.rp-album-edit-label{display:none}
+@media(max-width:760px){
+    .tr-bootstrap .tr-navbar .tr-navbar-inner{grid-template-columns:88px minmax(0,1fr) 88px;gap:0}
+    .tr-bootstrap .tr-navbar .tr-wordmark{justify-self:center;width:100%;min-width:0}
+    .tr-bootstrap .tr-navbar .tr-nav-icon{width:40px;height:40px;min-height:40px;flex:0 0 40px;padding:9px;border-radius:50%;aspect-ratio:1}
+    .tr-bootstrap .tr-navbar-actions{gap:8px!important}
+    .rp-app.tr-bootstrap .rp-album-detail-actions,.rp-app.tr-bootstrap .rp-album-detail-management{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:stretch;width:100%}
+    .rp-app.tr-bootstrap .rp-album-detail-actions>.btn,.rp-app.tr-bootstrap .rp-album-detail-management>.btn{width:100%;min-width:0;min-height:44px;margin:0;padding:9px 10px;font-size:12px;line-height:1.5;white-space:normal;text-align:center;justify-content:center}
+    .rp-app.tr-bootstrap .rp-album-detail-actions>.btn:last-child:nth-child(odd),.rp-app.tr-bootstrap .rp-album-detail-management>.btn:last-child:nth-child(odd){grid-column:1/-1}
+    .rp-app.tr-bootstrap .rp-album-detail-actions>.rp-album-edit.btn{height:auto;aspect-ratio:auto;flex:auto;border:1px solid var(--tr-line);border-radius:7px;background:transparent;color:var(--tr-ink)}
+    .rp-app.tr-bootstrap .rp-album-edit-label{display:inline}
+    .rp-app.tr-bootstrap .rp-album-edit.btn:is(:hover,:focus-visible){background:var(--tr-soft);border-color:var(--tr-accent)}
+    .rp-app.tr-bootstrap .rp-chapter-row{grid-template-columns:minmax(0,1fr) auto;gap:8px;min-height:64px;padding:8px 10px}
+    .rp-app.tr-bootstrap .rp-chapter-actions{gap:4px}
+    .rp-app.tr-bootstrap .rp-chapter-actions .rp-icon-button.btn{width:36px;height:36px;flex-basis:36px}
+    .rp-app.tr-bootstrap .rp-chapter-tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
+    .rp-app.tr-bootstrap .rp-chapter-tools>.btn{width:100%;min-width:0;white-space:normal}
+}
+@media(max-width:360px){
+    .tr-bootstrap .tr-navbar .tr-navbar-inner{grid-template-columns:78px minmax(0,1fr) 78px}
+    .tr-bootstrap .tr-navbar .tr-nav-icon{width:36px;height:36px;min-height:36px;flex-basis:36px;padding:7px}
+    .tr-bootstrap .tr-navbar-actions{gap:6px!important}
+}
+.rp-app.tr-bootstrap .rp-chapter-play.btn{display:grid;grid-template-columns:34px minmax(0,1fr) max-content;align-items:center;justify-content:stretch;gap:10px;width:100%;min-width:0;min-height:44px;padding:4px 0;border:0;background:transparent;color:var(--tr-ink);text-align:left;white-space:normal}
+.rp-app.tr-bootstrap .rp-drive-file .rp-drive-file-icon{width:30px;height:30px;min-width:30px;min-height:30px;aspect-ratio:1;flex-shrink:0;justify-self:center;align-self:center}
+@media(max-width:480px){.rp-app.tr-bootstrap .rp-dialog--drive .rp-drive-file{grid-template-columns:17px 30px minmax(0,1fr)}}
+@media(max-width:760px){.rp-app.tr-bootstrap .rp-album-detail-actions>.btn{gap:8px}}
+
+.tr-bootstrap .tr-modal-editing .modal-content{height:var(--tr-modal-content-height);max-height:var(--tr-modal-content-height)}
+.tr-bootstrap .tr-modal-editing .modal-body{padding-bottom:calc(24px + var(--tr-keyboard-space,0px));scroll-padding-bottom:20px}
+
+/* Shared chapter rows also appear in the UI gallery. */
+.rp-app.tr-bootstrap .rp-chapter-list{display:grid;gap:10px;align-content:start}
+.rp-app.tr-bootstrap .rp-chapter-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;min-height:64px;padding:8px 10px;border:1px solid var(--tr-line);border-radius:10px}
+.rp-app.tr-bootstrap .rp-chapter-row.is-current{background:var(--tr-soft)}
+.rp-app.tr-bootstrap .rp-chapter-number{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border:1px solid var(--tr-accent);border-radius:50%;background:var(--tr-paper);color:var(--tr-ink);font-size:11px}
+.rp-app.tr-bootstrap .rp-chapter-row.is-current .rp-chapter-number{background:var(--tr-button);border-color:var(--tr-button);color:var(--tr-button-text)}
+.rp-app.tr-bootstrap .rp-chapter-info{min-width:0}
+.rp-app.tr-bootstrap .rp-chapter-title{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;text-align:left}
+.rp-app.tr-bootstrap .rp-chapter-start{font-size:11px;color:var(--tr-muted);font-variant-numeric:tabular-nums}
+.rp-app.tr-bootstrap .rp-chapter-actions{display:flex;align-items:center;gap:4px}
+.rp-app.tr-bootstrap .rp-chapter-actions .rp-icon-button{width:36px;height:36px;flex:0 0 36px}
+.rp-app.tr-bootstrap .tr-ui-album-actions{display:flex;gap:10px;flex-wrap:wrap}
+@media(max-width:760px){.rp-app.tr-bootstrap .tr-ui-album-actions{display:grid}}

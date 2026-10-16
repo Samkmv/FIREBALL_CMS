@@ -9,7 +9,7 @@ use Throwable;
 /**
  * Проверяет и устанавливает обновления каждого плагина независимо от ядра CMS.
  */
-final class PluginUpdateService extends UpdateCenter
+class PluginUpdateService extends UpdateCenter
 {
     private const STATE_KEY = '__plugin_update_state';
     private const MAX_MANIFEST_BYTES = 1048576;
@@ -355,15 +355,17 @@ final class PluginUpdateService extends UpdateCenter
                 throw new RuntimeException(return_translation('admin_plugin_updates_failed'));
             }
 
-            if (!is_file(STORAGE . '/update.maintenance')) {
-                $this->enableMaintenanceMode($user);
-                $maintenanceOwned = true;
-            }
+            $installations = new ManagedPluginInstallations(ROOT);
             $this->ensureDirectory($this->workspaceRoot . '/work');
             $workspace = $this->workspaceRoot . '/work/' . $slug . '-' . bin2hex(random_bytes(8));
             $extractPath = $workspace . '/extract';
             $archivePath = $workspace . '/repository.zip';
             $this->ensureDirectory($extractPath);
+            $baselineFiles = $this->assertInstalledPluginPackage($slug, $lockedMetadata, $config, $workspace);
+            if (!is_file(STORAGE . '/update.maintenance')) {
+                $this->enableMaintenanceMode($user);
+                $maintenanceOwned = true;
+            }
 
             $token = trim((string)($this->siteSettings->all()['updater_github_token'] ?? ''));
             $downloadUrl = $this->buildGithubApiUrl(
@@ -388,6 +390,7 @@ final class PluginUpdateService extends UpdateCenter
             }
             $this->assertRequirements($packageMetadata);
             $this->assertNoLinks($packagePath);
+            $packageFiles = $installations->tree($packagePath);
 
             $this->createPreUpdateBackups();
             $backupFile = $this->createPluginBackup($targetPath, $slug, $fromVersion);
@@ -397,6 +400,12 @@ final class PluginUpdateService extends UpdateCenter
             $failedPath = $this->pluginsPath . '/.' . $slug . '.failed-' . $identifier;
             $this->copyDirectory($packagePath, $stagePath);
             $this->readPackageMetadata($stagePath, $slug);
+            if ($packageFiles !== $installations->tree($stagePath)) {
+                throw new RuntimeException('Staged plugin differs from its validated package.');
+            }
+            if ($baselineFiles !== $installations->tree($targetPath)) {
+                throw new RuntimeException('Код плагина изменился во время обновления. Замена остановлена.');
+            }
 
             if (!@rename($targetPath, $rollbackPath)) {
                 throw new RuntimeException(return_translation('admin_plugin_updates_replace_failed'));
@@ -415,6 +424,7 @@ final class PluginUpdateService extends UpdateCenter
             if ((string)($installedMetadata['version'] ?? '') !== $remoteVersion) {
                 throw new RuntimeException(return_translation('admin_plugin_updates_package_mismatch'));
             }
+            $installations->record($slug, ['repository'=>$config['repository'], 'commit'=>$remoteCommit, 'version'=>$remoteVersion], $packageFiles);
             $committed = true;
 
             $state = [
@@ -428,6 +438,7 @@ final class PluginUpdateService extends UpdateCenter
                 'source_older' => false,
                 'checked_at' => date('Y-m-d H:i:s'),
                 'last_updated_at' => date('Y-m-d H:i:s'),
+                'last_installed_commit' => $remoteCommit,
                 'backup_file' => basename($backupFile),
                 'release_notes' => $checked['release_notes'] ?? [],
                 'release_notes_i18n' => $checked['release_notes_i18n'] ?? [],
@@ -511,6 +522,41 @@ final class PluginUpdateService extends UpdateCenter
                 $this->pruneBackups($slug);
             }
         }
+    }
+
+    /** Verify pre-receipt ZIP installations against an official historical package. */
+    protected function assertInstalledPluginPackage(string $slug, array $metadata, array $config, string $workspace): array
+    {
+        $installations = new ManagedPluginInstallations(ROOT);
+        try { return $installations->assertReplaceable($slug); }
+        catch (RuntimeException $conflict) {
+            if ($installations->receipt($slug) !== null || is_dir(ROOT . '/.git')) throw $conflict;
+        }
+        $token = trim((string)($this->siteSettings->all()['updater_github_token'] ?? ''));
+        $headers = $this->buildGithubHeaders($token);
+        $history = $this->decodeGithubJson($this->httpGet($this->buildGithubApiUrl($config['repository'],
+            '/commits?sha=main&per_page=20&path=' . rawurlencode($config['path'] . '/plugin.json')), $headers));
+        if (!array_is_list($history)) throw new RuntimeException('Invalid legacy plugin history.');
+        $candidates = [(string)($this->storedState($slug)['last_installed_commit'] ?? ''),
+            (string)($this->siteSettings->all()['updater_last_installed_commit'] ?? '')];
+        foreach (array_slice($history, 0, 20) as $commit) if (is_array($commit)) $candidates[] = (string)($commit['sha'] ?? '');
+        $current = $installations->tree($this->pluginsPath . '/' . $slug);
+        foreach (array_unique($candidates) as $commit) {
+            if (!preg_match('/^[a-f0-9]{40}$/D', $commit)) continue;
+            $remote = $this->fetchRemotePluginMetadata($config, $slug, $commit);
+            if (($remote['metadata']['version'] ?? '') !== ($metadata['version'] ?? '')) continue;
+            $archive = $workspace . '/baseline.zip';
+            $extract = $workspace . '/baseline-' . $commit;
+            $this->ensureDirectory($extract);
+            $this->downloadFile($this->buildGithubApiUrl($config['repository'], '/zipball/' . $commit), $archive,
+                $this->buildGithubDownloadHeaders($token, 'repository_zipball_api'));
+            if (!is_file($archive) || filesize($archive) <= 0 || filesize($archive) > self::MAX_ARCHIVE_BYTES) throw new RuntimeException('Invalid legacy plugin baseline archive.');
+            $this->extractRepositoryArchive($archive, $extract);
+            $baseline = $this->resolvePluginPackagePath($extract, $config['path']);
+            $baselineMetadata = $this->readPackageMetadata($baseline, $slug);
+            if (($baselineMetadata['version'] ?? '') === ($metadata['version'] ?? '') && $installations->tree($baseline) === $current) return $current;
+        }
+        throw new RuntimeException('Не удалось подтвердить исходный пакет плагина ' . $slug . '. Локальный код сохранён; обновление остановлено.');
     }
 
     private function installedPlugin(string $slug): array
@@ -797,6 +843,9 @@ final class PluginUpdateService extends UpdateCenter
         foreach ($iterator as $item) {
             if ($item->isLink()) {
                 throw new RuntimeException(return_translation('admin_plugin_updates_package_invalid'));
+            }
+            if ($item->isFile() && str_ends_with(strtolower($item->getFilename()), '.php')) {
+                $this->validatePhpSource((string)file_get_contents($item->getPathname()), $item->getFilename());
             }
         }
     }

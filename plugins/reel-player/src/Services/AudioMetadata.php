@@ -7,6 +7,19 @@ final class AudioMetadata
 {
     public const MAX_BYTES = 2097152;
 
+    /** Read only bounded headers and a tail from an already stored local file. */
+    public static function local(string $path,string $filename): array
+    {
+        $stream=@fopen($path,'rb');
+        if (!$stream) return [];
+        try {
+            $size=(int)(fstat($stream)['size'] ?? 0);
+            $head=(string)stream_get_contents($stream,self::MAX_BYTES);$tail='';
+            if ($size>self::MAX_BYTES && fseek($stream,max(0,$size-self::MAX_BYTES))===0) $tail=(string)stream_get_contents($stream,self::MAX_BYTES);
+            return self::read($head,$filename,$size,$tail);
+        } finally { fclose($stream); }
+    }
+
     public static function read(string $head, string $filename, int $size, string $tail = ''): array
     {
         $head=substr($head,0,self::MAX_BYTES); $tail=substr($tail,-self::MAX_BYTES);

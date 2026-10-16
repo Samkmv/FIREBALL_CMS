@@ -4,6 +4,19 @@ namespace Fireball\ReelPlayer\Repositories;
 
 final class Genres
 {
+    public function fromTag(string $value): array
+    {
+        $aliases=['rock'=>'Рок','pop'=>'Поп','jazz'=>'Джаз','blues'=>'Блюз','classical'=>'Классическая музыка','electronic'=>'Электронная музыка','ambient'=>'Эмбиент','metal'=>'Метал','folk'=>'Фолк','country'=>'Кантри','hip-hop'=>'Хип-хоп','soul'=>'Соул','funk'=>'Фанк'];
+        $known=[];foreach ($this->all() as $genre) $known[mb_strtolower($genre['name'])]=(int)$genre['id'];
+        $ids=[];
+        foreach (preg_split('~[;,/]~u',$value) ?: [] as $name) {
+            $key=mb_strtolower(trim($name));$key=mb_strtolower($aliases[$key] ?? $key);
+            if (isset($known[$key]) && !in_array($known[$key],$ids,true)) $ids[]=$known[$key];
+            if (count($ids)>=50) break;
+        }
+        return $ids;
+    }
+
     public function selection(array $data, array $fallback = []): array
     {
         if (array_key_exists('genre_ids',$data)) {

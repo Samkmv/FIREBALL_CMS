@@ -28,6 +28,7 @@ storage/backups/*
 !storage/backups/.gitignore
 storage/plugin-updates/*
 storage/update-checks/*
+storage/component-installations/
 storage/logs/*
 !storage/logs/.gitkeep
 !storage/logs/.htaccess
@@ -54,6 +55,12 @@ storage/update-recovery.json*
 dist/fireball-cms-*.zip*
 
 # Agent-created test scratch data and local verification artifacts.
-/tests/
+/tests/*
+!/tests/update_center_git.php
+!/tests/update_center_dependencies.php
+!/tests/update_center_runtime.php
+!/tests/update_center_recovery.php
+!/tests/pwa_installation_check.py
+!/tests/pwa_installation_fixture.php
 /tests/.tmp/
 /tests/artifacts/
