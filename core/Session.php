@@ -24,9 +24,19 @@ class Session
         $this->lifetimeSeconds = $this->resolveLifetimeSeconds();
         $this->cookieParams = $this->buildCookieParams($this->lifetimeSeconds);
 
+        // PHP auto_start or another application may have opened PHPSESSID in
+        // the hosting-wide directory. Never import that application's identity.
+        if (session_status() === PHP_SESSION_ACTIVE && (
+            session_name() !== $this->cookieName()
+            || (session_module_name() === 'files' && session_save_path() !== $this->sessionDirectory())
+        )) {
+            session_write_close();
+            session_id('');
+            $_SESSION = [];
+        }
         if (session_status() === PHP_SESSION_NONE) {
             $this->configureSession($this->lifetimeSeconds, $this->cookieParams);
-            session_start();
+            $this->startSession();
             $this->refreshCookie();
         } elseif (session_status() === PHP_SESSION_ACTIVE) {
             $this->refreshCookie();
@@ -178,11 +188,29 @@ class Session
 
     protected function configureSession(int $lifetime, array $cookieParams): void
     {
+        session_name($this->cookieName());
+        if (session_module_name() === 'files') {
+            // Separate installations must not garbage-collect each other's
+            // sessions using a shorter php.ini gc_maxlifetime (often 24 min).
+            $directory = $this->sessionDirectory();
+            if (is_link($directory)
+                || (!is_dir($directory) && !@mkdir($directory, 0700, true) && !is_dir($directory))
+                || !is_writable($directory) || !@chmod($directory, 0700)
+                || session_save_path($directory) === false) {
+                throw new \RuntimeException('Unable to configure private CMS session storage. Check storage/sessions permissions.');
+            }
+            // Some hosts disable PHP GC because a system job cleans the shared
+            // directory. That job must not manage this private directory.
+            if ((int)ini_get('session.gc_probability') <= 0) {
+                ini_set('session.gc_probability', '1');
+                if ((int)ini_get('session.gc_divisor') <= 0) ini_set('session.gc_divisor', '1000');
+            }
+        }
         ini_set('session.use_strict_mode', '1');
         ini_set('session.use_only_cookies', '1');
         ini_set('session.gc_maxlifetime', (string)$lifetime);
         ini_set('session.cookie_lifetime', (string)$lifetime);
-        ini_set('session.cookie_path', '/');
+        ini_set('session.cookie_path', $cookieParams['path']);
         ini_set('session.cookie_domain', (string)($cookieParams['domain'] ?? ''));
         ini_set('session.cookie_secure', $cookieParams['secure'] ? '1' : '0');
         ini_set('session.cookie_httponly', '1');
@@ -193,12 +221,11 @@ class Session
 
     protected function buildCookieParams(int $lifetime): array
     {
-        $params = session_get_cookie_params();
-
         return [
             'lifetime' => $lifetime,
-            'path' => '/',
-            'domain' => (string)($params['domain'] ?? ''),
+            'path' => rtrim((string)(parse_url(PATH, PHP_URL_PATH) ?: ''), '/') ?: '/',
+            // Host-only cookies: do not inherit another site's php.ini domain.
+            'domain' => '',
             'secure' => $this->isSecureRequest(),
             'httponly' => true,
             'samesite' => 'Lax',
@@ -207,50 +234,72 @@ class Session
 
     protected function resolveLifetimeSeconds(): int
     {
-        $settings = $this->loadSessionSettings();
-
-        if (isset($settings[self::SESSION_LIFETIME_SETTING_KEY])) {
-            $lifetime = $this->normalizeLifetimeSeconds($settings[self::SESSION_LIFETIME_SETTING_KEY]);
-            if ($lifetime !== null) {
-                return $lifetime;
-            }
-        }
-
-        if (isset($settings[self::ADMIN_SESSION_SETTING_KEY])) {
-            $hours = $this->normalizeLifetimeHours($settings[self::ADMIN_SESSION_SETTING_KEY]);
-            if ($hours !== null) {
-                return $hours * 3600;
-            }
-        }
-
-        return self::DEFAULT_LIFETIME_SECONDS;
+        return $this->settingsLifetime($this->loadSessionSettings());
     }
 
     protected function loadSessionSettings(): array
     {
-        // Set by settings writes and the explicit migration. No database connection here.
+        // Cached after installed settings load; no database connection here.
         $settings = cache()->get('session:policy');
         return is_array($settings) ? $settings : [
-            self::SESSION_LIFETIME_SETTING_KEY => defined('SESSION_LIFETIME') ? SESSION_LIFETIME : self::MAX_LIFETIME_SECONDS,
+            // Real settings are applied after DB boot, before Auth validation.
+            // A cold cache must never collect a valid longer session first.
+            self::SESSION_LIFETIME_SETTING_KEY => self::MAX_LIFETIME_SECONDS,
         ];
     }
 
     public function applySettings(array $settings): void
     {
-        $lifetime = $this->normalizeLifetimeSeconds($settings[self::SESSION_LIFETIME_SETTING_KEY] ?? '')
-            ?? (($this->normalizeLifetimeHours($settings[self::ADMIN_SESSION_SETTING_KEY] ?? '') ?? 12) * 3600);
+        $lifetime = $this->settingsLifetime($settings);
         $policy = array_intersect_key($settings, array_flip([self::SESSION_LIFETIME_SETTING_KEY, self::ADMIN_SESSION_SETTING_KEY]));
         if (cache()->get('session:policy') !== $policy) {
             cache()->set('session:policy', $policy, self::MAX_LIFETIME_SECONDS);
         }
-        if ($lifetime !== $this->lifetimeSeconds && session_status() === PHP_SESSION_ACTIVE) {
+        if ($lifetime !== $this->lifetimeSeconds) {
             // Reopen the same session so PHP's garbage collector sees the real lifetime.
-            session_write_close();
+            $wasActive = session_status() === PHP_SESSION_ACTIVE;
+            if ($wasActive) session_write_close();
             $this->lifetimeSeconds = $lifetime;
             $this->cookieParams = $this->buildCookieParams($lifetime);
             $this->configureSession($lifetime, $this->cookieParams);
-            session_start();
-            $this->refreshCookie();
+            if ($wasActive) {
+                $this->startSession();
+                $this->refreshCookie();
+            }
+        }
+    }
+
+    protected function settingsLifetime(array $settings): int
+    {
+        $general = $this->normalizeLifetimeSeconds($settings[self::SESSION_LIFETIME_SETTING_KEY]
+            ?? (defined('SESSION_LIFETIME') ? SESSION_LIFETIME : ''));
+        $admin = $this->normalizeLifetimeHours($settings[self::ADMIN_SESSION_SETTING_KEY] ?? '')
+            ?? intdiv(self::DEFAULT_LIFETIME_SECONDS, 3600);
+        // Shared PHP storage/cookie lifetime cannot be shorter than the admin
+        // inactivity policy. Auth still enforces that policy independently.
+        return (int)max($general ?? 0, $admin * 3600);
+    }
+
+    protected function sessionDirectory(): string
+    {
+        return STORAGE . '/sessions';
+    }
+
+    protected function cookieName(): string
+    {
+        // Use the configured canonical URL, not an untrusted request Host or a
+        // deployment directory that could change between servers/releases.
+        $url = parse_url(PATH);
+        $site = strtolower((string)($url['host'] ?? 'localhost'))
+            . ':' . (string)($url['port'] ?? '')
+            . '/' . trim((string)($url['path'] ?? ''), '/');
+        return 'FBLSESSID' . substr(hash('sha256', $site), 0, 24);
+    }
+
+    protected function startSession(): void
+    {
+        if (!session_start()) {
+            throw new \RuntimeException('Unable to start the CMS session. Check session storage configuration.');
         }
     }
 

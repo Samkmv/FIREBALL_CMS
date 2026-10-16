@@ -2198,7 +2198,7 @@ class UpdateCenter
                 if (!file_exists($absolute)) {
                     continue;
                 }
-                $this->addPathToZip($zip, $absolute, $relative, ['storage/backups', 'storage/update.lock', 'storage/update-intent.lock', 'storage/update.maintenance', 'storage/update-recovery.json', 'storage/plugin-updates', 'storage/update-checks']);
+                $this->addPathToZip($zip, $absolute, $relative, ['storage/backups', 'storage/sessions', 'storage/update.lock', 'storage/update-intent.lock', 'storage/update.maintenance', 'storage/update-recovery.json', 'storage/plugin-updates', 'storage/update-checks']);
             }
 
             $closeAttempted = true;
