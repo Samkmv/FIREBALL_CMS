@@ -12,7 +12,7 @@ $roomLinks=[['overview','Обзор','grid'],['albums','Альбомы','disc'],
             <a class="navbar-brand tr-wordmark m-0" href="<?= htmlSC(base_href('/')) ?>" <?= $isPlayer?'data-action="catalog-view" data-view="overview"':'' ?>><span class="tr-wordmark-name">TAPE ROOM<small class="tr-beta">БЕТА</small></span><span class="tr-wordmark-caption">ЛИЧНАЯ МУЗЫКАЛЬНАЯ КОМНАТА</span></a>
             <div class="tr-navbar-actions d-flex align-items-center gap-1">
                 <div class="dropdown tr-account-dropdown">
-                    <button class="btn tr-nav-icon tr-account-toggle" type="button" id="tr-account-toggle" data-bs-toggle="dropdown" aria-expanded="false" aria-controls="tr-account-menu" aria-label="Аккаунт" title="Аккаунт"><?= $siteIcon('user') ?><span class="tr-account-chevron"><?= $siteIcon('chevron-down') ?></span></button>
+                    <button class="btn tr-nav-icon tr-account-toggle" type="button" id="tr-account-toggle" data-bs-toggle="dropdown" aria-expanded="false" aria-controls="tr-account-menu" aria-label="Аккаунт" title="Аккаунт"><?= $siteIcon('user') ?></button>
                     <ul class="dropdown-menu dropdown-menu-end tr-account-menu" id="tr-account-menu" aria-labelledby="tr-account-toggle">
                         <li><h2 class="dropdown-header"><?= $authenticated?htmlSC((string)(get_user()['name']??'Аккаунт')):'Аккаунт' ?></h2></li>
                         <?php if ($authenticated): ?>
@@ -26,7 +26,6 @@ $roomLinks=[['overview','Обзор','grid'],['albums','Альбомы','disc'],
                         <?php endif; ?>
                     </ul>
                 </div>
-                <?php if ($isPlayer && !empty($config['drive']['canManage'])): ?><button class="btn tr-nav-icon" type="button" data-action="player-settings" aria-label="Настройки плеера" title="Настройки плеера"><?= $siteIcon('settings') ?></button><?php endif; ?>
                 <button class="btn tr-nav-icon tr-theme-toggle" type="button" <?= $isPlayer?'data-action="theme"':'data-tr-theme-toggle' ?> data-tr-theme-icons aria-label="Включить тёмную тему" title="Включить тёмную тему"><span data-tr-theme-light><?= $siteIcon('moon') ?></span><span data-tr-theme-dark hidden><?= $siteIcon('sun') ?></span></button>
             </div>
         </div>

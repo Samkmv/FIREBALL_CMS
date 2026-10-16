@@ -30,8 +30,8 @@
             if (descriptor.type === 'genre') {
                 const albums=(data.catalog?.albums || []).filter(album=>album.published || album.editable || album.browserLocal);
                 const publicIds=new Set(albums.flatMap(album=>album.tracks).map(Number));
-                const inheritedIds=new Set(albums.filter(album=>Number(album.genreId)===descriptor.id).flatMap(album=>album.tracks).map(Number));
-                return this.sort(pool.filter(track=>(track.shared===false || publicIds.has(Number(track.id))) && (Number(track.genreId)===descriptor.id || (!Number(track.genreId) && inheritedIds.has(Number(track.id))))),sort);
+                const inheritedIds=new Set(albums.filter(album=>(album.genreIds || [Number(album.genreId)]).map(Number).includes(descriptor.id)).flatMap(album=>album.tracks).map(Number));
+                return this.sort(pool.filter(track=>(track.shared===false || publicIds.has(Number(track.id))) && ((track.genreIds || [Number(track.genreId)]).map(Number).includes(descriptor.id) || (!(track.genreIds?.length || Number(track.genreId)) && inheritedIds.has(Number(track.id))))),sort);
             }
             if (descriptor.type === 'popular') {
                 const publicIds = new Set((data.catalog?.albums || []).filter(album=>album.published).flatMap(album=>album.tracks).map(Number));

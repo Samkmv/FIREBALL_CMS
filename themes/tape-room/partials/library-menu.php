@@ -13,5 +13,5 @@
         <button class="nav-link text-start" type="button" data-action="drive"><?= $siteIcon('cloud') ?><span>Google Drive</span></button>
         <button class="nav-link text-start" type="button" data-tr-torrent-open><?= $siteIcon('download') ?><span>Музыка из torrent</span></button>
     </nav>
-    <?php else: ?><nav data-playlists hidden aria-hidden="true"></nav><div class="tr-menu-divider"></div><p class="small text-body-secondary">Войдите, чтобы добавлять музыку и собирать свою коллекцию.</p><a class="btn btn-primary" href="<?= htmlSC(base_href('/login')) ?>">Войти</a><a class="btn btn-outline-secondary mt-2" href="<?= htmlSC(base_href('/register')) ?>">Регистрация</a><?php endif; ?>
+    <?php else: ?><nav data-playlists hidden aria-hidden="true"></nav><div class="tr-menu-divider"></div><p class="small text-body-secondary">Войдите, чтобы добавлять музыку и собирать свою коллекцию.</p><div class="tr-auth-actions"><a class="btn btn-primary" href="<?= htmlSC(base_href('/login')) ?>">Войти</a><a class="btn btn-outline-secondary" href="<?= htmlSC(base_href('/register')) ?>">Регистрация</a></div><?php endif; ?>
 </section>

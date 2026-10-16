@@ -29,5 +29,8 @@
         else if (channels && channels <= 64) parts.push(`${channels} КАН.`);
         return parts.join(' · ');
     }
-    return {format, summary};
+    const isLossless=track=>track?.quality?.lossless===true || track?.lossless===true || format(track)==='FLAC';
+    const badge=()=>'<span class="tr-lossless-badge"><span class="tr-lossless-mark" aria-hidden="true"></span><span>Высокое качество <b>lossless</b></span></span>';
+    const albumBadge=tracks=>tracks.length && tracks.every(isLossless)?badge():'';
+    return {format,summary,isLossless,badge,albumBadge};
 });

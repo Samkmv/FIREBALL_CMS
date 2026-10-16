@@ -99,15 +99,15 @@ server {
 
 Apache в отдельном www VirtualHost: `RewriteEngine On`, `RewriteRule ^ https://example.org%{REQUEST_URI} [R=308,L,NE]`. Исходная query сохраняется (не добавляйте новый `?`). Условие/VirtualHost должны исключать canonical host, иначе будет цикл. Не публиковать эти примеры дословно с example.org.
 
-4. Для лимита CMS 50 MiB PHP-FPM pool может иметь:
+4. Для лимита CMS 150 MiB PHP-FPM pool может иметь:
 
 ```ini
-php_admin_value[upload_max_filesize] = 50M
-php_admin_value[post_max_size] = 55M
+php_admin_value[upload_max_filesize] = 150M
+php_admin_value[post_max_size] = 160M
 ```
 
-Альтернатива, когда хостинг разрешает per-directory INI: `.user.ini` с `upload_max_filesize=50M`, `post_max_size=55M`; pool php_admin_value имеет приоритет. Перезагрузить соответствующий FPM pool либо дождаться `user_ini.cache_ttl`. Проверять значения **в web UI диагностики**, а не только CLI: CLI/FPM могут читать разные INI. CLI `diagnose` показывает своё runtime environment. Не создавать публичный phpinfo.
-5. Effective file limit = min(CMS cap, component cap, upload_max_filesize, post_max_size − 64 KiB multipart reserve). PHP unlimited не снимает CMS cap. Reserve рассчитан на обычный single-file multipart; множество файлов и большие текстовые поля дополнительно ограничены общим POST и `max_file_uploads`. `client_max_body_size` Nginx/Apache request limits/CDN должны пропускать допустимый POST (например 55 MiB); отказ upstream не может быть переведён PHP, настройте отдельную server error page. MP3 проверяется по содержимому, не по browser Content-Type; не разрешайте MIME glob или PHP/SVG в общих загрузках.
+Для хостингов с per-directory INI в `public/.user.ini` заданы `upload_max_filesize=150M`, `post_max_size=160M`; pool php_admin_value имеет приоритет. Перезагрузить соответствующий FPM pool либо дождаться `user_ini.cache_ttl`. Проверять значения **в web UI диагностики**, а не только CLI: CLI/FPM могут читать разные INI. CLI `diagnose` показывает своё runtime environment. Не создавать публичный phpinfo.
+5. Effective file limit = min(CMS cap, component cap, upload_max_filesize, post_max_size − 64 KiB multipart reserve). PHP unlimited не снимает CMS cap. Reserve рассчитан на обычный single-file multipart; множество файлов и большие текстовые поля дополнительно ограничены общим POST и `max_file_uploads`. `client_max_body_size` Nginx/Apache request limits/CDN должны пропускать допустимый POST (например 160 MiB); отказ upstream не может быть переведён PHP, настройте отдельную server error page. MP3 проверяется по содержимому, не по browser Content-Type; не разрешайте MIME glob или PHP/SVG в общих загрузках.
 6. После ручного копирования JS/CSS выполнить штатный `php bin/cms.php assets:rebuild`. Updater уже собирает manifest. Проверить ссылки и SW scope на canonical host, нормальный login, 2FA и фото/MP3 на staging.
 
 Cookies/localStorage/Service Worker старого www origin автоматически не переносятся. Потребуется новый вход/повторная установка PWA на canonical host у старых клиентов. Это ограничение браузерной модели безопасности, не причина расширять CORS до любых origin.

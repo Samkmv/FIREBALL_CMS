@@ -63,7 +63,7 @@ final class Catalog
             foreach ($album['tracks'] as $trackId) $publishedTrackIds[$trackId] = true;
         }
         foreach ($publicTracks as $track) if (isset($publishedTrackIds[$track['id']])) $publishedArtistKeys[self::artistKey($track['artist'])] = true;
-        return ['albums'=>$publicAlbums,'tracks'=>$publicTracks,'artistProfiles'=>$this->artistProfiles([...$albums,...$tracks],$publishedArtistKeys),'canPublish'=>$this->owner>0,'autoApprove'=>$this->autoApprove,'genres'=>$genres];
+        return ['albums'=>(new Genres())->decorate($publicAlbums,'album'),'tracks'=>(new Genres())->decorate($publicTracks,'track'),'artistProfiles'=>$this->artistProfiles([...$albums,...$tracks],$publishedArtistKeys),'canPublish'=>$this->owner>0,'autoApprove'=>$this->autoApprove,'genres'=>$genres];
     }
 
     /** Artist identity remains its existing name; a profile never renames music. */
@@ -243,6 +243,39 @@ final class Catalog
         foreach ($ids as $position=>$track) db()->query('INSERT INTO reel_album_tracks(album_id,track_id,position) VALUES(?,?,?)', [$id,$track,$position]);
     }
 
+    /** Called within the same transaction as imported tracks or album edits. */
+    private function insertAlbum(array $data,?array $cover = null): int
+    {
+        $title=self::text($data['title'] ?? '',240,'Название альбома',true);
+        $artist=self::text($data['artist'] ?? '',240,'Исполнитель');
+        $description=self::text($data['description'] ?? '',4000,'Описание');
+        $releaseDate=self::releaseDate($data['release_date'] ?? '');
+        $genres=new Genres();$genreIds=$genres->selection($data);$now=date('Y-m-d H:i:s');
+        db()->query('INSERT INTO reel_albums(owner_id,title,artist,description,release_date,genre_id,cover_path,cover_mime,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)',[$this->owner,$title,$artist,$description,$releaseDate,$genreIds[0] ?? null,$cover['path'] ?? null,$cover['mime'] ?? null,$now,$now]);
+        $id=(int)db()->getInsertId();
+        $this->setTracks($id,self::trackIds($data['tracks'] ?? []),false);
+        $genres->sync('album',$id,$genreIds);
+        db()->query('INSERT INTO reel_album_saves(owner_id,album_id,created_at) VALUES(?,?,?)',[$this->owner,$id,$now]);
+        return $id;
+    }
+
+    /** The import and its private album either both persist or both roll back. */
+    public function importDriveAlbum(array $files,array $data): array
+    {
+        db()->beginTransaction();
+        try {
+            $count=(new Library($this->owner))->importDrive($files);
+            $sources=array_column($files,'id');
+            if (!$sources) throw new \InvalidArgumentException('Выберите песни для альбома.');
+            $rows=db()->query('SELECT id,source_id FROM reel_tracks WHERE owner_id=? AND source=? AND source_id IN ('.implode(',',array_fill(0,count($sources),'?')).')',[$this->owner,'drive',...$sources])->get() ?: [];
+            $bySource=array_column($rows,'id','source_id');
+            $ids=array_map(static fn(string $source): int=>(int)($bySource[$source] ?? 0),$sources);
+            if (in_array(0,$ids,true)) throw new \RuntimeException('Не удалось сохранить песни альбома.');
+            $album=$this->insertAlbum([...$data,'tracks'=>$ids]);
+            db()->commit();return ['imported'=>$count,'imported_ids'=>$ids,'album_id'=>$album];
+        } catch (\Throwable $error) { db()->rollBack();throw $error; }
+    }
+
     public function action(string $name, array $data, ?array $cover = null): ?int
     {
         if (in_array($name,['artist.update','artist.delete'],true)) return $this->updateArtist($name,$data,$cover);
@@ -270,17 +303,8 @@ final class Catalog
         db()->beginTransaction();
         try {
             if ($name==='album.create') {
-                $title = self::text($data['title'] ?? '',240,'Название альбома',true);
-                $artist = self::text($data['artist'] ?? '',240,'Исполнитель');
-                $description = self::text($data['description'] ?? '',4000,'Описание');
-                $releaseDate = self::releaseDate($data['release_date'] ?? '');
-                $genre=(new Genres())->validateId($data['genre_id'] ?? null);
                 if ($cover && (int)($cover['error'] ?? UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_NO_FILE) $savedCover = $storage->upload($cover,$this->owner,true);
-                $now = date('Y-m-d H:i:s');
-                db()->query('INSERT INTO reel_albums(owner_id,title,artist,description,release_date,genre_id,cover_path,cover_mime,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?)', [$this->owner,$title,$artist,$description,$releaseDate,$genre,$savedCover['path'] ?? null,$savedCover['mime'] ?? null,$now,$now]);
-                $id = (int)db()->getInsertId();
-                $this->setTracks($id,self::trackIds($data['tracks'] ?? []),false);
-                db()->query('INSERT INTO reel_album_saves(owner_id,album_id,created_at) VALUES(?,?,?)', [$this->owner,$id,$now]);
+                $id=$this->insertAlbum($data,$savedCover);
             } else {
                 $album = $this->albumRow($id,true,true);
                 switch ($name) {
@@ -289,9 +313,10 @@ final class Catalog
                         $artist = self::text($data['artist'] ?? $album['artist'],240,'Исполнитель');
                         $description = self::text($data['description'] ?? $album['description'],4000,'Описание');
                         $releaseDate = self::releaseDate($data['release_date'] ?? $album['release_date']);
-                        $genre=(new Genres())->validateId($data['genre_id'] ?? $album['genre_id']);
+                        $genreRepo=new Genres();$current=$genreRepo->decorate([$album],'album')[0]['genreIds'];$genreIds=$genreRepo->selection($data,$current);$genre=$genreIds[0] ?? null;
                         if ($cover && (int)($cover['error'] ?? UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_NO_FILE) { $savedCover = $storage->upload($cover,$this->owner,true); $oldCover = $album['cover_path']; }
                         db()->query('UPDATE reel_albums SET title=?,artist=?,description=?,release_date=?,genre_id=?,cover_path=?,cover_mime=?,updated_at=? WHERE id=? AND owner_id=?', [$title,$artist,$description,$releaseDate,$genre,$savedCover['path'] ?? $album['cover_path'],$savedCover['mime'] ?? $album['cover_mime'],date('Y-m-d H:i:s'),$id,$this->owner]);
+                        $genreRepo->sync('album',$id,$genreIds);
                         if (array_key_exists('tracks',$data)) $this->setTracks($id,self::trackIds($data['tracks']),(bool)$album['published']);
                         break;
                     case 'album.tracks':

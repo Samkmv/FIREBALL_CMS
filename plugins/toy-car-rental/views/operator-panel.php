@@ -11,9 +11,11 @@ $visibleCars = $activeOnly ? array_values(array_filter($cars, static fn(array $c
     <?php endforeach; ?>
 </div>
 <div class="fb-card p-4 text-center text-body-secondary <?= $visibleCars ? 'd-none' : '' ?>" data-toy-rental-empty>
-    <?= $t($activeOnly ? 'toy_rental_active_empty' : 'toy_rental_empty_cars_text') ?>
+    <p class="mb-0"><?= $t($activeOnly ? 'toy_rental_active_empty' : 'toy_rental_empty_cars_text') ?></p>
     <?php if (!$activeOnly && empty($operatorProfile)): ?>
-        <a class="btn btn-primary ms-2" href="<?= base_href('/admin/toy-rental/cars/create') ?>"><?= $t('toy_rental_add_car') ?></a>
+        <div class="mt-3">
+            <a class="btn btn-primary d-inline-flex align-items-center justify-content-center text-wrap mw-100 px-4" href="<?= base_href('/admin/toy-rental/cars/create') ?>"><?= $t('toy_rental_add_car') ?></a>
+        </div>
     <?php endif; ?>
 </div>
 <div class="modal fade" id="toyCompleteRide" tabindex="-1" aria-labelledby="toyCompleteRideLabel" aria-hidden="true" data-toy-rental-complete-modal>

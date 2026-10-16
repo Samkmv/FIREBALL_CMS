@@ -43,10 +43,14 @@ $router->get('/plugins/reel-player/assets/(?P<file>player\.(?:css|js)|preload\.j
 });
 
 $router->get('/admin/reel-player', [PlayerController::class, 'index'])->middleware(['auth', 'admin']);
+$router->get('/tape-room/(?P<surface>share|embed)/(?P<kind>album|track)/(?P<id>\d+)', [\Fireball\ReelPlayer\Controllers\ShareController::class, 'show']);
+$router->get('/admin/reel-player/settings', [\Fireball\ReelPlayer\Controllers\AdminCatalogController::class, 'settings'])->middleware(['auth','admin']);
+$router->post('/admin/reel-player/settings', [\Fireball\ReelPlayer\Controllers\AdminCatalogController::class, 'saveSettings'])->middleware(['auth','admin']);
 $router->get('/tape-room/torrent-worker.js', [\Fireball\ReelPlayer\Services\TorrentWorker::class, 'script']);
 $router->get('/tape-room/ui-kit', static function (): string {
     if (theme()->getActiveTheme()['slug'] !== 'tape-room') abort('Страница недоступна.',404);
-    return theme()->render('ui-kit',['title'=>'UI-компоненты Tape Room','tr_wide_page'=>true]);
+    $preview = db()->query("SELECT id FROM reel_albums WHERE published=1 AND moderation_status='approved' ORDER BY id DESC LIMIT 1")->getOne();
+    return theme()->render('ui-kit',['title'=>'UI-компоненты Tape Room','tr_wide_page'=>true,'tr_ui_embed_album_id'=>(int)($preview['id'] ?? 0)]);
 })->middleware(['auth','admin']);
 $router->get('/admin/reel-player/genres', [\Fireball\ReelPlayer\Controllers\AdminCatalogController::class, 'genres'])->middleware(['auth','admin']);
 $router->post('/admin/reel-player/genres/save', [\Fireball\ReelPlayer\Controllers\AdminCatalogController::class, 'saveGenre'])->middleware(['auth','admin']);

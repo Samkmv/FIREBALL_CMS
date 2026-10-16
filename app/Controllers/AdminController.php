@@ -116,7 +116,7 @@ class AdminController extends BaseController
                 return '—';
             }
 
-            $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+            $units = array_map('return_translation', ['size_unit_b', 'size_unit_kib', 'size_unit_mib', 'size_unit_gib', 'size_unit_tib']);
             $value = (float)$bytes;
             $unit = 0;
             while ($value >= 1024 && $unit < count($units) - 1) {

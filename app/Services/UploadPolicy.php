@@ -27,7 +27,7 @@ final class UploadPolicy
 
     public static function formatBytes(?int $bytes): string
     {
-        return $bytes === null ? return_translation('upload_unlimited') : rtrim(rtrim(number_format($bytes / 1048576, 2, '.', ''), '0'), '.') . ' MiB';
+        return $bytes === null ? return_translation('upload_unlimited') : rtrim(rtrim(number_format($bytes / 1048576, 2, '.', ''), '0'), '.') . ' ' . return_translation('size_unit_mib');
     }
 
     public static function sizeException(?int $componentMax = null): UploadException

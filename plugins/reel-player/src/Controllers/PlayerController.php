@@ -74,6 +74,9 @@ final class PlayerController
                 'defaultArtworkSize' => '1254x1254',
                 'maxUpload' => UploadPolicy::limits()['effective'],
                 'state' => $this->playerState(),
+                'shareBase' => base_href('/tape-room/share/'),
+                'embedBase' => base_href('/tape-room/embed/'),
+                'driveSettings' => base_href('/admin/reel-player/settings'),
                 'drive' => check_auth() ? $this->drive()->status() : ['connected'=>false,'canManage'=>false],
                 'pwa' => ['enabled' => !empty($pwa['enabled']), 'worker' => $pwa['service_worker_url'] ?? ''],
                 'torrent' => ['worker' => base_url('/tape-room/torrent-worker.js'), 'scope' => base_url('/')],
@@ -118,12 +121,21 @@ final class PlayerController
                         return ['drive' => $drive->status()];
                     case 'drive.connect': return ['authUrl' => $drive->authorizationUrl()];
                     case 'drive.disconnect': $drive->disconnect(); return ['drive' => $drive->status()];
+                    case 'drive.preview':
+                        $files=$drive->importFiles([], (string)($data['link'] ?? ''));
+                        [$source,$folder]=GoogleDrive::linkId((string)($data['link'] ?? ''));
+                        $name=$folder ? (string)($drive->file($source)['name'] ?? '') : pathinfo($files[0]['name'],PATHINFO_FILENAME);
+                        return ['files'=>$files,'name'=>$name];
                     case 'drive.import':
                         $playlist = (int)($data['playlist_id'] ?? 0);
                         if ($playlist) $this->library()->playlist($playlist);
                         $ids = $data['ids'] ?? [];
                         if (!is_array($ids)) throw new \InvalidArgumentException('Выберите файлы Google Drive.');
                         $files = $drive->importFiles($ids, (string)($data['link'] ?? ''));
+                        if (($data['as_album'] ?? '')==='1') {
+                            $result=$this->catalog()->importDriveAlbum($files,$data);
+                            return [...$result,...$this->library()->state()];
+                        }
                         $count = $this->library()->importDrive($files, $playlist);
                         $sourceIds = array_column($files,'id');
                         $imported = db()->query('SELECT id,source_id FROM reel_tracks WHERE owner_id=? AND source=? AND source_id IN ('.implode(',',array_fill(0,count($sourceIds),'?')).')',[(int)get_user()['id'],'drive',...$sourceIds])->get() ?: [];

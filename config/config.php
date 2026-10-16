@@ -68,8 +68,8 @@ $defaults = [
         'geoip_enabled' => true,
     ],
     'UPLOAD_SETTINGS' => [
-        // Security default: keep the global upload ceiling conservative; local config may raise it deliberately.
-        'max_file_size' => 50 * 1024 * 1024,
+        // Per-file ceiling; PHP/request limits and file-type checks still apply.
+        'max_file_size' => 150 * 1024 * 1024,
     ],
     'PAGINATION_SETTINGS' => [
         'perPage' => 20,

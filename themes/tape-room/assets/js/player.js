@@ -144,6 +144,7 @@
         $('[data-sort-trigger]').setAttribute('aria-label', `Сортировка музыки: ${label}`);
     }
     function render() {
+        for(const item of trackPool)if(qualityCache.has(item.id))item.quality=qualityCache.get(item.id);
         if (selected > 0 && !playlist(selected)) selected = 0;
         if ((libraryView.type === 'album' && !album(libraryView.id)) || (libraryView.type === 'playlist' && !playlist(libraryView.id))) libraryView = {type:'mine'};
         if ((queueSource.type === 'album' && !album(queueSource.id)) || (queueSource.type === 'playlist' && !playlist(queueSource.id))) { queueSource = {type:'songs'}; queuePlaylist = 0; queueSort = librarySort; }
@@ -186,7 +187,7 @@
             if(genre){const label=element('span','rp-track-genre',genre);label.title=`Жанр: ${genre}`;info.append(label);}
             const actions = element('div', 'rp-track-actions');
             const canReorder = selected > 0 && playlistSort === 'playlist';
-            actions.innerHTML = (canReorder ? button('move-up', 'Переместить выше', 'up', t.id, 'rp-reorder') + button('move-down', 'Переместить ниже', 'down', t.id, 'rp-reorder') : '') + button('favorite', t.favorite ? 'Убрать из избранного' : 'Добавить в избранное', t.favorite ? 'heart-filled' : 'heart', t.id, `rp-favorite${t.favorite ? ' is-active' : ''}`) + button('add-to-playlist', 'Добавить в плейлист', 'plus', t.id) + (!t.shared ? button('edit-track', 'Изменить трек', 'edit', t.id) : '') + (selected > 0 ? button('remove-track','Убрать из плейлиста','trash',t.id) : !t.shared && libraryView.type === 'songs' ? button('delete-track','Удалить из библиотеки','trash',t.id) : '');
+            actions.innerHTML = button('share-track','Поделиться песней','share',t.id) + (canReorder ? button('move-up', 'Переместить выше', 'up', t.id, 'rp-reorder') + button('move-down', 'Переместить ниже', 'down', t.id, 'rp-reorder') : '') + button('favorite', t.favorite ? 'Убрать из избранного' : 'Добавить в избранное', t.favorite ? 'heart-filled' : 'heart', t.id, `rp-favorite${t.favorite ? ' is-active' : ''}`) + button('add-to-playlist', 'Добавить в плейлист', 'plus', t.id) + (!t.shared ? button('edit-track', 'Изменить трек', 'edit', t.id) : '') + (selected > 0 ? button('remove-track','Убрать из плейлиста','trash',t.id) : !t.shared && libraryView.type === 'songs' ? button('delete-track','Удалить из библиотеки','trash',t.id) : '');
             actions.querySelector('[data-action="favorite"]').setAttribute('aria-pressed', String(t.favorite));
             if(t.browserLocal)actions.querySelector('[data-action="add-to-playlist"]')?.remove();
             if (canReorder) {
@@ -228,9 +229,10 @@
         try {
             const result = await api(`${t.shared ? 'catalog/' : ''}quality/${id}`,undefined,controller.signal);
             if (generation !== version || current !== id || controller.signal.aborted) return;
-            qualityCache.set(id,result.quality || {});
+            qualityCache.set(id,result.quality || {});const item=track(id);if(item)item.quality=result.quality;
             if (qualityCache.size > 64) qualityCache.delete(qualityCache.keys().next().value);
             drawAudioQuality();
+            if(libraryView.type==='album'){const entry=album(libraryView.id),items=(entry?.tracks||[]).map(track).filter(Boolean),info=app.querySelector('.rp-album-detail-info'),badge=window.TapeRoomQuality.albumBadge(items);if(info&&badge&&!info.querySelector('.tr-lossless-badge'))info.querySelector('.rp-album-detail-meta')?.insertAdjacentHTML('afterend',badge);}
         } catch (_) { /* Optional technical metadata never gates music or opens an error dialog. */ }
         finally { clearTimeout(job.timer); if (qualityJob === job) qualityJob = null; }
     }
@@ -672,12 +674,24 @@
         if (cover?.size) form.set('cover', cover);
         return mutate(async () => { const result = await api('action', form); if (result.tracks) applyState(result); return result; });
     }
+    function shareMusic(kind,id){
+        const item=kind==='album'?album(id):track(id);if(!item)return;
+        const published=kind==='album'?item.published:(data.catalog?.albums||[]).some(album=>album.published&&album.tracks.includes(Number(id)));
+        if(!published||item.browserLocal){openDialog('Поделиться музыкой','',async()=>{},item.browserLocal?'Torrent хранится только в вашем браузере. Для общей ссылки добавьте музыку в каталог сайта.':'Ссылка и код для вставки появятся после публикации альбома и одобрения модератором.');$('[data-dialog-submit]').hidden=true;return;}
+        const url=`${config.shareBase}${kind}/${id}`,base=`${config.embedBase}${kind}/${id}`,height=kind==='album'?520:250;
+        openDialog(kind==='album'?'Поделиться альбомом':'Поделиться песней',`<label class="rp-field">Ссылка<input type="url" name="share_url" value="${esc(url)}" readonly></label><button class="btn btn-outline-secondary" type="button" data-action="share-copy" data-target="share_url">${icon('link')}Копировать ссылку</button><hr><label class="rp-field">Тема плеера<select name="embed_theme"><option value="auto">Как на устройстве</option><option value="light">Светлая</option><option value="dark">Тёмная</option></select></label><label class="rp-field">Код для вставки на сайт<textarea name="embed_code" rows="4" readonly></textarea></label><button class="btn btn-outline-secondary" type="button" data-action="share-copy" data-target="embed_code">${icon('share')}Копировать код iframe</button>`,async()=>{},'Плеер встраивается без автоматического запуска. Слушателям не нужен аккаунт.');
+        const update=()=>{const theme=dialog.querySelector('[name="embed_theme"]').value;dialog.querySelector('[name="embed_code"]').value=`<iframe src="${base}?theme=${theme}" title="${esc(item.title)} — Tape Room" width="100%" height="${height}" style="display:block;border:0;border-radius:18px;overflow:hidden" loading="lazy" allow="autoplay" referrerpolicy="strict-origin-when-cross-origin"></iframe>`;};
+        dialog.querySelector('[name="embed_theme"]').addEventListener('change',update);update();$('[data-dialog-submit]').hidden=true;
+    }
     function showSignIn(){
         openDialog('Войдите в Tape Room',`<div class="d-flex flex-wrap gap-2"><a class="btn btn-primary" href="${esc(config.login)}">Войти</a><a class="btn btn-outline-secondary" href="${esc(config.register)}">Регистрация</a></div>`,async()=>{},'Слушать музыку можно без аккаунта. Войдите, чтобы добавлять альбомы, песни и сохранять свою коллекцию.');
         $('[data-dialog-submit]').hidden=true;
     }
     function openDialog(title, fields, handler, description = '', submit = 'Сохранить', danger = false) {
         dialogRequest++;
+        dialog.querySelectorAll('[data-drive-footer-control]').forEach(control=>control.remove());
+        dialog.querySelector('.modal-footer').classList.remove('tr-drive-footer');
+        dialog.querySelector('.modal-footer [data-action="close-dialog"]').hidden=false;
         chapterJob?.abort(); chapterJob = null;
         if (coverPreviewUrl) { URL.revokeObjectURL(coverPreviewUrl); coverPreviewUrl = undefined; }
         dialogSubmitting = false;
@@ -869,10 +883,10 @@
         const order = [...(value.tracks || []), ...data.tracks.map(t=>t.id).filter(trackId=>!(value.tracks || []).includes(trackId))];
         const members = new Set(value.tracks || []);
         const rows = order.map(track).filter(t=>t && !t.shared && !t.browserLocal).map(t=>`<div class="rp-album-member" data-album-member="${t.id}"><label><input type="checkbox" name="album_tracks[]" value="${t.id}" ${members.has(t.id) ? 'checked' : ''}><span><strong>${esc(t.title)}</strong><small>${esc(t.artist || t.filename)}</small></span></label><div>${button('album-order-up','Переместить выше','up',t.id)}${button('album-order-down','Переместить ниже','down',t.id)}</div></div>`).join('');
-        const fields = field('title','Название альбома',value.title || '') + field('artist','Артист / исполнитель альбома',value.artist || '') + genrePicker.markup(value.genreId || value.genre_id || 0) + `<label class="rp-field">Дата релиза (если известна)<input type="date" name="release_date" value="${esc(value.release_date || '')}"></label><label class="rp-field">Описание<textarea name="description" maxlength="4000" rows="3">${esc(value.description || '')}</textarea></label><div class="rp-cover-field"><span class="rp-field-label">Обложка альбома</span><label class="rp-cover-picker"><input class="rp-file-input" type="file" name="cover" accept="image/jpeg,image/png,image/webp" aria-label="Выбрать обложку альбома">${previewImage(value.cover,'Обложка альбома')}<span class="rp-cover-picker-info"><span class="rp-cover-picker-button">${icon('upload')}Выбрать обложку</span><span data-cover-filename>JPG, PNG или WebP · до 8 МБ</span></span></label></div><div class="rp-album-members-heading"><h3>Песни и порядок</h3><small>Используются ваши исходные файлы</small></div><label class="rp-search">${icon('search')}<input type="search" data-album-track-search placeholder="Найти песню для альбома" aria-label="Найти песню для альбома"></label><div class="rp-album-members">${rows || '<p>Сначала добавьте музыку в CMS или из Google Drive.</p>'}</div>`;
+        const fields = field('title','Название альбома',value.title || '') + field('artist','Артист / исполнитель альбома',value.artist || '') + genrePicker.markup(value.genreIds || value.genreId || value.genre_id || 0) + `<label class="rp-field">Дата релиза (если известна)<input type="date" name="release_date" value="${esc(value.release_date || '')}"></label><label class="rp-field">Описание<textarea name="description" maxlength="4000" rows="3">${esc(value.description || '')}</textarea></label><div class="rp-cover-field"><span class="rp-field-label">Обложка альбома</span><label class="rp-cover-picker"><input class="rp-file-input" type="file" name="cover" accept="image/jpeg,image/png,image/webp" aria-label="Выбрать обложку альбома">${previewImage(value.cover,'Обложка альбома')}<span class="rp-cover-picker-info"><span class="rp-cover-picker-button">${icon('upload')}Выбрать обложку</span><span data-cover-filename>JPG, PNG или WebP · до 8 МБ</span></span></label></div><div class="rp-album-members-heading"><h3>Песни и порядок</h3><small>Используются ваши исходные файлы</small></div><label class="rp-search">${icon('search')}<input type="search" data-album-track-search placeholder="Найти песню для альбома" aria-label="Найти песню для альбома"></label><div class="rp-album-members">${rows || '<p>Сначала добавьте музыку в CMS или из Google Drive.</p>'}</div>`;
         openDialog(existing ? 'Редактировать альбом' : 'Новый альбом',fields,async form => {
             const ids = [...dialog.querySelectorAll('[data-album-member] input:checked')].map(input=>Number(input.value));
-            const result = await action(`catalog.album.${existing ? 'update' : 'create'}`,{id,title:form.get('title'),artist:form.get('artist'),release_date:form.get('release_date'),description:form.get('description'),genre_id:genrePicker.value(),tracks:JSON.stringify(ids)},form.get('cover'));
+            const result = await action(`catalog.album.${existing ? 'update' : 'create'}`,{id,title:form.get('title'),artist:form.get('artist'),release_date:form.get('release_date'),description:form.get('description'),genre_ids:JSON.stringify(genrePicker.values()),tracks:JSON.stringify(ids)},form.get('cover'));
             browse({type:'album',id:existing?.id || result.id}); toast(existing ? 'Альбом сохранён.' : 'Альбом добавлен в вашу коллекцию.');
         },data.catalog?.autoApprove ? 'Ваши альбомы публикуются без дополнительной модерации.' : 'Альбом объединяет песни и не создаёт копий аудио. После отправки публикацию проверит модератор.');
         dialog.classList.add('rp-dialog--album');
@@ -960,7 +974,7 @@
     function editTrack(id) {
         const t = track(id); if (!t || t.shared) return;
         const genrePicker=new window.TapeRoomGenrePicker(data.catalog?.genres || []);
-        openDialog('О композиции', field('title','Название',t.title) + field('artist','Исполнитель',t.artist) + genrePicker.markup(t.genreId) + `<div class="rp-cover-field"><span class="rp-field-label">Обложка</span><label class="rp-cover-picker"><input class="rp-file-input" type="file" name="cover" accept="image/jpeg,image/png,image/webp" aria-label="Выбрать обложку">${previewImage(t.cover,'Предварительный просмотр обложки')}<span class="rp-cover-picker-info"><span class="rp-cover-picker-button">${icon('upload')}Выбрать обложку</span><span data-cover-filename>JPG, PNG или WebP · до 8 МБ</span></span></label></div><div class="rp-chapter-editor-actions"><button type="button" class="rp-button" data-action="chapter-add" data-track-id="${t.id}">${icon('plus')}Добавить таймкод</button><button type="button" class="rp-button" data-action="chapter-tools" data-track-id="${t.id}">${icon('list')}CUE и автопоиск</button></div>`, form => action('track.update',{id,title:form.get('title'),artist:form.get('artist'),genre_id:genrePicker.value()},form.get('cover')));
+        openDialog('О композиции', field('title','Название',t.title) + field('artist','Исполнитель',t.artist) + genrePicker.markup(t.genreIds || t.genreId) + `<div class="rp-cover-field"><span class="rp-field-label">Обложка</span><label class="rp-cover-picker"><input class="rp-file-input" type="file" name="cover" accept="image/jpeg,image/png,image/webp" aria-label="Выбрать обложку">${previewImage(t.cover,'Предварительный просмотр обложки')}<span class="rp-cover-picker-info"><span class="rp-cover-picker-button">${icon('upload')}Выбрать обложку</span><span data-cover-filename>JPG, PNG или WebP · до 8 МБ</span></span></label></div><div class="rp-chapter-editor-actions"><button type="button" class="rp-button" data-action="chapter-add" data-track-id="${t.id}">${icon('plus')}Добавить таймкод</button><button type="button" class="rp-button" data-action="chapter-tools" data-track-id="${t.id}">${icon('list')}CUE и автопоиск</button></div>`, form => action('track.update',{id,title:form.get('title'),artist:form.get('artist'),genre_ids:JSON.stringify(genrePicker.values())},form.get('cover')));
         genrePicker.mount(dialog);
         if(t.browserLocal)dialog.querySelector('.rp-chapter-editor-actions')?.remove();
         if(!t.genreId && t.genre_tag)genrePicker.match(t.genre_tag);
@@ -1116,20 +1130,26 @@
                     if (target >= 0 && target < ids.length) { [ids[index],ids[target]] = [ids[target],ids[index]]; await action('playlist.reorder',{id:selected,tracks:ids}); }
                     break;
                 }
+                case 'share-album': shareMusic('album',id);break;
+                case 'share-track': shareMusic('track',id);break;
+                case 'share-copy': {const input=dialog.querySelector(`[name="${control.dataset.target}"]`);try{await navigator.clipboard.writeText(input.value);toast('Скопировано.');}catch(_){input.focus();input.select();toast('Выделено. Скопируйте текст вручную.');}break;}
                 case 'drive': await openDrive(); break;
-                case 'drive-settings': await driveSettings(); break;
-                case 'player-settings': await driveSettings(); break;
+                case 'drive-settings': location.assign(config.driveSettings); break;
+                case 'player-settings': location.assign(config.driveSettings); break;
                 case 'drive-connect': {
                     if (!config.drive?.configured) { toast('Создатель сайта ещё не настроил подключение Google Drive.',true); break; }
                     control.disabled = true; const result = await action('drive.connect'); location.assign(result.authUrl); break;
                 }
                 case 'drive-disconnect': openDialog('Отключить Google Drive?', '', async () => { await action('drive.disconnect'); config.drive.connected = false; toast('Google Drive отключён.'); }, 'Ленты сохранятся. Чтобы слушать облачные треки, подключите аккаунт снова.', 'Отключить'); break;
+                case 'drive-source': driveMode=control.dataset.mode;dialog.querySelector('[name="link"]').disabled=driveMode!=='link';dialog.querySelector('[data-drive-link-field]').hidden=driveMode!=='link';dialog.querySelectorAll('[data-action="drive-source"]').forEach(button=>{const active=button===control;button.classList.toggle('is-selected',active);button.setAttribute('aria-pressed',String(active));});break;
+                case 'drive-next': control.disabled=true;try{await nextDriveStep();}finally{if(control.isConnected)updateDriveSelection();}break;
+                case 'drive-back':setDriveStep(Math.max(1,driveStep-1));break;
                 case 'drive-more': await driveFiles(control.dataset.page); break;
                 case 'drive-select-all': {
                     const ids = [...driveKnownFiles.keys()], allSelected = ids.every(id => driveSelection.has(id));
                     for (const fileId of ids) {
                         if (allSelected) driveSelection.delete(fileId);
-                        else if (driveSelection.size < 100) driveSelection.add(fileId);
+                        else if (driveSelection.size < 1000) driveSelection.add(fileId);
                     }
                     dialog.querySelectorAll('[data-drive-file]').forEach(box => { box.checked = driveSelection.has(box.value); });
                     updateDriveSelection(); break;
@@ -1139,14 +1159,13 @@
                 case 'drive-root': drivePath = [{id:'root',name:'Мой Drive'}]; await navigateDrive(); break;
                 case 'drive-parent': drivePath = drivePath.slice(0,Number(control.dataset.depth)+1); await navigateDrive(); break;
                 case 'drive-all': drivePath = []; await navigateDrive(); break;
-                case 'drive-add-folder':
-                    dialog.querySelector('[name="link"]').value = `https://drive.google.com/drive/folders/${drivePath.at(-1).id}`;
-                    updateDriveSelection(); toast('Ссылка на текущую папку подставлена. Нажмите «Добавить музыку».'); break;
             }
         } catch (error) { toast(error.message,true); if (control.isConnected) control.disabled = false; }
     });
     $('[data-dialog-form]').addEventListener('submit', async event => {
-        event.preventDefault(); const control = $('[data-dialog-submit]'); if (control.disabled) return;
+        event.preventDefault();
+        if(dialog.classList.contains('rp-dialog--drive') && driveStep<3){try{await nextDriveStep();}catch(error){$('[data-dialog-error]').textContent=error.message;$('[data-dialog-error]').hidden=false;}return;}
+        const control = $('[data-dialog-submit]'); if (control.disabled) return;
         const request = dialogRequest;
         dialogSubmitting = true; control.disabled = true; $('[data-dialog-error]').hidden = true;
         try { await dialogHandler(new FormData(event.currentTarget)); if (request === dialogRequest){dialogSubmitting=false;closeDialog();} }
@@ -1300,11 +1319,11 @@
     window.addEventListener('online', () => { preloader.connectivity(true); meterController.network(true); prepareUpcoming(); if (!audio.paused) resumeMeters(); });
     window.addEventListener('pageshow', () => { drawProgress(); if (!audio.paused) { resumeMeters(); startAnimation(); } });
     window.addEventListener('focus', () => { if (!audio.paused) { resumeMeters(); startAnimation(); } });
-    if (!config.torrent && config.pwa?.enabled && config.pwa.worker && 'serviceWorker' in navigator && window.isSecureContext) {
+    if ((!config.torrent || config.authenticated===false) && config.pwa?.enabled && config.pwa.worker && 'serviceWorker' in navigator && window.isSecureContext) {
         navigator.serviceWorker.register(config.pwa.worker, {scope:'/', updateViaCache:'none'}).catch(() => {});
     }
 
-    let driveSelection = new Set(), driveKnownFiles = new Map(), driveFolders = new Set(), drivePath = [], driveBrowseGeneration = 0;
+    let driveSelection=new Set(),driveKnownFiles=new Map(),driveChosenFiles=new Map(),driveFolders=new Set(),drivePath=[],driveBrowseGeneration=0,driveStep=1,driveMode='browse',driveGenrePicker;
     const isDriveFolder = file => file.mimeType === 'application/vnd.google-apps.folder';
     const isDriveAudio = file => /\.(mp3|flac|wav|m4a|ogg|opus|aac|webm)$/i.test(file.name || '') && Number(file.size) > 0 && file.capabilities?.canDownload !== false;
     const driveSize = value => {
@@ -1318,12 +1337,15 @@
         summary.textContent = `Выбрано: ${driveSelection.size}`;
         const bulk = dialog.querySelector('[data-action="drive-select-all"]');
         bulk.disabled = driveKnownFiles.size === 0;
-        bulk.textContent = driveKnownFiles.size && [...driveKnownFiles.keys()].every(id => driveSelection.has(id)) ? 'Снять выбор в папке' : driveKnownFiles.size > 100 ? 'Выбрать до 100' : 'Выбрать показанные';
+        bulk.textContent = driveKnownFiles.size && [...driveKnownFiles.keys()].every(id => driveSelection.has(id)) ? 'Снять выбор в папке' : driveKnownFiles.size > 1000 ? 'Выбрать до 1000' : 'Выбрать показанные';
         dialog.querySelector('[data-action="drive-clear"]').hidden = !driveSelection.size;
-        const hasLink = Boolean(dialog.querySelector('[name="link"]').value.trim());
-        const submit = $('[data-dialog-submit]');
-        submit.disabled = dialogSubmitting || (!driveSelection.size && !hasLink);
-        submit.textContent = hasLink ? 'Добавить музыку' : driveSelection.size ? `Добавить (${driveSelection.size})` : 'Выберите песни';
+        const submit=$('[data-dialog-submit]'),asAlbum=dialog.querySelector('[name="as_album"]')?.checked;
+        submit.hidden=driveStep!==3;submit.disabled=dialogSubmitting||!driveSelection.size;
+        submit.textContent=asAlbum?'Создать альбом':`Добавить песни (${driveSelection.size})`;
+        const albumFields=dialog.querySelector('[data-drive-album-fields]');if(albumFields)albumFields.hidden=!asAlbum;
+        const title=dialog.querySelector('[name="title"]');if(title)title.required=driveStep===3&&asAlbum;
+        const next=dialog.querySelector('[data-action="drive-next"]');if(next)next.disabled=driveStep===2&&!driveSelection.size;
+
     }
     function renderDrivePath() {
         const nav = dialog.querySelector('[data-drive-path]'); nav.replaceChildren();
@@ -1334,7 +1356,7 @@
             const crumb = element('button','rp-drive-crumb',folder.name); crumb.type = 'button'; crumb.title = folder.name; crumb.dataset.action = 'drive-parent'; crumb.dataset.depth = index+1; crumb.disabled = index === crumbs.length-1; nav.append(crumb);
         });
         const all = dialog.querySelector('[data-action="drive-all"]'); all.hidden = !drivePath.length;
-        dialog.querySelector('[data-action="drive-add-folder"]').hidden = drivePath.length <= 1;
+
     }
     async function navigateDrive() {
         driveBrowseGeneration++; driveKnownFiles = new Map(); driveFolders = new Set();
@@ -1342,24 +1364,6 @@
         dialog.querySelector('[data-drive-count]').textContent = 'Загрузка…';
         renderDrivePath(); updateDriveSelection();
         await driveFiles();
-    }
-    function driveSetupHelp(callback) {
-        return `<div class="rp-drive-description">
-            <p>Адрес возврата после входа в Google. Добавьте его без изменений в <strong>Authorized redirect URIs</strong>:</p>
-            <code>${esc(callback)}</code>
-            <details class="rp-drive-help"><summary>Как подключить свой Google Drive</summary>
-                <ol>
-                    <li>Откройте <a href="https://console.cloud.google.com/" target="_blank" rel="noopener noreferrer">Google Cloud Console ↗</a> и создайте проект <strong>Tape Room</strong>.</li>
-                    <li>В выбранном проекте откройте <a href="https://console.cloud.google.com/apis/library/drive.googleapis.com" target="_blank" rel="noopener noreferrer">Google Drive API ↗</a> и нажмите <strong>Enable / Включить</strong>.</li>
-                    <li>В <strong>Google Auth Platform</strong> укажите название приложения и свою почту. Выберите <strong>External</strong>; в <strong>Audience → Test users</strong> добавьте почты Google-аккаунтов, которые будут пользоваться плеером, включая администраторов. В <strong>Data Access</strong> добавьте разрешение <strong>drive.readonly</strong> для чтения файлов.</li>
-                    <li>В <strong>Clients → Create client</strong> выберите <strong>Web application</strong>. В <strong>Authorized redirect URIs</strong> вставьте адрес, показанный выше.</li>
-                    <li>Вставьте полученные <strong>Client ID</strong> и <strong>Client Secret</strong> в поля этой формы и нажмите <strong>Сохранить</strong>. Это общая настройка сайта. В плеере каждый пользователь нажимает <strong>Войти в Google Drive</strong> и выбирает свой аккаунт.</li>
-                    <li>Выберите аккаунт и разрешите чтение Drive. Затем отметьте песни в списке или вставьте ссылку на папку и нажмите <strong>Добавить</strong>.</li>
-                </ol>
-                <p>В режиме Testing Google выдаёт доступ на 7 дней, затем нужно подключиться снова. Для постоянного использования настройте публикацию приложения в Google Auth Platform.</p>
-                <a href="https://developers.google.com/identity/protocols/oauth2/web-server#prerequisites" target="_blank" rel="noopener noreferrer">Официальная инструкция Google ↗</a>
-            </details>
-        </div>`;
     }
     async function driveDialogStatus(request) {
         try {
@@ -1370,36 +1374,69 @@
             return null;
         }
     }
-    async function driveSettings() {
-        const status = await driveDialogStatus(++dialogRequest); if (!status) return;
-        config.drive = status.drive;
-        if (!status.drive.canManage) { toast('Настройки доступны только создателю сайта.',true); return; }
-        openDialog('Настройки плеера', '<div class="rp-settings-section"><h3>Google Drive</h3><p>Подключение для всего сайта. Каждый администратор входит в собственный Google-аккаунт.</p></div>' + field('client_id','OAuth Client ID',status.drive.clientId,500) + '<label class="rp-field">OAuth Client Secret<input type="password" name="client_secret" autocomplete="off" placeholder="' + (status.drive.configured ? 'Оставьте пустым, чтобы сохранить текущий' : 'Введите секрет клиента') + '"></label>' + driveSetupHelp(status.drive.callback), async form => {
-            const result = await action('drive.settings',{client_id:form.get('client_id'),client_secret:form.get('client_secret')}); config.drive = result.drive;
-            toast('Настройки сайта сохранены. Теперь можно войти в Google Drive.');
-        }, 'Эти настройки доступны только создателю сайта и сохраняются один раз для всех пользователей.');
-    }
     async function openDrive() {
         const status = await driveDialogStatus(++dialogRequest); if (!status) return;
         config.drive = status.drive;
         if (!status.drive.connected) {
-            openDialog('Музыка из Google Drive', '<button type="button" class="rp-button rp-google-button" data-action="drive-connect"' + (!status.drive.configured ? ' disabled' : '') + '><span class="rp-google-mark" aria-hidden="true">G</span>Войти в Google Drive</button>' + (!status.drive.configured ? '<p>' + (status.drive.canManage ? 'Откройте шестерёнку «Настройки плеера» и настройте подключение Google для сайта.' : 'Создатель сайта ещё не настроил подключение Google Drive.') + '</p>' : ''), async () => {}, 'Ваша музыка доступна только вашему аккаунту в плеере. Выберите свой Google-аккаунт и разрешите чтение Drive.');
+            openDialog('Музыка из Google Drive', '<button type="button" class="rp-button rp-google-button" data-action="drive-connect"' + (!status.drive.configured ? ' disabled' : '') + '><span class="rp-google-mark" aria-hidden="true">G</span>Войти в Google Drive</button>' + (!status.drive.configured ? '<p>' + (status.drive.canManage ? 'Настройте Google Drive в админ-панели: Tape Room → Настройки.' : 'Создатель сайта ещё не настроил подключение Google Drive.') + '</p>' : ''), async () => {}, 'Ваша музыка доступна только вашему аккаунту в плеере. Выберите свой Google-аккаунт и разрешите чтение Drive.');
             $('[data-dialog-submit]').hidden = true;
             return;
         }
-        driveSelection = new Set(); drivePath = [{id:'root',name:'Мой Drive'}];
-        openDialog('Добавить музыку из Drive', '<div class="rp-drive-location"><nav class="rp-drive-path" data-drive-path aria-label="Папки Google Drive"></nav><button type="button" class="rp-drive-settings-link" data-action="drive-all">Вся музыка</button></div><div class="rp-drive-heading"><span>Папки и музыка</span><small data-drive-count>Загрузка…</small></div><button type="button" class="rp-button rp-drive-add-folder" data-action="drive-add-folder" hidden>Добавить эту папку целиком</button><div class="rp-drive-selection"><span data-drive-selected>Выбрано: 0</span><div class="rp-drive-selection-buttons"><button type="button" class="rp-drive-settings-link" data-action="drive-clear" hidden>Сбросить</button><button type="button" class="rp-button" data-action="drive-select-all" disabled>Выбрать показанные</button></div></div><div class="rp-drive-files" data-drive-files aria-live="polite">Загружаем папки и музыку…</div><label class="rp-field rp-drive-link-field">Или вставьте ссылку на песню / папку<input name="link" type="url" placeholder="https://drive.google.com/…" inputmode="url" autocomplete="off"><small>Ссылка на папку добавит все поддерживаемые песни из самой папки.</small></label><label class="rp-album-import-choice"><input type="checkbox" name="as_album" value="1"><span>Собрать добавленные песни в альбом</span></label><div class="rp-drive-account-actions"><button type="button" class="rp-drive-settings-link" data-action="drive-disconnect">Отключить аккаунт</button></div>', async form => {
-            if (!driveSelection.size && !form.get('link').trim()) throw new Error('Выберите хотя бы один трек или вставьте ссылку.');
-            const result = await action('drive.import',{ids:[...driveSelection],link:form.get('link'),playlist_id:selected > 0 ? selected : 0});
-            if (selected === -1) browse({type:'songs'});
-            toast(`Добавлено треков из Google Drive: ${result.imported}`);
-            const albumPreset={title:drivePath.length>1 ? drivePath.at(-1).name : '',tracks:result.imported_ids || []};
-            refreshDriveMetadata(result.imported_ids || []).catch(()=>{});
-            if (form.get('as_album') === '1' && result.imported_ids?.length) setTimeout(()=>editAlbum(0,albumPreset),0);
-        }, 'Откройте папку с музыкой, отметьте песни и нажмите «Добавить». Музыка останется на Google Drive.', 'Выберите песни');
-        dialog.classList.add('rp-dialog--drive');
-        dialog.querySelector('[name="link"]').addEventListener('input', updateDriveSelection);
-        await navigateDrive();
+        driveSelection=new Set();driveChosenFiles=new Map();drivePath=[{id:'root',name:'Мой Drive'}];driveStep=1;driveMode='browse';
+        driveGenrePicker=new window.TapeRoomGenrePicker(data.catalog?.genres || []);
+        const fields=`<div data-drive-steps>${window.TapeRoomDriveUi.steps(1)}</div>
+            <section data-drive-step="1"><h3 class="tr-import-title">Откуда добавить музыку?</h3><p class="tr-import-note">Музыка останется на Google Drive. В библиотеке сохранятся ссылки на выбранные песни.</p>
+                <div class="tr-import-sources"><button type="button" class="btn tr-import-source is-selected" data-action="drive-source" data-mode="browse" aria-pressed="true">${icon('folder')}<span><strong>Выбрать на Drive</strong><small>Открыть папку и отметить песни</small></span></button><button type="button" class="btn tr-import-source" data-action="drive-source" data-mode="link" aria-pressed="false">${icon('link')}<span><strong>Вставить ссылку</strong><small>На папку или отдельную песню</small></span></button></div>
+                <label class="rp-field tr-import-link" data-drive-link-field hidden>Ссылка Google Drive<input name="link" type="url" placeholder="https://drive.google.com/…" inputmode="url" autocomplete="off"></label>
+                <div class="tr-import-account"><span>${icon('check')} Google Drive подключён</span><button type="button" class="btn btn-link" data-action="drive-disconnect">Отключить</button></div></section>
+            <section data-drive-step="2" hidden><h3 class="tr-import-title">Выберите песни</h3><div class="rp-drive-location"><nav class="rp-drive-path" data-drive-path aria-label="Папки Google Drive"></nav><button type="button" class="btn btn-outline-secondary btn-sm" data-action="drive-all">Вся музыка</button></div><div class="rp-drive-heading"><small data-drive-count>Загрузка…</small></div><div class="rp-drive-selection"><span data-drive-selected>Выбрано: 0</span><div class="rp-drive-selection-buttons"><button type="button" class="btn btn-link btn-sm" data-action="drive-clear" hidden>Сбросить</button><button type="button" class="btn btn-outline-secondary btn-sm" data-action="drive-select-all" disabled>Выбрать показанные</button></div></div><div class="rp-drive-files" data-drive-files aria-live="polite"></div></section>
+            <section data-drive-step="3" hidden><h3 class="tr-import-title">Оформление коллекции</h3><p class="tr-import-note" data-drive-review></p><div class="form-check form-switch tr-import-album-choice"><input class="form-check-input" type="checkbox" id="tr-drive-as-album" name="as_album" value="1" checked><label class="form-check-label" for="tr-drive-as-album">Создать альбом из выбранных песен</label></div><div data-drive-album-fields>${field('title','Название альбома','')}${field('artist','Исполнитель альбома','')}${driveGenrePicker.markup()}<p class="tr-import-note">Название, длительность и обложка песни будут уточнены из тегов, если они есть. Альбом появится в «Моя музыка» и останется личным до публикации.</p></div></section>
+            `;
+        openDialog('Добавить из Google Drive',fields,async form=>{
+            if(driveStep!==3)return;
+            if(!driveSelection.size)throw new Error('Выберите хотя бы одну песню.');
+            const asAlbum=form.get('as_album')==='1';
+            const ids=[...driveSelection].sort((a,b)=>(driveChosenFiles.get(a)?.name||a).localeCompare(driveChosenFiles.get(b)?.name||b,'ru',{numeric:true}));
+            const result=await action('drive.import',{ids,link:'',playlist_id:asAlbum?0:selected>0?selected:0,as_album:asAlbum?'1':'0',title:form.get('title')||'',artist:form.get('artist')||'',genre_ids:JSON.stringify(driveGenrePicker.values())});
+            if(result.album_id)browse({type:'album',id:result.album_id});else if(selected===-1)browse({type:'songs'});
+            toast(result.album_id?'Альбом создан в «Моя музыка».':`Добавлено песен: ${result.imported}`);
+            refreshDriveMetadata(result.imported_ids||[],true).catch(()=>{});
+        },'', 'Создать альбом');
+        dialog.classList.add('rp-dialog--drive');driveGenrePicker.mount(dialog);
+        const footer=dialog.querySelector('.modal-footer');footer.classList.add('tr-drive-footer');
+        for(const [actionName,label,primary] of [['drive-back','Назад',false],['drive-next','Продолжить',true]]){const control=element('button',`btn rp-button ${primary?'btn-primary':'btn-outline-secondary'}`,label);control.type='button';control.dataset.action=actionName;control.dataset.driveFooterControl='';footer.insertBefore(control,$('[data-dialog-submit]'));}
+
+        dialog.querySelector('[name="as_album"]').addEventListener('change',updateDriveSelection);
+        setDriveStep(1);
+    }
+    function setDriveStep(step){
+        driveStep=step;dialog.querySelector('.modal-footer [data-action="close-dialog"]').hidden=step>1;dialog.querySelector('[name="link"]').disabled=step!==1||driveMode!=='link';dialog.querySelector('[data-drive-steps]').innerHTML=window.TapeRoomDriveUi.steps(step);
+        dialog.querySelectorAll('[data-drive-step]').forEach(panel=>panel.hidden=Number(panel.dataset.driveStep)!==step);
+        dialog.querySelector('[data-action="drive-back"]').hidden=step===1;dialog.querySelector('[data-action="drive-next"]').hidden=step===3;
+        dialog.querySelector('[name="title"]').required=step===3&&dialog.querySelector('[name="as_album"]').checked;
+        updateDriveSelection();dialog.querySelector('.modal-body')?.scrollTo({top:0});
+    }
+    async function nextDriveStep(){
+        if(driveStep===1){
+            const request=dialogRequest;
+            if(driveMode==='link'){
+                const link=dialog.querySelector('[name="link"]');if(!link.value.trim())throw new Error('Вставьте ссылку на папку или песню Google Drive.');
+                if(!link.checkValidity()){link.reportValidity();return;}
+                const result=await action('drive.preview',{link:link.value.trim()});if(request!==dialogRequest)return;
+                drivePath=[];driveKnownFiles=new Map();driveFolders=new Set();driveSelection.clear();driveChosenFiles.clear();
+                renderDriveEntries(result.files||[],dialog.querySelector('[data-drive-files]'),true);
+                dialog.querySelector('[data-drive-path]').textContent='По ссылке';dialog.querySelector('[data-action="drive-all"]').hidden=true;
+                dialog.querySelector('[data-drive-count]').textContent=`Песен: ${driveKnownFiles.size}`;
+                for(const file of result.files||[])driveSelection.add(file.id);
+                dialog.querySelectorAll('[data-drive-file]').forEach(box=>box.checked=true);
+                if(result.name)dialog.querySelector('[name="title"]').value=result.name;
+                setDriveStep(2);
+            }else{setDriveStep(2);await navigateDrive();}
+        }else if(driveStep===2){
+            if(!driveSelection.size)throw new Error('Выберите хотя бы одну песню.');
+            const title=dialog.querySelector('[name="title"]');if(!title.value)title.value=drivePath.length>1?drivePath.at(-1).name:'Мой альбом';
+            dialog.querySelector('[data-drive-review]').textContent=`Выбрано песен: ${driveSelection.size}. Проверьте название и жанры перед добавлением.`;setDriveStep(3);
+        }
     }
     async function driveFiles(page = '') {
         const list = $('[data-drive-files]'); if (!list) return;
@@ -1424,7 +1461,15 @@
         }
         if (!page) list.replaceChildren(); else more?.remove();
         list.querySelector('.rp-drive-empty')?.remove();
-        for (const file of files) {
+        renderDriveEntries(files,list);
+        if (!driveKnownFiles.size && !driveFolders.size) list.prepend(element('p','rp-drive-empty',result.nextPageToken ? 'В этой порции файлов нет папок и музыки. Продолжите поиск.' : 'Здесь нет папок и поддерживаемой музыки. Вернитесь назад или вставьте ссылку ниже.'));
+        dialog.querySelector('[data-drive-count]').textContent = `${folder ? `Папок: ${driveFolders.size} · ` : ''}песен: ${driveKnownFiles.size}${result.nextPageToken ? ' · есть ещё' : ''}`;
+        if (result.nextPageToken) { const next = element('button','rp-button rp-drive-more','Показать ещё'); next.type = 'button'; next.dataset.action = 'drive-more'; next.dataset.page = result.nextPageToken; list.append(next); }
+        updateDriveSelection();
+    }
+    function renderDriveEntries(files,list,clear=false){
+        if(clear)list.replaceChildren();
+        for (const file of window.TapeRoomDriveUi.sort(files)) {
             if (isDriveFolder(file)) {
                 if (driveFolders.has(file.id)) continue;
                 driveFolders.add(file.id);
@@ -1434,21 +1479,17 @@
                 list.insertBefore(entry,list.querySelector('.rp-drive-file')); continue;
             }
             if (driveKnownFiles.has(file.id)) continue;
-            driveKnownFiles.set(file.id,file);
+            driveKnownFiles.set(file.id,file);driveChosenFiles.set(file.id,file);
             const label = element('label','rp-drive-file'), box = element('input',''); box.type = 'checkbox'; box.value = file.id; box.checked = driveSelection.has(file.id); box.dataset.driveFile = '';
             box.setAttribute('aria-label',`Выбрать ${file.name}`);
             box.addEventListener('change', () => {
-                if (box.checked && driveSelection.size >= 100) { box.checked = false; toast('За один раз можно выбрать до 100 песен. Папку целиком можно добавить по ссылке.',true); return; }
+                if (box.checked && driveSelection.size >= 1000) { box.checked = false; toast('За один раз можно выбрать до 1000 песен.',true); return; }
                 box.checked ? driveSelection.add(file.id) : driveSelection.delete(file.id); updateDriveSelection();
             });
             const mark = element('span','rp-drive-file-icon'); mark.innerHTML = icon('music');
             const info = element('span','rp-drive-file-info'); info.append(element('span','rp-drive-file-name',file.name),element('small','rp-drive-file-format',file.name.split('.').pop().toUpperCase()));
             label.append(box,mark,info,element('small','rp-drive-file-size',driveSize(file.size))); list.append(label);
         }
-        if (!driveKnownFiles.size && !driveFolders.size) list.prepend(element('p','rp-drive-empty',result.nextPageToken ? 'В этой порции файлов нет папок и музыки. Продолжите поиск.' : 'Здесь нет папок и поддерживаемой музыки. Вернитесь назад или вставьте ссылку ниже.'));
-        dialog.querySelector('[data-drive-count]').textContent = `${folder ? `Папок: ${driveFolders.size} · ` : ''}песен: ${driveKnownFiles.size}${result.nextPageToken ? ' · есть ещё' : ''}`;
-        if (result.nextPageToken) { const next = element('button','rp-button rp-drive-more','Показать ещё'); next.type = 'button'; next.dataset.action = 'drive-more'; next.dataset.page = result.nextPageToken; list.append(next); }
-        updateDriveSelection();
     }
     dialogShell.addEventListener('hidden.bs.modal', () => { if(dialogReturnFocus?.isConnected)dialogReturnFocus.focus({preventScroll:true}); dialogRequest++; driveBrowseGeneration++; chapterJob?.abort(); chapterJob = null; $('[data-dialog-submit]').hidden = false; if (coverPreviewUrl) { URL.revokeObjectURL(coverPreviewUrl); coverPreviewUrl = undefined; } });
     app.querySelectorAll('[data-theme-cover]').forEach(image=>{ image.decode?.().catch(()=>{}); });

@@ -37,7 +37,6 @@ $button = static function (string $action, string $label, string $name, string $
         <div class="rp-brand"><b class="rp-brand-name">TAPE ROOM<small class="rp-beta">БЕТА</small></b><span>ЛИЧНАЯ МУЗЫКАЛЬНАЯ КОМНАТА</span></div>
         <div class="rp-header-actions">
             <a class="rp-icon-button" href="<?= htmlSC(base_href('/profile')) ?>" aria-label="Аккаунт" title="Аккаунт"><?= $icon('user') ?></a>
-            <?php if (!empty($config['drive']['canManage'])): ?><?= $button('player-settings', 'Настройки плеера', 'settings') ?><?php endif; ?>
             <?= $button('theme', 'Включить тёмную тему', 'moon') ?>
         </div>
     </header>

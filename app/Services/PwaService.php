@@ -71,6 +71,7 @@ class PwaService
             'favicon_url' => $icons['favicon']['src'],
             'favicon_type' => $icons['favicon']['type'],
             'apple_touch_icon_url' => $icons['apple']['src'],
+            'app_icon_192_url' => $icons['sizes'][192] ?? '',
             'startup_image_url' => $this->startupImageUrl(),
             'vapid_public_key' => $this->settings->get('pwa_vapid_public_key', ''),
         ];
@@ -156,12 +157,12 @@ class PwaService
             ];
         }
 
-        if ($icons === [] && !empty($set['svg'])) {
+        if (!empty($set['svg'])) {
             $icons[] = [
                 'src' => $set['svg'],
                 'sizes' => 'any',
                 'type' => 'image/svg+xml',
-                'purpose' => 'any maskable',
+                'purpose' => 'any',
             ];
         }
 
@@ -173,13 +174,19 @@ class PwaService
         $source = $this->resolveIconSource();
         if (($source['type'] ?? '') === 'svg') {
             $url = $this->withVersion($this->assetUrlFromLocalPath($source['path']) ?: base_url('/assets/img/fbl_logo.png'), $source['path']);
-
+            // iOS home-screen icons require a raster touch icon. A vector must
+            // never be advertised as a 512px PNG maskable icon in the manifest.
+            $fallbackDir=WWW.'/assets/default/pwa';$sizes=[];
+            foreach ([48,72,96,128,144,152,192,384,512] as $size) {
+                $file=$fallbackDir.'/icon-'.$size.'.png';
+                if (is_file($file)) $sizes[$size]=$this->withVersion(base_url('/assets/default/pwa/icon-'.$size.'.png'),$file);
+            }
             return [
                 'source' => $source,
                 'favicon' => ['src' => $url, 'type' => 'image/svg+xml'],
-                'apple' => ['src' => $url, 'type' => 'image/svg+xml'],
-                'sizes' => [],
-                'maskable' => $url,
+                'apple' => ['src' => $this->withVersion(base_url('/assets/default/pwa/apple-touch-icon.png'),$fallbackDir.'/apple-touch-icon.png'), 'type' => 'image/png'],
+                'sizes' => $sizes,
+                'maskable' => is_file($fallbackDir.'/icon-maskable-512.png') ? $this->withVersion(base_url('/assets/default/pwa/icon-maskable-512.png'),$fallbackDir.'/icon-maskable-512.png') : '',
                 'svg' => $url,
             ];
         }

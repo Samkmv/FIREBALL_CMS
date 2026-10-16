@@ -322,7 +322,7 @@ final class GoogleDrive
 
     public function importFiles(array $ids, string $link): array
     {
-        if (count($ids) > 100) throw new \InvalidArgumentException('Выберите до 100 треков за один раз.');
+        if (count($ids) > 1000) throw new \InvalidArgumentException('Выберите до 1000 треков за один раз.');
         $files = [];
         foreach (array_unique($ids) as $id) {
             if (!is_string($id)) throw new \InvalidArgumentException('Некорректный файл Google Drive.');

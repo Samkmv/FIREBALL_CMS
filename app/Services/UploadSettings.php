@@ -4,7 +4,7 @@ namespace App\Services;
 
 final class UploadSettings
 {
-    public const DEFAULT_MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024;
+    public const DEFAULT_MAX_FILE_SIZE_BYTES = 150 * 1024 * 1024;
 
     public static function maxFileSizeBytes(): int
     {

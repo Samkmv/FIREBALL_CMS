@@ -36,12 +36,13 @@
         });
         publish();recent();
     }
+    const genreData=item=>{const ids=(item.genreIds || (item.genreId?[item.genreId]:[])).map(Number),selected=ids.map(id=>genres.find(genre=>Number(genre.id)===id)).filter(Boolean);return {genreIds:ids,genres:selected,genreId:ids[0]||0,genre:selected.map(item=>item.name).join(', ')||item.genre||''};};
     function library(){
-        return {albums:records.map(record=>({id:record.id,title:record.title,artist:record.artist,genreId:record.genreId||0,genre:genres.find(g=>Number(g.id)===Number(record.genreId))?.name||record.genre||'',
+        return {albums:records.map(record=>({id:record.id,title:record.title,artist:record.artist,...genreData(record),
             tracks:record.tracks.map(track=>track.id),saved:true,editable:false,published:false,browserLocal:true,torrentHash:record.hash,cover:image(record.cover),
             description:'Torrent · хранится в этом браузере. Музыка поступает напрямую от участников раздачи.'})),
         tracks:records.flatMap(record=>record.tracks.map(track=>({...track,source:'torrent',browserLocal:true,torrentHash:record.hash,shared:false,cover:image(track.cover||record.cover),
-            artist:track.artist||record.artist,genreId:track.genreId||record.genreId||0,genre:genres.find(g=>Number(g.id)===Number(track.genreId||record.genreId))?.name||track.genre||record.genre||'',url:'',chapters:[]})))};
+            artist:track.artist||record.artist,...genreData(track.genreIds?.length||track.genreId?track:record),url:'',chapters:[]})))};
     }
     function publish(select=0){player.dispatchEvent(new CustomEvent('tape-room:browser-library',{detail:{library:library(),select}}));}
     function recent(){
@@ -49,7 +50,7 @@
         $('[data-torrent-jobs]').innerHTML=records.map(record=>`<div class="tr-torrent-job"><button class="btn btn-outline-secondary text-start flex-grow-1" type="button" data-torrent-edit="${record.hash}"><span>${escape(record.title)}</span><small>${record.tracks.length} песен · в этом браузере</small></button><button class="btn btn-outline-secondary" type="button" data-torrent-remove="${record.hash}" aria-label="Убрать torrent ${escape(record.title)}"><i class="ci-trash tr-icon" aria-hidden="true"></i></button></div>`).join('');
     }
     async function ensureWorker(connect=true){
-        supported();
+        if(connect)supported();
         if(!workerReady)workerReady=(async()=>{
             const registration=await navigator.serviceWorker.register(config.torrent.worker,{scope:config.torrent.scope,updateViaCache:'none'});
             await registration.update();
@@ -114,8 +115,8 @@
             if(controller.signal.aborted || version!==epoch || !records.includes(record))return;
             if(!target.edited){target.title=tags.title||target.title;target.artist=tags.artist||target.artist;target.genre=tags.genre||target.genre;}
             target.duration=Number(tags.duration)||target.duration;
-            if(tags.genre && !target.genreId)target.genreId=Number(genres.find(genre=>genre.name.toLocaleLowerCase()===tags.genre.toLocaleLowerCase())?.id)||0;target.cover=target.cover||tags.cover;target.tagsRead=true;
-            if(!record.edited){record.title=tags.album||record.title;record.artist=tags.albumartist||tags.artist||record.artist;record.genre=tags.genre||record.genre;if(!record.genreId)record.genreId=target.genreId||0;record.cover=record.cover||tags.cover;}
+            if(tags.genre && !target.genreId && !target.edited){target.genreId=Number(genres.find(genre=>genre.name.toLocaleLowerCase()===tags.genre.toLocaleLowerCase())?.id)||0;target.genreIds=target.genreId?[target.genreId]:[];}target.cover=target.cover||tags.cover;target.tagsRead=true;
+            if(!record.edited){record.title=tags.album||record.title;record.artist=tags.albumartist||tags.artist||record.artist;record.genre=tags.genre||record.genre;if(!record.genreId){record.genreId=target.genreId||0;record.genreIds=target.genreIds||[];}record.cover=record.cover||tags.cover;}
             await persist();
         }catch(exception){if(version===epoch && active)active.metadataError=exception.message;}
         finally{clearTimeout(timer);if(metadataJob===controller)metadataJob=null;}
@@ -135,6 +136,7 @@
             });
         });}finally{parser.destroy(()=>{});}
     }
+    let torrentGenrePicker;
     function choose(item){
         current=item;selection.hidden=false;error.hidden=true;
         const existing=records.find(record=>record.hash===item.hash);
@@ -142,7 +144,7 @@
         const sources=$('[data-torrent-sources]');sources.hidden=false;sources.classList.toggle('alert-warning',!item.sources.available);sources.classList.toggle('alert-info',item.sources.available);
         sources.textContent=item.sources.available?`WebRTC-трекеров: ${item.sources.trackers} · web seeds: ${item.sources.webSeeds}. Наличие трекера не гарантирует, что совместимый раздающий сейчас онлайн.`:'В этом torrent нет источников, доступных браузеру. Для прослушивания нужна раздача с WebRTC-трекером или web seed.';
         $('[data-torrent-files]').innerHTML=item.files.map(file=>`<label class="tr-torrent-file"><input class="form-check-input" type="checkbox" name="files[]" value="${file.index}" ${!existing || existing.tracks.some(track=>track.fileIndex===file.index)?'checked':''}><span>${escape(file.name)}<small>${size(file.length)}</small></span></label>`).join('');
-        selection.elements.title.value=existing?.title||item.name;selection.elements.artist.value=existing?.artist||'';selection.elements.genre_id.value=existing?.genreId||'';
+        selection.elements.title.value=existing?.title||item.name;selection.elements.artist.value=existing?.artist||'';torrentGenrePicker=new window.TapeRoomGenrePicker(genres);const holder=$('[data-torrent-genres]');holder.innerHTML=torrentGenrePicker.markup(existing?.genreIds||existing?.genreId||[]);torrentGenrePicker.mount(holder);
     }
     async function open(hash){
         await initialized;error.hidden=true;recent();status();
@@ -171,7 +173,8 @@
             const files=current.files.filter(file=>selected.has(file.index));
             if(!files.length)throw new Error('Выберите хотя бы одну песню.');
             if(!existing && records.length>=50)throw new Error('В браузере уже 50 раздач. Уберите ненужную.');
-            const record={...(existing||{}),id:existing?.id||id(),hash:current.hash,metainfo:current.metainfo,title:String(form.get('title')).trim(),artist:String(form.get('artist')).trim(),genreId:Number(form.get('genre_id'))||0,
+            const selectedGenres=torrentGenrePicker.values();
+            const record={...(existing||{}),id:existing?.id||id(),hash:current.hash,metainfo:current.metainfo,title:String(form.get('title')).trim(),artist:String(form.get('artist')).trim(),genreIds:selectedGenres,genreId:selectedGenres[0]||0,genre:'',
                 tracks:files.map(file=>{const saved=existing?.tracks.find(track=>track.fileIndex===file.index);return {...saved,id:saved?.id||id(),fileIndex:file.index,filePath:file.path,title:saved?.title||file.name.replace(/\.[^.]+$/,''),filename:file.name,file_size:file.length,duration:saved?.duration||0,favorite:saved?.favorite||false};})};
             if(!record.title)throw new Error('Укажите название альбома.');
             record.edited=Boolean(existing?.edited || record.title!==(existing?.title||current.name) || record.artist!==(existing?.artist||''));
@@ -196,7 +199,7 @@
             case 'track.favorite':track.favorite=Boolean(Number(values.favorite));break;
             case 'track.duration':track.duration=Number(values.duration)||0;break;
             case 'track.update':
-                track.title=String(values.title||'').trim().slice(0,240);track.artist=String(values.artist||'').trim().slice(0,240);track.genreId=Number(values.genre_id)||0;track.edited=true;
+                track.title=String(values.title||'').trim().slice(0,240);track.artist=String(values.artist||'').trim().slice(0,240);track.genreIds=JSON.parse(values.genre_ids||JSON.stringify(Number(values.genre_id)?[Number(values.genre_id)]:[]));track.genreId=track.genreIds[0]||0;track.genre='';track.edited=true;
                 if(cover?.size){if(cover.size>2*1048576 || !/^image\/(jpeg|png|webp)$/.test(cover.type))throw new Error('Выберите JPG, PNG или WebP до 2 МБ.');track.cover=cover;}
                 break;
             case 'track.delete':record.tracks=record.tracks.filter(item=>item!==track);if(!record.tracks.length)records=records.filter(item=>item!==record);break;

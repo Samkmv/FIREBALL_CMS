@@ -4,9 +4,31 @@ namespace Fireball\ReelPlayer\Controllers;
 
 use Fireball\ReelPlayer\Repositories\AdminCatalog;
 use Fireball\ReelPlayer\Repositories\Genres;
+use Fireball\ReelPlayer\Services\GoogleDrive;
 
 final class AdminCatalogController
 {
+    public function settings(): string
+    {
+        header('Cache-Control: private, no-store');
+        return plugin_view('reel-player','settings',[
+            'title'=>'Tape Room · Настройки',
+            'drive'=>(new GoogleDrive((int)get_user()['id'],null,check_creator()))->status(),
+        ]);
+    }
+
+    public function saveSettings(): void
+    {
+        if (!check_creator()) abort('Настройки подключения доступны только создателю сайта.',403);
+        try {
+            (new GoogleDrive((int)get_user()['id'],null,true))->settings((string)request()->post('client_id',''),(string)request()->post('client_secret',''));
+            session()->setFlash('success','Настройки Google Drive сохранены.');
+        } catch (\InvalidArgumentException $error) {
+            session()->setFlash('error',$error->getMessage());
+        }
+        response()->redirect(base_href('/admin/reel-player/settings'));
+    }
+
     public function index(): string
     {
         header('Cache-Control: private, no-store');

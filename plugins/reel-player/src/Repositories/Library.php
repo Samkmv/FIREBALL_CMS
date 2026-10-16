@@ -35,7 +35,7 @@ final class Library
             $playlist['id'] = (int)$playlist['id'];
             $playlist['tracks'] = array_map(static fn(array $row): int => (int)$row['track_id'], array_values(array_filter($memberships, static fn(array $row): bool => (int)$row['playlist_id'] === $playlist['id'])));
         }
-        return ['tracks' => $tracks, 'playlists' => $playlists, 'catalog'=>(new Catalog($this->owner,function_exists('check_creator') && check_creator(),in_array(get_user()['role'] ?? '',['admin','creator'],true)))->state()];
+        return ['tracks' => (new Genres())->decorate($tracks,'track'), 'playlists' => $playlists, 'catalog'=>(new Catalog($this->owner,function_exists('check_creator') && check_creator(),in_array(get_user()['role'] ?? '',['admin','creator'],true)))->state()];
     }
 
     public function track(int $id, bool $lock = false): array
@@ -222,12 +222,13 @@ final class Library
                     $track = $this->track($id,true);
                     $title = self::text($data['title'] ?? $track['title'], 240, 'Название');
                     $artist = self::text($data['artist'] ?? $track['artist'], 240, 'Исполнитель', false);
-                    $genre = (new Genres())->validateId($data['genre_id'] ?? $track['genre_id']);
+                    $genreRepo=new Genres();$genreIds=$genreRepo->selection($data,$genreRepo->decorate([$track],'track')[0]['genreIds']);$genre=$genreIds[0] ?? null;
                     $duration = self::duration($data['duration'] ?? $track['duration']);
                     Chapters::validateEntries((new Chapters($this->owner))->list($id),$duration);
                     $saved = $cover && (int)$cover['error'] !== UPLOAD_ERR_NO_FILE ? $storage->upload($cover, $this->owner, true) : null;
                     db()->query('UPDATE reel_tracks SET title = ?, artist = ?, duration = ?, genre_id = ?, cover_path = ?, cover_mime = ? WHERE id = ? AND owner_id = ?',
                         [$title, $artist, $duration, $genre, $saved['path'] ?? $track['cover_path'], $saved['mime'] ?? $track['cover_mime'], $id, $this->owner]);
+                    $genreRepo->sync('track',$id,$genreIds);
                     $this->recheckAlbums($id);
                     db()->commit();
                 } catch (\Throwable $error) { db()->rollBack(); if ($saved) $storage->delete($saved['path']); throw $error; }

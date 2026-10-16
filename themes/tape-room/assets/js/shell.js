@@ -1,6 +1,14 @@
 (() => {
     'use strict';
     const roots=[...document.querySelectorAll('[data-tr-shell]')];
+    const syncViewport=()=>{
+        const viewport=window.visualViewport;
+        document.documentElement.style.setProperty('--tr-viewport-height',`${Math.min(window.innerHeight,viewport?.height||window.innerHeight)}px`);
+        document.documentElement.style.setProperty('--tr-viewport-top',`${viewport?.offsetTop||0}px`);
+    };
+    syncViewport();
+    window.addEventListener('resize',syncViewport);window.addEventListener('pageshow',syncViewport);
+    window.visualViewport?.addEventListener('resize',syncViewport);window.visualViewport?.addEventListener('scroll',syncViewport);
     const player=document.querySelector('[data-player]');
     const syncTheme=()=>{
         const theme=document.documentElement.dataset.theme==='dark'?'dark':'light';
@@ -14,6 +22,9 @@
         try{localStorage.setItem('tape-room:theme',theme);}catch(_){}
     };
     syncTheme();new MutationObserver(syncTheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+    document.querySelectorAll('[data-tr-demo-genres]').forEach(root=>{const genres=JSON.parse(root.dataset.genres),picker=new window.TapeRoomGenrePicker(genres);root.innerHTML=picker.markup(genres.slice(0,2).map(item=>item.id));picker.mount(root);});
+    const demoSteps=document.querySelector('[data-tr-demo-drive-steps]');
+    if(demoSteps){let step=1;const descriptions=['Выбор папки Google Drive или ссылки.','Песни показываются по порядку, по одной в строке.','Название альбома, исполнитель и несколько жанров перед сохранением.'];const render=()=>{demoSteps.innerHTML=window.TapeRoomDriveUi.steps(step);document.querySelector('[data-tr-demo-drive-description]').textContent=descriptions[step-1];document.querySelector('[data-tr-demo-drive-back]').disabled=step===1;document.querySelector('[data-tr-demo-drive-next]').textContent=step===3?'Сначала':'Далее';};document.querySelector('[data-tr-demo-drive-back]').onclick=()=>{step=Math.max(1,step-1);render();};document.querySelector('[data-tr-demo-drive-next]').onclick=()=>{step=step%3+1;render();};render();}
     document.querySelectorAll('[data-tr-demo-seek]').forEach(range=>range.addEventListener('input',()=>{const progress=Number(range.value)/10,seconds=Math.round(222*progress/100);range.style.setProperty('--fill',`${progress}%`);range.style.setProperty('--buffered',`${Math.max(68,progress)}%`);document.querySelector('[data-tr-demo-elapsed]').textContent=`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;}));
     document.addEventListener('click',event=>{
         const filePicker=event.target.closest('[data-tr-file-pick]');

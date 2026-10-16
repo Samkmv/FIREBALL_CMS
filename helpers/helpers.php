@@ -1147,11 +1147,14 @@ function pwa_head_tags(): string
         '<meta name="format-detection" content="telephone=no">',
         '<link rel="icon" type="' . htmlSC($pwa['favicon_type'] ?? 'image/png') . '" href="' . htmlSC($pwa['favicon_url'] ?? base_url('/assets/img/fbl_logo.png')) . '">',
         '<link rel="shortcut icon" href="' . htmlSC($pwa['favicon_url'] ?? base_url('/assets/img/fbl_logo.png')) . '">',
-        '<link rel="apple-touch-icon" href="' . htmlSC($pwa['apple_touch_icon_url'] ?? base_url('/assets/img/fbl_logo.png')) . '">',
+        '<link rel="apple-touch-icon" sizes="180x180" type="image/png" href="' . htmlSC($pwa['apple_touch_icon_url'] ?? base_url('/assets/img/fbl_logo.png')) . '">',
     ];
 
     if (!empty($pwa['startup_image_url'])) {
         $lines[] = '<link rel="apple-touch-startup-image" href="' . htmlSC($pwa['startup_image_url']) . '">';
+    }
+    if (!empty($pwa['app_icon_192_url'])) {
+        $lines[] = '<link rel="icon" sizes="192x192" type="image/png" href="' . htmlSC($pwa['app_icon_192_url']) . '">';
     }
     if (!empty($pwa['enabled'])) {
         array_unshift($lines, '<link rel="manifest" href="' . htmlSC($pwa['manifest_url'] ?? base_url('/manifest.webmanifest')) . '">');
