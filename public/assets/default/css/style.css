@@ -4425,6 +4425,12 @@ html.pwa-standalone body [data-admin-shell-sidebar] {
     min-width: 0;
 }
 
+.admin-update-notice details ul {
+    max-height: 14rem;
+    overflow: auto;
+    overflow-wrap: anywhere;
+}
+
 .admin-update-result__icon {
     display: inline-flex;
     align-items: center;

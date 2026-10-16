@@ -30,7 +30,33 @@
             this.latest = null;
         }
 
-        html(value) { window.TapeRoomImages.patch(this.content,value); }
+        html(value) {
+            const template=document.createElement('template');template.innerHTML=value;
+            window.TapeRoomUi?.decorate(template.content);
+            window.TapeRoomImages.patch(this.content,template.content);
+        }
+
+        syncPlayback(current, playing) {
+            if (!this.latest || !this.content) return;
+            this.latest.current=Number(current);this.latest.playing=Boolean(playing);
+            const update=(control,active,title)=>{
+                const glyph=active?'pause':'play';
+                if(control.dataset.playbackIcon!==glyph){control.innerHTML=this.icon(glyph);control.dataset.playbackIcon=glyph;}
+                control.setAttribute('aria-label',`${active?'Приостановить':'Воспроизвести'} ${title}`);
+                control.setAttribute('aria-pressed',String(active));
+            };
+            for(const row of this.content.querySelectorAll('.rp-catalog-popular-row')){
+                const id=Number(row.dataset.trackId),active=id===Number(current)&&playing;
+                row.classList.toggle('is-current',id===Number(current));
+                update(row.querySelector('.rp-catalog-inline-play'),active,this.latest.trackMap.get(id)?.title || 'песню');
+            }
+            for(const card of this.content.querySelectorAll('.rp-album-card')){
+                const album=this.latest.albums.find(item=>Number(item.id)===Number(card.dataset.albumId));
+                const active=this.tracksFor(album).some(track=>Number(track.id)===Number(current))&&playing;
+                card.classList.toggle('is-playing',active);
+                const control=card.querySelector('.rp-catalog-card-play');if(control)update(control,active,`альбом ${album?.title || ''}`);
+            }
+        }
 
         render({data, view = {type:'overview'}, current = 0, playing = false, query, canPublish}) {
             if (!this.content) return {listMode:true};
@@ -56,7 +82,7 @@
             if (albumCount) albumCount.textContent = publicAlbums.length || '';
             if (savedCount) savedCount.textContent = personalAlbums.length || '';
             const create = this.app.querySelector('[data-catalog-create]');
-            if (create) create.hidden = !['overview','albums','mine'].includes(view.type);
+            if (create) create.hidden = !catalog.canPublish || !['overview','albums','mine'].includes(view.type);
 
             let result;
             switch (view.type) {
@@ -99,6 +125,7 @@
                 input.placeholder = label;
                 input.setAttribute('aria-label', label);
             }
+            this.syncPlayback(current,playing);
             return result;
         }
 
@@ -149,7 +176,7 @@
                 <div class="rp-album-artwork">
                     <button type="button" class="rp-album-open" data-action="catalog-album" data-id="${Number(album.id)}" aria-label="Открыть альбом ${esc(album.title)}">${this.image(this.albumCover(album))}</button>
                     ${tracks.length ? `<button type="button" class="rp-catalog-card-play" data-action="catalog-play-album" data-id="${Number(album.id)}" aria-label="Воспроизвести альбом ${esc(album.title)}">${this.icon('play')}</button>` : ''}
-                    ${album.saved ? `<span class="rp-album-saved" title="В вашей коллекции" aria-label="В вашей коллекции">${this.icon('heart')}</span>` : ''}
+                    ${album.saved ? `<span class="rp-album-saved" title="В вашей коллекции" aria-label="В вашей коллекции">${this.icon('heart-filled')}</span>` : ''}
                 </div>
                 <button type="button" class="rp-album-title" data-action="catalog-album" data-id="${Number(album.id)}">${esc(album.title)}</button>
                 ${album.artist ? `<button type="button" class="rp-album-artist" data-action="catalog-artist" data-artist="${esc(album.artist)}">${esc(album.artist)}</button>` : '<span class="rp-album-artist">Исполнитель не указан</span>'}
@@ -255,8 +282,8 @@
                 <span class="rp-catalog-eyebrow">${album.published ? 'Альбом · каталог сайта' : 'Личный альбом'}</span><h3>${esc(album.title)}</h3>
                 ${album.browserLocal && album.artist ? `<span class="rp-catalog-artist-link">${esc(album.artist)}</span>` : album.artist ? `<button class="rp-catalog-artist-link" type="button" data-action="catalog-artist" data-artist="${esc(album.artist)}">${esc(album.artist)}</button>` : ''}<p class="rp-album-detail-meta">${esc(meta)}</p>
                 ${album.editable && album.moderation !== 'draft' ? `<p class="rp-catalog-note">${esc(album.moderation === 'pending' ? 'Альбом ожидает проверки. В общем каталоге он появится после одобрения.' : album.moderation === 'rejected' ? 'Публикация отклонена. Исправьте альбом и отправьте его повторно.' : 'Публикация одобрена.')} ${esc(album.moderationNote || '')}</p>` : ''}${album.description ? `<p class="rp-album-description">${esc(album.description)}</p>` : ''}
-                <div class="rp-album-detail-actions"><button type="button" class="rp-button rp-button--primary rp-catalog-play" data-action="catalog-play-album" data-id="${Number(album.id)}" ${tracks.length ? '' : 'disabled'}>${this.icon('play')}<span>Слушать альбом</span></button>${album.browserLocal ? `<button class="rp-button" type="button" data-torrent-edit="${esc(album.torrentHash)}">${this.icon('edit')}Изменить torrent</button>` : `<button type="button" class="rp-button rp-catalog-save${album.saved ? ' is-saved' : ''}" data-action="catalog-save" data-id="${Number(album.id)}" aria-pressed="${Boolean(album.saved)}">${this.icon(album.saved ? 'heart' : 'plus')}<span>${album.saved ? 'В коллекции' : 'В коллекцию'}</span></button>`}${album.editable ? `<button class="rp-icon-button" type="button" data-action="catalog-edit" data-id="${Number(album.id)}" title="Изменить альбом" aria-label="Изменить альбом">${this.icon('edit')}</button>` : ''}</div>
-                ${album.editable ? `<div class="rp-album-detail-management">${canPublish ? `<button type="button" class="rp-catalog-publish" data-action="catalog-publish" data-id="${Number(album.id)}" data-published="${album.submitted ? 0 : 1}">${album.submitted ? 'Отозвать публикацию' : 'Отправить на модерацию'}</button>` : ''}<button type="button" class="rp-catalog-delete" data-action="catalog-delete" data-id="${Number(album.id)}">${this.icon('trash')}Удалить альбом</button></div>` : ''}
+                <div class="rp-album-detail-actions"><button type="button" class="rp-button rp-button--primary rp-catalog-play" data-action="catalog-play-album" data-id="${Number(album.id)}" ${tracks.length ? '' : 'disabled'}>${this.icon('play')}<span>Слушать альбом</span></button>${album.browserLocal ? `<button class="rp-button" type="button" data-torrent-edit="${esc(album.torrentHash)}">${this.icon('edit')}Изменить torrent</button>` : `<button type="button" class="rp-button rp-catalog-save${album.saved ? ' is-saved' : ''}" data-action="catalog-save" data-id="${Number(album.id)}" aria-pressed="${Boolean(album.saved)}">${this.icon(album.saved ? 'heart-filled' : 'plus')}<span>${album.saved ? 'В коллекции' : 'В коллекцию'}</span></button>`}${album.editable ? `<button class="rp-icon-button" type="button" data-action="catalog-edit" data-id="${Number(album.id)}" title="Изменить альбом" aria-label="Изменить альбом">${this.icon('edit')}</button>` : ''}</div>
+                ${album.editable ? `<div class="rp-album-detail-management">${canPublish ? `<button type="button" class="rp-catalog-publish" data-action="catalog-publish" data-id="${Number(album.id)}" data-published="${album.submitted ? 0 : 1}">${album.submitted ? 'Снять с публикации' : album.requiresModeration===false ? 'Опубликовать альбом' : 'Отправить на модерацию'}</button>` : ''}<button type="button" class="rp-catalog-delete" data-action="catalog-delete" data-id="${Number(album.id)}">${this.icon('trash')}Удалить альбом</button></div>` : ''}
                 </div></section><div class="rp-catalog-track-heading"><h3>Песни альбома</h3><span>Порядок альбома</span></div>`);
             return {listMode:true,title:'Альбом',summary:'',tracks,emptyTitle:'В альбоме пока нет песен',emptyDescription:album.editable ? 'Откройте редактор альбома и выберите песни из своей библиотеки.' : 'Песни появятся после добавления владельцем альбома.'};
         }

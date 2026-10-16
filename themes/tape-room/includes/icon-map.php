@@ -47,4 +47,5 @@ return [
     'microphone' => 'mic',
     'trending' => 'trending-up',
     'heart' => 'heart',
+    'heart-filled' => 'heart-filled',
 ];

@@ -7,7 +7,7 @@ use Fireball\ReelPlayer\Services\MediaStorage;
 /** Explicitly published albums are the sole boundary for cross-user audio access. */
 final class Catalog
 {
-    public function __construct(private int $owner, private bool $canPublish = false) {}
+    public function __construct(private int $owner, private bool $canPublish = false, private bool $autoApprove = false) {}
 
     public function state(): array
     {
@@ -48,13 +48,13 @@ final class Catalog
             $id = (int)$album['id']; $ids = $albumTracks[$id] ?? [];
             $coverPath = $album['cover_path'];
             if (!$coverPath) foreach ($ids as $trackId) if (!empty($coverByTrack[$trackId])) { $coverPath = $coverByTrack[$trackId]; break; }
-            $editable = (int)$album['owner_id'] === $this->owner;
+            $editable = $this->owner>0 && (int)$album['owner_id'] === $this->owner;
             $publicAlbums[] = [
                 'id'=>$id,'title'=>$album['title'],'artist'=>$album['artist'],'release_date'=>$album['release_date'],
                 'description'=>$album['description'],'cover'=>$coverPath ? base_href('/tape-room/catalog/album-cover/'.$id).'?v='.basename($coverPath) : '',
                 'tracks'=>$ids,'published'=>(bool)$album['published'] && $album['moderation_status']==='approved','submitted'=>(bool)$album['published'],'moderation'=>$album['moderation_status'],'moderationNote'=>$editable ? $album['moderation_note'] : '',
                 'genreId'=>(int)($album['genre_id'] ?? 0),'genre'=>($genreNames[(int)($album['genre_id'] ?? 0)] ?? ''),'saved'=>$album['saved_id'] !== null,
-                'editable'=>$editable,'canPublish'=>$editable,'created_at'=>$album['created_at'],
+                'editable'=>$editable,'canPublish'=>$editable,'requiresModeration'=>!$this->autoApprove,'created_at'=>$album['created_at'],
             ];
         }
         $publishedArtistKeys = []; $publishedTrackIds = [];
@@ -63,7 +63,7 @@ final class Catalog
             foreach ($album['tracks'] as $trackId) $publishedTrackIds[$trackId] = true;
         }
         foreach ($publicTracks as $track) if (isset($publishedTrackIds[$track['id']])) $publishedArtistKeys[self::artistKey($track['artist'])] = true;
-        return ['albums'=>$publicAlbums,'tracks'=>$publicTracks,'artistProfiles'=>$this->artistProfiles([...$albums,...$tracks],$publishedArtistKeys),'canPublish'=>true,'genres'=>$genres];
+        return ['albums'=>$publicAlbums,'tracks'=>$publicTracks,'artistProfiles'=>$this->artistProfiles([...$albums,...$tracks],$publishedArtistKeys),'canPublish'=>$this->owner>0,'autoApprove'=>$this->autoApprove,'genres'=>$genres];
     }
 
     /** Artist identity remains its existing name; a profile never renames music. */
@@ -306,12 +306,13 @@ final class Catalog
                         $published = self::flag($data['published'] ?? 1);
                         
                         if ($published && !(int)db()->query('SELECT COUNT(*) FROM reel_album_tracks WHERE album_id=?', [$id])->getColumn()) throw new \InvalidArgumentException('Сначала добавьте треки в альбом.');
-                        db()->query("UPDATE reel_albums SET published=?,moderation_status=?,moderation_note='',reviewed_by=NULL,reviewed_at=NULL,moderation_version=moderation_version+1,updated_at=? WHERE id=? AND owner_id=?", [$published,$published ? 'pending' : 'draft',date('Y-m-d H:i:s'),$id,$this->owner]);
+                        $approved=$published && $this->autoApprove;
+                        db()->query("UPDATE reel_albums SET published=?,moderation_status=?,moderation_note='',reviewed_by=?,reviewed_at=?,moderation_version=moderation_version+1,updated_at=? WHERE id=? AND owner_id=?", [$published,$published ? ($approved ? 'approved' : 'pending') : 'draft',$approved ? $this->owner : null,$approved ? date('Y-m-d H:i:s') : null,date('Y-m-d H:i:s'),$id,$this->owner]);
                         break;
                 }
             }
             if (in_array($name,['album.update','album.tracks'],true)) db()->query('UPDATE reel_albums SET moderation_version=moderation_version+1 WHERE id=?',[$id]);
-            if (in_array($name,['album.update','album.tracks'],true) && !empty($album['published'])) db()->query("UPDATE reel_albums SET moderation_status='pending',moderation_note='',reviewed_by=NULL,reviewed_at=NULL WHERE id=?",[$id]);
+            if (in_array($name,['album.update','album.tracks'],true) && !empty($album['published'])) db()->query("UPDATE reel_albums SET moderation_status=?,moderation_note='',reviewed_by=?,reviewed_at=? WHERE id=?",[$this->autoApprove ? 'approved' : 'pending',$this->autoApprove ? $this->owner : null,$this->autoApprove ? date('Y-m-d H:i:s') : null,$id]);
             db()->commit();
         } catch (\Throwable $error) { db()->rollBack(); if ($savedCover) $storage->delete($savedCover['path']); throw $error; }
         if ($oldCover) $storage->delete($oldCover);

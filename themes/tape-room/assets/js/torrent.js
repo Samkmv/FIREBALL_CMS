@@ -3,7 +3,8 @@
     const player=document.querySelector('[data-player]'), modal=document.getElementById('tr-torrent-modal');
     if(!player || !modal)return;
     const config=JSON.parse(document.querySelector('[data-player-config]').textContent), $=selector=>modal.querySelector(selector);
-    const {MemoryStore,audioFile}=window.TapeRoomTorrentCore, audio=player.querySelector('[data-audio]');
+    if(config.authenticated===false)return;
+    const {MemoryStore,audioFile,sortAudioFiles,sourceProfile,connectionStatus,defaultTrackers}=window.TapeRoomTorrentCore, audio=player.querySelector('[data-audio]');
     const dialog=bootstrap.Modal.getOrCreateInstance(modal), error=$('[data-torrent-error]'), selection=$('[data-torrent-selection]');
     const escape=value=>String(value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const size=bytes=>`${(bytes/1048576).toFixed(1)} МБ`;
@@ -23,7 +24,7 @@
         request.onsuccess=()=>{
             db=request.result;db.onversionchange=()=>db.close();
             const read=db.transaction('libraries').objectStore('libraries').get(config.storageKey);
-            read.onsuccess=()=>{records=Array.isArray(read.result)?read.result:[];publish();resolve();};read.onerror=()=>reject(read.error);
+            read.onsuccess=()=>{records=Array.isArray(read.result)?read.result:[];records.forEach(record=>record.tracks=sortAudioFiles(record.tracks||[]));publish();resolve();};read.onerror=()=>reject(read.error);
         };
     });
     initialized.catch(exception=>failure(exception.message));
@@ -65,7 +66,7 @@
         if(!connect)return registration;
         if(!clientId)clientId=await new Promise((resolve,reject)=>{const channel=new MessageChannel(),timer=setTimeout(()=>reject(new Error('Не удалось связать плеер с браузерным потоком.')),5000);channel.port1.onmessage=event=>{clearTimeout(timer);channel.port1.close();resolve(event.data);};navigator.serviceWorker.controller.postMessage({type:'tape-room-client-id'},[channel.port2]);});
         if(!client){
-            client=new WebTorrent({dht:false,lsd:false,utPex:false,natUpnp:false,natPmp:false,maxConns:12,tracker:{announce:['wss://tracker.openwebtorrent.com']}});
+            client=new WebTorrent({dht:false,lsd:false,utPex:false,natUpnp:false,natPmp:false,maxConns:12,tracker:{announce:defaultTrackers}});
             client.on('error',()=>failure('Ошибка torrent-соединения. Остановите torrent и попробуйте снова.'));
             server=client.createServer({controller:registration,origin:location.origin});
         }
@@ -80,15 +81,17 @@
         const section=$('[data-torrent-progress]');section.hidden=!active;
         if(!active)return;
         const torrent=active.torrent, elapsed=performance.now()-active.started;
+        const diagnosis=connectionStatus(torrent,{elapsed,online:navigator.onLine,audioError:audio.error?.code||0,paused:audio.paused,ready:audio.readyState,secure:location.protocol==='https:'});
+        active.diagnosis=diagnosis;
         $('[data-torrent-progress-name]').textContent=active.title;
-        $('[data-torrent-status]').textContent=active.failed||(!torrent.numPeers && torrent.downloadSpeed===0 && !torrent.downloaded ? (elapsed>20000?'Совместимых раздающих пока нет. Проверьте, что раздача поддерживает WebTorrent / WebRTC.':'Ищем раздающих WebTorrent…') : audio.paused?'Пауза · буфер остаётся в памяти браузера':'Потоковое прослушивание');
-        $('[data-torrent-speed]').textContent=`${torrent.numPeers} соединений · ${size(torrent.downloadSpeed||0)}/с · получено ${size(torrent.downloaded||0)}`;
+        $('[data-torrent-status]').textContent=active.failed||diagnosis.message;
+        $('[data-torrent-speed]').textContent=`${torrent.numPeers} соединений · ${size(torrent.downloadSpeed||0)}/с · получено ${size(torrent.received||torrent.downloaded||0)} · в буфере ${size(torrent.tapeRoomBuffer?.bytes||0)}`;
     }
     async function resolve(track){
         await initialized;const record=records.find(item=>item.hash===track.torrentHash);
         if(!record)throw new Error('Этот torrent удалён из браузера.');
         release();const version=epoch, instance=await ensureWorker();if(version!==epoch)throw new DOMException('Песня переключена','AbortError');
-        const torrent=instance.add(record.metainfo,{store:MemoryStore,storeCacheSlots:0,destroyStoreOnDestroy:true,deselect:true,strategy:'sequential'});
+        const torrent=instance.add(record.metainfo,{store:MemoryStore,storeOpts:{maxBytes:config.torrent.bufferBytes},storeCacheSlots:0,destroyStoreOnDestroy:true,deselect:true,strategy:'sequential'});
         active={torrent,title:track.title,started:performance.now(),failed:''};status();statusTimer=setInterval(status,1000);
         torrent.on('error',()=>{if(active?.torrent===torrent){active.failed='Раздача недоступна. Остановите torrent и попробуйте снова.';status();}});
         torrent.on('warning',exception=>{if(active?.torrent===torrent)active.warning=exception.message;});
@@ -97,6 +100,8 @@
             torrent.once('ready',()=>{clearTimeout(timer);done();});torrent.once('error',exception=>{clearTimeout(timer);reject(exception);});torrent.once('close',()=>{clearTimeout(timer);reject(new DOMException('Torrent остановлен','AbortError'));});
         });
         if(version!==epoch)throw new DOMException('Песня переключена','AbortError');
+        const sources=sourceProfile(torrent,location.protocol==='https:');
+        if(!sources.available){active.failed=connectionStatus(torrent,{secure:location.protocol==='https:'}).message;status();throw new Error(active.failed);}
         const file=torrent.files[track.fileIndex];if(!file || !audioFile(file))throw new Error('Формат или размер песни не поддерживается.');
         readMetadata(record,track.id,file,version);
         return `${file.streamURL}?trClient=${encodeURIComponent(clientId)}`;
@@ -126,7 +131,7 @@
             torrent.once('ready',()=>{
                 clearTimeout(timer);
                 if(torrent.files.length>1000){reject(new Error('В раздаче больше 1000 файлов. Выберите меньшую раздачу.'));return;}
-                done({hash:torrent.infoHash,name:torrent.name,metainfo,files:torrent.files.map((file,index)=>({name:file.name,length:file.length,index})).filter(audioFile)});
+                done({hash:torrent.infoHash,name:torrent.name,metainfo,sources:sourceProfile(torrent,location.protocol==='https:',true),unsupported:[...new Set(torrent.files.filter(file=>!audioFile(file)).map(file=>file.name.match(/\.[^.]+$/)?.[0]?.toLowerCase()||'без расширения'))],files:sortAudioFiles(torrent.files.map((file,index)=>({name:file.name,path:file.path,length:file.length,index})).filter(audioFile))});
             });
         });}finally{parser.destroy(()=>{});}
     }
@@ -134,6 +139,8 @@
         current=item;selection.hidden=false;error.hidden=true;
         const existing=records.find(record=>record.hash===item.hash);
         $('[data-torrent-name]').textContent=item.name;$('[data-torrent-summary]').textContent=`${item.files.length} песен · теги читаются при прослушивании`;
+        const sources=$('[data-torrent-sources]');sources.hidden=false;sources.classList.toggle('alert-warning',!item.sources.available);sources.classList.toggle('alert-info',item.sources.available);
+        sources.textContent=item.sources.available?`WebRTC-трекеров: ${item.sources.trackers} · web seeds: ${item.sources.webSeeds}. Наличие трекера не гарантирует, что совместимый раздающий сейчас онлайн.`:'В этом torrent нет источников, доступных браузеру. Для прослушивания нужна раздача с WebRTC-трекером или web seed.';
         $('[data-torrent-files]').innerHTML=item.files.map(file=>`<label class="tr-torrent-file"><input class="form-check-input" type="checkbox" name="files[]" value="${file.index}" ${!existing || existing.tracks.some(track=>track.fileIndex===file.index)?'checked':''}><span>${escape(file.name)}<small>${size(file.length)}</small></span></label>`).join('');
         selection.elements.title.value=existing?.title||item.name;selection.elements.artist.value=existing?.artist||'';selection.elements.genre_id.value=existing?.genreId||'';
     }
@@ -152,7 +159,7 @@
             await initialized;
             if(!/\.torrent$/i.test(file.name) || file.size>2*1048576 || !file.size)throw new Error('Выберите файл .torrent до 2 МБ.');
             const item=await inspect(new Uint8Array(await file.arrayBuffer()));
-            if(!item.files.length)throw new Error('В раздаче нет поддерживаемых аудиофайлов до 128 МБ.');
+            if(!item.files.length)throw new Error(`В раздаче нет аудио поддерживаемого формата. Найдено: ${item.unsupported.slice(0,8).join(', ')}. Поддерживаются MP3, FLAC, WAV, M4A, OGG, Opus, AAC и WebM. Ограничение 128 МБ на файл снято.`);
             choose(item);
         }catch(exception){failure(exception.message);selection.hidden=true;current=null;}
         finally{event.target.disabled=false;event.target.value='';}
@@ -165,7 +172,7 @@
             if(!files.length)throw new Error('Выберите хотя бы одну песню.');
             if(!existing && records.length>=50)throw new Error('В браузере уже 50 раздач. Уберите ненужную.');
             const record={...(existing||{}),id:existing?.id||id(),hash:current.hash,metainfo:current.metainfo,title:String(form.get('title')).trim(),artist:String(form.get('artist')).trim(),genreId:Number(form.get('genre_id'))||0,
-                tracks:files.map(file=>existing?.tracks.find(track=>track.fileIndex===file.index)||{id:id(),fileIndex:file.index,title:file.name.replace(/\.[^.]+$/,''),filename:file.name,file_size:file.length,duration:0,favorite:false})};
+                tracks:files.map(file=>{const saved=existing?.tracks.find(track=>track.fileIndex===file.index);return {...saved,id:saved?.id||id(),fileIndex:file.index,filePath:file.path,title:saved?.title||file.name.replace(/\.[^.]+$/,''),filename:file.name,file_size:file.length,duration:saved?.duration||0,favorite:saved?.favorite||false};})};
             if(!record.title)throw new Error('Укажите название альбома.');
             record.edited=Boolean(existing?.edited || record.title!==(existing?.title||current.name) || record.artist!==(existing?.artist||''));
             const previous=records;records=[...records.filter(item=>item.hash!==record.hash),record];
@@ -197,7 +204,8 @@
         }
         await persist();return {status:true};
     }
-    window.TapeRoomTorrents={resolve,release,action,state:()=>active?{hash:active.torrent.infoHash,ready:active.torrent.ready,peers:active.torrent.numPeers,wires:active.torrent.wires.length,downloaded:active.torrent.downloaded,length:active.torrent.length,webSeeds:active.torrent.urlList.length,selections:active.torrent._selections.length,metadataError:active.metadataError||'',warning:active.warning||'',failed:active.failed}:null};
+    const playbackError=code=>active?connectionStatus(active.torrent,{elapsed:performance.now()-active.started,online:navigator.onLine,audioError:code,secure:location.protocol==='https:'}).message:'Torrent остановлен. Откройте раздачу и запустите песню снова.';
+    window.TapeRoomTorrents={resolve,release,action,playbackError,state:()=>active?{hash:active.torrent.infoHash,ready:active.torrent.ready,peers:active.torrent.numPeers,wires:active.torrent.wires.length,downloaded:active.torrent.downloaded,received:active.torrent.received,bufferBytes:active.torrent.tapeRoomBuffer?.bytes||0,bufferLimit:active.torrent.tapeRoomBuffer?.limit||0,length:active.torrent.length,sources:sourceProfile(active.torrent,location.protocol==='https:'),stage:active.diagnosis?.code,webSeeds:active.torrent.urlList.length,selections:active.torrent._selections.length,metadataError:active.metadataError||'',warning:active.warning||'',failed:active.failed}:null};
     audio.addEventListener('pause',status);audio.addEventListener('playing',status);
     window.addEventListener('pagehide',release);
     // Keep the CMS offline/notification worker active, with local torrent ranges.

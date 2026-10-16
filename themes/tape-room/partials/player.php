@@ -31,7 +31,7 @@ $button = static function (string $action, string $label, string $name, string $
 </head>
 <body class="rp-body">
 
-<main class="rp-app" data-player>
+<main class="rp-app tr-bootstrap" data-player data-tr-shell data-bs-theme="light">
     <header class="rp-header">
         <a class="rp-back" href="<?= htmlSC($back_url) ?>" aria-label="Вернуться в CMS" title="Вернуться в CMS"><span class="rp-icon-button rp-back-control"><?= $icon('back') ?></span><span class="rp-back-label">FIREBALL</span></a>
         <div class="rp-brand"><b class="rp-brand-name">TAPE ROOM<small class="rp-beta">БЕТА</small></b><span>ЛИЧНАЯ МУЗЫКАЛЬНАЯ КОМНАТА</span></div>
@@ -123,7 +123,7 @@ $button = static function (string $action, string $label, string $name, string $
             <?php endforeach; ?>
             <div class="rp-main-controls">
                 <div class="rp-timeline">
-                    <label class="rp-seek-wrap"><span class="rp-sr-only">Позиция воспроизведения</span><input class="rp-range rp-seek" data-seek type="range" min="0" max="1000" value="0" disabled></label>
+                    <label class="rp-seek-wrap tr-playback-timeline"><span class="rp-sr-only">Позиция воспроизведения</span><input class="rp-range rp-seek tr-timeline-range" data-seek type="range" min="0" max="1000" value="0" disabled></label>
                     <div class="rp-chapter-markers" data-chapter-markers data-action="chapter-marker-seek" role="group" aria-label="Таймкоды треков в аудиофайле" hidden></div>
                 </div>
                 <div class="rp-times"><span data-elapsed>0:00</span><span data-duration>0:00</span></div>
@@ -173,13 +173,13 @@ $button = static function (string $action, string $label, string $name, string $
         <div class="rp-track-panel">
             <div class="rp-library-toolbar">
                 <div class="rp-list-heading"><h2 data-list-title>Обзор</h2><span data-list-summary></span></div>
-                <div class="rp-library-actions"><div data-playlist-actions hidden><?= $button('rename-playlist', 'Переименовать плейлист', 'edit') ?><?= $button('delete-playlist', 'Удалить плейлист', 'trash') ?></div><button type="button" class="rp-button rp-catalog-create" data-action="catalog-create" data-catalog-create hidden><?= $icon('plus') ?><span>Создать альбом</span></button><button type="button" class="rp-upload-button" data-action="upload"><?= $icon('plus') ?><span>Добавить музыку</span></button></div>
+                <div class="rp-library-actions"><div data-playlist-actions hidden><?= $button('rename-playlist', 'Переименовать плейлист', 'edit') ?><?= $button('delete-playlist', 'Удалить плейлист', 'trash') ?></div><button type="button" class="rp-button rp-catalog-create" data-action="catalog-create" data-catalog-create hidden><?= $icon('plus') ?><span>Создать альбом</span></button><button type="button" class="rp-upload-button" data-action="<?= empty($config['authenticated'])?'auth':'upload' ?>"><?= $icon(empty($config['authenticated'])?'login':'plus') ?><span><?= empty($config['authenticated'])?'Войти, чтобы добавить музыку':'Добавить музыку' ?></span></button></div>
             </div>
             <div class="rp-library-filters">
                 <label class="rp-search"><?= $icon('search') ?><input type="search" data-search placeholder="Найти трек или исполнителя" aria-label="Найти трек или исполнителя"></label>
-                <div class="rp-sort" data-sort>
+                <div class="rp-sort dropdown" data-sort>
                     <button type="button" class="rp-sort-trigger" data-sort-trigger aria-label="Сортировка музыки: сначала новые" aria-haspopup="listbox" aria-expanded="false" aria-controls="rp-sort-options"><span data-sort-label>Сначала новые</span><?= $icon('down') ?></button>
-                    <div class="rp-sort-options" id="rp-sort-options" data-sort-options role="listbox" aria-label="Сортировка музыки" hidden></div>
+                    <div class="rp-sort-options dropdown-menu" id="rp-sort-options" data-sort-options role="listbox" aria-label="Сортировка музыки" hidden></div>
                 </div>
             </div>
             <div class="rp-catalog-content" data-catalog-content hidden></div>
@@ -187,24 +187,22 @@ $button = static function (string $action, string $label, string $name, string $
             <div class="rp-empty" data-empty>
                 <div class="rp-empty-icon"><?= $icon('music') ?></div><h3 data-empty-title>Здесь начинается ваша коллекция</h3><p data-empty-description>Перетащите аудиофайлы сюда или добавьте их кнопкой выше.</p><span>MP3 · FLAC · WAV · M4A · OGG · OPUS · AAC · WEBM</span>
             </div>
-            <div class="rp-drop-hint">Перетащите музыку в эту область · <span data-upload-limit></span> на файл</div>
+            <div class="rp-drop-hint" <?= empty($config['authenticated'])?'hidden':'' ?>>Перетащите музыку в эту область · <span data-upload-limit></span> на файл</div>
         </div>
     </section>
     <footer class="rp-footer"><button type="button" class="rp-about" data-action="meter-report" aria-label="Проверить индикаторы и версию плеера">TAPE ROOM · <?= htmlSC($config['version'] ?? '') ?></button><span>Пробел — пауза · ← / → — перемотка · Shift + ← / → — глава / трек</span><span>СОЗДАНО ДЛЯ ПРОСЛУШИВАНИЯ</span></footer>
     <div class="rp-drop-overlay" hidden data-drop-overlay><?= $icon('upload') ?><strong>Положите музыку на ленту</strong><span>Файлы добавятся в открытый плейлист</span></div>
     <div class="rp-upload-progress" hidden data-upload-progress><span data-upload-message></span><progress max="100" value="0" aria-label="Загрузка музыки"></progress></div>
-    <div class="rp-toast" role="status" data-toast hidden></div>
+    <div class="toast-container position-fixed bottom-0 end-0 p-3"><div class="toast align-items-center" role="status" aria-live="polite" aria-atomic="true" data-toast><div class="d-flex"><div class="toast-body" data-toast-text></div><button class="btn-close m-auto me-2" type="button" data-bs-dismiss="toast" aria-label="Закрыть уведомление"><?= $icon('close') ?></button></div></div></div>
     <audio data-audio preload="auto" playsinline></audio>
     <input class="rp-sr-only" tabindex="-1" aria-hidden="true" type="file" data-audio-files accept=".mp3,.wav,.flac,.m4a,.ogg,.opus,.aac,.webm" multiple>
-    <dialog class="rp-dialog" data-dialog aria-labelledby="rp-dialog-title">
+    <div class="modal fade" data-player-modal tabindex="-1" aria-labelledby="rp-dialog-title" aria-hidden="true"><div class="modal-dialog modal-dialog-centered modal-dialog-scrollable"><div class="modal-content rp-dialog" data-dialog>
         <form data-dialog-form>
-            <div class="rp-dialog-header"><h2 id="rp-dialog-title" data-dialog-title></h2><?= $button('close-dialog', 'Закрыть', 'close') ?></div>
-            <p data-dialog-description hidden></p>
-            <div data-dialog-fields></div>
-            <p class="rp-dialog-error" role="alert" data-dialog-error hidden></p>
-            <div class="rp-dialog-buttons"><button class="rp-button" type="button" data-action="close-dialog">Отмена</button><button class="rp-button rp-button--primary" type="submit" data-dialog-submit>Сохранить</button></div>
+            <div class="modal-header rp-dialog-header"><h2 class="modal-title" id="rp-dialog-title" data-dialog-title></h2><button class="btn-close" type="button" data-action="close-dialog" aria-label="Закрыть"><?= $icon('close') ?></button></div>
+            <div class="modal-body"><p class="small text-body-secondary" data-dialog-description hidden></p><div data-dialog-fields></div><p class="alert alert-danger mt-3" role="alert" data-dialog-error hidden></p></div>
+            <div class="modal-footer rp-dialog-buttons"><button class="btn btn-outline-secondary rp-button" type="button" data-action="close-dialog">Отмена</button><button class="btn btn-primary rp-button rp-button--primary" type="submit" data-dialog-submit>Сохранить</button></div>
         </form>
-    </dialog>
+    </div></div></div>
 </main>
 <script type="application/json" data-player-config><?= json_encode($config, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR) ?></script>
 <script src="<?= htmlSC($preload_url) ?>" defer></script>

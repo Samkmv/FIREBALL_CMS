@@ -5,7 +5,13 @@
     const config = JSON.parse(document.querySelector('[data-player-config]').textContent);
     const $ = selector => app.querySelector(selector);
     const audio = $('[data-audio]');
-    const dialog = $('[data-dialog]');
+    const dialog = $('[data-dialog]'), dialogShell=$('[data-player-modal]');
+    const dialogModal=bootstrap.Modal.getOrCreateInstance(dialogShell);
+    const dialogOpen=()=>dialogShell.classList.contains('show');
+    const closeDialog=()=>dialogModal.hide();
+    let dialogReturnFocus=null;
+    const sortDropdown=bootstrap.Dropdown.getOrCreateInstance($('[data-sort-trigger]'));
+    $('[data-sort]').addEventListener('hidden.bs.dropdown',()=>{$('[data-sort-options]').hidden=true;setIcon($('[data-sort-trigger]'),'down');});
     // These elements stay in the page for its lifetime. Keep DOM searches out
     // of the animation loop, including the 120 Hz loop on newer displays.
     const visuals = {
@@ -28,11 +34,11 @@
     let queueSort = ['playlist','new','old'].includes(saved.queueSort) ? saved.queueSort : (queuePlaylist > 0 ? 'playlist' : librarySort);
     const collections = window.TapeRoomCollections;
     let libraryView = saved.libraryView && ['overview','albums','artists','new','popular','genres','genre','mine','songs','favorites','playlist','album','artist'].includes(saved.libraryView.type) ? saved.libraryView : {type:'overview'};
+    if(config.authenticated===false && !['overview','albums','artists','genres','genre','new','popular','album','artist'].includes(libraryView.type))libraryView={type:'overview'};
     let queueSource = collections.descriptor(saved.queueSource, {type:queuePlaylist === -1 ? 'favorites' : queuePlaylist > 0 ? 'playlist' : 'songs', ...(queuePlaylist > 0 ? {id:queuePlaylist} : {})});
     let trackPool = collections.tracks(data), trackMap = new Map(trackPool.map(t => [t.id,t]));
     let shuffle = Boolean(saved.shuffle), bag = [], history = [], seekActive = false, restoreTime = 0;
     let toastTimer, frameId = 0, frameTime = 0, frameInProgress = false, angles = [0, 0], graph, uploading = false, dialogHandler, dialogSubmitting = false;
-    let dialogScroll = null;
     let listening = null;
     let loading = false, bufferVisible = false, bufferTimer, coverPreviewUrl, generation = 0, lastSave = 0, mutations = 0;
     let progressFrame = -Infinity, meterFrame = -Infinity, tapeFrame = -Infinity, packRadii = [174,78], positionKey = '';
@@ -101,23 +107,24 @@
     }
 
     function toast(message, error = false) {
-        const node = $('[data-toast]'); node.textContent = message; node.classList.toggle('is-error', error); node.hidden = false;
-        clearTimeout(toastTimer); toastTimer = setTimeout(() => { node.hidden = true; }, error ? 7000 : 3500);
+        const node=$('[data-toast]');$('[data-toast-text]').textContent=message;
+        node.classList.toggle('is-error',error);node.setAttribute('aria-live',error?'assertive':'polite');
+        bootstrap.Toast.getOrCreateInstance(node,{delay:5000}).show();
     }
     function save() {
         try { localStorage.setItem(config.storageKey, JSON.stringify({playlist:selected, libraryView, queueSource, current, queue, queueName, queuePlaylist, queueSort, librarySort, playlistSort, time:playbackPosition(), volume:audio.volume, audibleVolume, muted:audio.muted, shuffle, repeat})); } catch (_) {}
     }
     function closeSort() {
         const options = $('[data-sort-options]'), restoreFocus = options.contains(document.activeElement);
-        options.hidden = true;
+        sortDropdown.hide();options.hidden = true;
         $('[data-sort-trigger]').setAttribute('aria-expanded', 'false');
         setIcon($('[data-sort-trigger]'),'down');
         if (restoreFocus) $('[data-sort-trigger]').focus();
     }
     function openSort() {
-        $('[data-sort-options]').hidden = false;
+        $('[data-sort-options]').hidden = false;sortDropdown.show();
         $('[data-sort-trigger]').setAttribute('aria-expanded', 'true');
-        setIcon($('[data-sort-trigger]'),'up');
+        setIcon($('[data-sort-trigger]'),'down');
         $('[data-sort-options] [aria-selected="true"]')?.focus();
     }
     function renderSort() {
@@ -125,7 +132,9 @@
         const modes = [...(selected > 0 ? [['playlist','Порядок в ленте']] : []), ['new','Сначала новые'], ['old','Сначала старые']];
         const options = $('[data-sort-options]'); options.replaceChildren();
         for (const [value,label] of modes) {
-            const option = element('button','rp-sort-option',label);
+            const option = element('button','rp-sort-option dropdown-item');
+            option.append(element('span','',label));
+            if(value===selectedSort())option.insertAdjacentHTML('beforeend',icon('check'));
             option.type = 'button'; option.tabIndex = -1; option.dataset.sortMode = value;
             option.setAttribute('role','option'); option.setAttribute('aria-selected', String(value === selectedSort()));
             options.append(option);
@@ -145,7 +154,7 @@
         const nav = $('[data-playlists]'); nav.replaceChildren();
         for (const item of [{id:0, name:'Все мои песни', tracks:collections.myTracks(data)}, {id:-1, name:'Избранное', tracks:collectionTracks(-1)}, ...data.playlists]) {
             const active = ['songs','favorites','playlist'].includes(libraryView.type) && item.id === selected;
-            const node = element('button', `rp-playlist${active ? ' is-selected' : ''}`);
+            const node = element('button', `rp-playlist nav-link${active ? ' is-selected' : ''}`);
             node.type = 'button'; node.dataset.action = 'select-playlist'; node.dataset.id = item.id;
             node.setAttribute('aria-current', active ? 'page' : 'false');
             node.innerHTML = icon(item.id === -1 ? 'heart' : item.id ? 'list' : 'music');
@@ -177,7 +186,7 @@
             if(genre){const label=element('span','rp-track-genre',genre);label.title=`Жанр: ${genre}`;info.append(label);}
             const actions = element('div', 'rp-track-actions');
             const canReorder = selected > 0 && playlistSort === 'playlist';
-            actions.innerHTML = (canReorder ? button('move-up', 'Переместить выше', 'up', t.id, 'rp-reorder') + button('move-down', 'Переместить ниже', 'down', t.id, 'rp-reorder') : '') + button('favorite', t.favorite ? 'Убрать из избранного' : 'Добавить в избранное', 'heart', t.id, `rp-favorite${t.favorite ? ' is-active' : ''}`) + button('add-to-playlist', 'Добавить в плейлист', 'plus', t.id) + (!t.shared ? button('edit-track', 'Изменить трек', 'edit', t.id) : '') + (selected > 0 ? button('remove-track','Убрать из плейлиста','trash',t.id) : !t.shared && libraryView.type === 'songs' ? button('delete-track','Удалить из библиотеки','trash',t.id) : '');
+            actions.innerHTML = (canReorder ? button('move-up', 'Переместить выше', 'up', t.id, 'rp-reorder') + button('move-down', 'Переместить ниже', 'down', t.id, 'rp-reorder') : '') + button('favorite', t.favorite ? 'Убрать из избранного' : 'Добавить в избранное', t.favorite ? 'heart-filled' : 'heart', t.id, `rp-favorite${t.favorite ? ' is-active' : ''}`) + button('add-to-playlist', 'Добавить в плейлист', 'plus', t.id) + (!t.shared ? button('edit-track', 'Изменить трек', 'edit', t.id) : '') + (selected > 0 ? button('remove-track','Убрать из плейлиста','trash',t.id) : !t.shared && libraryView.type === 'songs' ? button('delete-track','Удалить из библиотеки','trash',t.id) : '');
             actions.querySelector('[data-action="favorite"]').setAttribute('aria-pressed', String(t.favorite));
             if(t.browserLocal)actions.querySelector('[data-action="add-to-playlist"]')?.remove();
             if (canReorder) {
@@ -186,6 +195,7 @@
             }
             row.append(play, cover, info, element('span', 'rp-track-duration', t.duration ? formatTime(t.duration) : '—'), actions); fragment.append(row);
         }
+        window.TapeRoomUi?.decorate(fragment);
         window.TapeRoomImages.patch(rows,fragment);
         $('[data-empty]').hidden = !catalog.listMode || visible.length > 0;
         $('[data-empty-title]').textContent = query ? 'Ничего не найдено' : catalog.emptyTitle || (selected === -1 ? 'Любимые песни будут здесь' : selected > 0 ? 'Эта лента пока пустая' : 'Здесь начинается ваша коллекция');
@@ -269,6 +279,7 @@
         sh.setAttribute('aria-label', `Случайный порядок: ${shuffle ? 'включён' : 'выключен'}`); sh.title = sh.getAttribute('aria-label');
         const re = $('[data-action="repeat"]'); re.classList.toggle('is-active', repeat !== 'off'); re.setAttribute('aria-label', `Повтор: ${repeat === 'off' ? 'выключен' : repeat === 'one' ? 'одного трека' : 'плейлиста'}`); re.title = re.getAttribute('aria-label'); $('[data-repeat-one]').hidden = repeat !== 'one';
         syncVolume();
+        catalogUI.syncPlayback(current,playing);
         for (const row of $('[data-tracks]').children) {
             row.classList.toggle('is-current', Number(row.dataset.trackId) === current);
             const control = row.querySelector('.rp-track-play'); setIcon(control, Number(row.dataset.trackId) === current && playing ? 'pause' : 'play');
@@ -440,7 +451,7 @@
             analysis:{mode:copy ? 'copy' : graph?.capture ? 'capture' : 'none',state:graph?.context.state || 'absent',clock:graph?.context.currentTime,resuming:Boolean(graph?.resumeJob),levels:[...meterLevels],rms:[...meterSignal.rms],sampleAgeMs:meterSignal.sampled.map(time => Number.isFinite(time) ? Math.round(now-time) : null),health:meterController.snapshot(),
                 copy:copy ? {time:copy.currentTime,paused:copy.paused,ended:copy.ended,ready:copy.readyState,seeking:copy.seeking,rate:copy.playbackRate} : undefined}});
         while (meterReport.samples.length > 180 || now - meterReport.samples[0].ms > 90000) meterReport.samples.shift();
-        if (meterReport.status && dialog.open && meterReport.status.isConnected) {
+        if (meterReport.status && dialogOpen() && meterReport.status.isConnected) {
             const retry = $('[data-meter-report-retry]'); if (retry) retry.hidden = !meterController.needsGesture || audio.paused || audio.ended;
             meterReport.status.textContent = audio.paused ? 'Музыка на паузе.' : loading ? 'Музыка буферизуется.' : meterController.needsGesture ? 'Safari требует нажатия. Нажмите «Включить индикаторы».' : meterController.terminal ? 'Анализатор не смог продолжить работу. Причина записана в отчёте; воспроизведение песни от него не зависит.' : meterLevels.some(level => level > 0) ? 'Индикаторы получают сигнал музыки.' : 'Музыка играет. Сейчас анализатор не показывает уровень сигнала.';
         }
@@ -488,13 +499,15 @@
         }
         const version = generation;
         if (sourceJob) {
-            try { await sourceJob; }
+            const pending=sourceJob;
+            try { await pending; }
             catch(error) { if(version===generation){setBuffering(false);toast(error.message,true);}return; }
+            finally {if(sourceJob===pending)sourceJob=null;}
             if(version!==generation)return;
         }
         // Keep play() inside the tap's activation; meter setup never gates sound.
         try { const playback = audio.play(); resumeMeters(origin,event); await playback; }
-        catch (error) { if (version === generation && error.name !== 'AbortError') { setBuffering(false); stopMeters('native-error'); toast('Не удалось воспроизвести трек. Проверьте формат, соединение и доступ к файлу.', true); } }
+        catch (error) { if (version === generation && error.name !== 'AbortError') { setBuffering(false); stopMeters('native-error'); toast(error.name==='NotAllowedError'?'Браузер ожидает подтверждения воспроизведения. Нажмите кнопку запуска ещё раз.':activeTrack()?.browserLocal?window.TapeRoomTorrents.playbackError(audio.error?.code||2):'Не удалось воспроизвести трек. Проверьте формат, соединение и доступ к файлу.', true); } }
     }
     function shuffled(exclude) {
         const ids = queue.filter(id => id !== exclude);
@@ -527,7 +540,7 @@
         const connection = navigator.connection;
         const enough = bufferedAhead() >= 8 || (Number.isFinite(audio.duration) && bufferedAhead() >= audio.duration-audio.currentTime-.25 && audio.readyState >= 3);
         const allowed = !document.hidden && !audio.paused && !audio.ended && !audio.seeking && !loading && enough && !connection?.saveData && !['slow-2g','2g'].includes(connection?.effectiveType);
-        preloader.schedule(upcoming(),allowed);
+        preloader.schedule(upcoming(),allowed && config.authenticated!==false);
     }
     function setQueue(source = selectedSource()) { preloader.reset(); queueSource = collections.descriptor(source); queueSort = selectedSort(); queue = collections.collection(data,queueSource,queueSort).map(t => t.id); queuePlaylist = queueSource.type === 'playlist' ? queueSource.id : queueSource.type === 'favorites' ? -1 : 0; queueName = collections.name(data,queueSource); bag = []; futureBag = []; shuffleCycleStarted = false; history = []; }
     function load(id, time = 0) {
@@ -617,7 +630,7 @@
         finally { clearTimeout(timer); }
     }
     function startListening() {
-        if (!current || activeTrack()?.browserLocal || listening?.generation===generation) return;
+        if (config.authenticated===false || !current || activeTrack()?.browserLocal || listening?.generation===generation) return;
         const job={id:current,generation,seconds:0,position:audio.currentTime,wall:performance.now(),token:'',threshold:Infinity,counted:false,busy:false,errors:0,retryTimer:null,deadline:Infinity};
         listening=job;
         listeningRequest({action:'start',id:job.id}).then(result=>{
@@ -650,6 +663,7 @@
         });
     }
     async function action(name, values = {}, cover) {
+        if(config.authenticated===false){showSignIn();return {status:false};}
         if(track(values.id)?.browserLocal)return window.TapeRoomTorrents.action(name,values,cover);
         const form = new FormData(); form.set('action', name); form.set('needCSRFToken', config.csrf);
         for (const [key,value] of Object.entries(values)) {
@@ -657,6 +671,10 @@
         }
         if (cover?.size) form.set('cover', cover);
         return mutate(async () => { const result = await api('action', form); if (result.tracks) applyState(result); return result; });
+    }
+    function showSignIn(){
+        openDialog('Войдите в Tape Room',`<div class="d-flex flex-wrap gap-2"><a class="btn btn-primary" href="${esc(config.login)}">Войти</a><a class="btn btn-outline-secondary" href="${esc(config.register)}">Регистрация</a></div>`,async()=>{},'Слушать музыку можно без аккаунта. Войдите, чтобы добавлять альбомы, песни и сохранять свою коллекцию.');
+        $('[data-dialog-submit]').hidden=true;
     }
     function openDialog(title, fields, handler, description = '', submit = 'Сохранить', danger = false) {
         dialogRequest++;
@@ -668,30 +686,12 @@
         $('[data-dialog-fields]').innerHTML = fields;
         $('[data-dialog-description]').textContent = description; $('[data-dialog-description]').hidden = !description;
         $('[data-dialog-error]').hidden = true;
-        const control = $('[data-dialog-submit]'); control.textContent = submit; control.disabled = false; control.hidden = false; control.classList.toggle('rp-button--danger', danger);
+        const control = $('[data-dialog-submit]'); control.textContent = submit; control.disabled = false; control.hidden = false; control.classList.toggle('rp-button--danger', danger);control.classList.toggle('btn-danger',danger);control.classList.toggle('btn-primary',!danger);
         dialogHandler = handler;
-        lockDialogScroll(); syncDialogViewport();
-        try { dialog.showModal(); } catch (error) { unlockDialogScroll(); throw error; }
-    }
-    function lockDialogScroll() {
-        if (dialogScroll) return;
-        dialogScroll = {x:window.scrollX,y:window.scrollY,behavior:document.documentElement.style.scrollBehavior,rootLocked:document.documentElement.classList.contains('rp-dialog-open')};
-        const padding = parseFloat(getComputedStyle(document.body).paddingRight) || 0;
-        document.body.style.setProperty('--rp-dialog-page-offset',`${-dialogScroll.y}px`);
-        document.body.style.setProperty('--rp-dialog-page-padding',`${padding+Math.max(0,window.innerWidth-document.documentElement.clientWidth)}px`);
-        document.body.classList.add('is-dialog-open');
-        document.documentElement.classList.add('rp-dialog-open');
-    }
-    function unlockDialogScroll() {
-        if (!dialogScroll) return;
-        const position=dialogScroll; dialogScroll=null;
-        document.documentElement.style.scrollBehavior='auto';
-        document.body.classList.remove('is-dialog-open');
-        document.body.style.removeProperty('--rp-dialog-page-offset');
-        document.body.style.removeProperty('--rp-dialog-page-padding');
-        if (!position.rootLocked) document.documentElement.classList.remove('rp-dialog-open');
-        window.scrollTo(position.x,position.y);
-        document.documentElement.style.scrollBehavior=position.behavior;
+        window.TapeRoomUi.decorate(dialog);
+        syncDialogViewport();
+        if(!dialogOpen())dialogReturnFocus=document.activeElement;
+        dialogModal.show();
     }
     function syncDialogViewport() {
         const viewport = window.visualViewport;
@@ -701,9 +701,9 @@
         dialog.classList.toggle('is-compact',height < 520);
         dialog.classList.toggle('is-short',height < 340);
     }
-    window.visualViewport?.addEventListener('resize',() => { if (dialog.open) syncDialogViewport(); });
-    window.visualViewport?.addEventListener('scroll',() => { if (dialog.open) syncDialogViewport(); });
-    window.addEventListener('resize',() => { if (dialog.open) syncDialogViewport(); });
+    window.visualViewport?.addEventListener('resize',() => { if (dialogOpen()) syncDialogViewport(); });
+    window.visualViewport?.addEventListener('scroll',() => { if (dialogOpen()) syncDialogViewport(); });
+    window.addEventListener('resize',() => { if (dialogOpen()) syncDialogViewport(); });
     const field = (name, label, value = '', max = 240) => `<label class="rp-field">${label}<input name="${name}" value="${esc(value)}" maxlength="${max}" ${name === 'artist' ? '' : 'required'}></label>`;
     function resetCoverPreview(source,kind = 'cover') {
         if (coverPreviewUrl) { URL.revokeObjectURL(coverPreviewUrl);coverPreviewUrl=undefined; }
@@ -823,12 +823,12 @@
         const timeout = setTimeout(() => controller.abort(),90000);
         try {
             const result = await api(path,form,controller.signal);
-            if (request !== dialogRequest || !dialog.open) return;
+            if (request !== dialogRequest || !dialogOpen()) return;
             const entries = result.entries || result.chapters || [];
             if (!entries.length) { if (status) status.textContent = 'Подходящие паузы не найдены. Добавьте таймкоды вручную или импортируйте CUE.'; return; }
             showChapterPreview(trackId,entries,result.warnings || [],Boolean(file),result.revision);
         } catch (error) {
-            if (request === dialogRequest && dialog.open) {
+            if (request === dialogRequest && dialogOpen()) {
                 if (status) status.hidden = true;
                 const message = error.name === 'AbortError' ? 'Анализ отменён или превышено время ожидания. Сохранённая разметка не изменена.' : error.message;
                 $('[data-dialog-error]').textContent = message; $('[data-dialog-error]').hidden = false;
@@ -874,7 +874,7 @@
             const ids = [...dialog.querySelectorAll('[data-album-member] input:checked')].map(input=>Number(input.value));
             const result = await action(`catalog.album.${existing ? 'update' : 'create'}`,{id,title:form.get('title'),artist:form.get('artist'),release_date:form.get('release_date'),description:form.get('description'),genre_id:genrePicker.value(),tracks:JSON.stringify(ids)},form.get('cover'));
             browse({type:'album',id:existing?.id || result.id}); toast(existing ? 'Альбом сохранён.' : 'Альбом добавлен в вашу коллекцию.');
-        },'Альбом объединяет песни и не создаёт копий аудио. Публикация доступна зарегистрированному пользователю после одобрения модератором.');
+        },data.catalog?.autoApprove ? 'Ваши альбомы публикуются без дополнительной модерации.' : 'Альбом объединяет песни и не создаёт копий аудио. После отправки публикацию проверит модератор.');
         dialog.classList.add('rp-dialog--album');
         genrePicker.mount(dialog);
         setupAlbumMetadata(value,genrePicker);
@@ -997,6 +997,7 @@
         });
     }
     async function uploadFiles(files) {
+        if(config.authenticated===false){showSignIn();return;}
         if (uploading) { toast('Дождитесь завершения текущей загрузки.'); return; }
         if (!files.length) return;
         uploading = true; const destination = selected > 0 ? selected : 0, favorite = selected === -1; const progress = $('[data-upload-progress]'); progress.hidden = false;
@@ -1035,7 +1036,9 @@
         if (dialogSubmitting && dialog.contains(control)) return;
         const name = control.dataset.action, id = Number(control.dataset.id);
         try {
+            if(config.authenticated===false && (['upload','create-playlist','favorite','add-to-playlist','catalog-create','catalog-save','drive','player-settings'].includes(name) || (name==='catalog-view' && ['mine','songs','favorites','playlist'].includes(control.dataset.view)))){showSignIn();return;}
             switch (name) {
+                case 'auth':showSignIn();break;
                 case 'play': if (audio.paused) await play('user',event); else audio.pause(); break;
                 case 'prev': previous('user',event); break;
                 case 'next': next(false,'user',event); break;
@@ -1061,6 +1064,7 @@
                 }
                 case 'catalog-play-album': {
                     const item=album(id); if (!item?.tracks.length) break;
+                    if(item.tracks.some(trackId=>Number(trackId)===current)){if(audio.paused)await play('user',event);else audio.pause();break;}
                     setQueue({type:'album',id}); load(item.tracks[0]); await play('user',event); break;
                 }
                 case 'catalog-save': control.disabled=true; await action('catalog.album.save',{id,saved:album(id)?.saved ? 0 : 1}); toast(album(id)?.saved ? 'Альбом в вашей коллекции.' : 'Альбом убран из коллекции.'); break;
@@ -1068,7 +1072,7 @@
                 case 'catalog-edit': editAlbum(id); break;
                 case 'catalog-publish': {
                     const item=album(id); if (!item?.editable || !item.canPublish) break;
-                    openDialog(item.submitted ? 'Отозвать публикацию?' : 'Отправить альбом на модерацию?', '', () => action('catalog.album.publish',{id,published:item.submitted ? 0 : 1}),item.submitted ? 'Альбом останется в вашей библиотеке. Другие пользователи потеряют доступ к его песням через каталог.' : 'Администратор или создатель проверит альбом. После одобрения он появится в общем каталоге. Файлы Google Drive остаются на вашем диске.',item.submitted ? 'Отозвать' : 'Отправить'); break;
+                    openDialog(item.submitted ? 'Снять альбом с публикации?' : item.requiresModeration===false ? 'Опубликовать альбом?' : 'Отправить альбом на модерацию?', '', () => action('catalog.album.publish',{id,published:item.submitted ? 0 : 1}),item.submitted ? 'Альбом останется в вашей библиотеке. В общем каталоге его больше не будет.' : item.requiresModeration===false ? 'Ваш альбом сразу появится в общем каталоге.' : 'Администратор или создатель проверит альбом. После одобрения он появится в общем каталоге.',item.submitted ? 'Снять с публикации' : item.requiresModeration===false ? 'Опубликовать' : 'Отправить'); break;
                 }
                 case 'catalog-delete': {
                     const item=album(id); if (!item?.editable) break;
@@ -1082,7 +1086,7 @@
                 case 'favorite': control.disabled = true; await action(track(id)?.shared ? 'catalog.track.favorite' : 'track.favorite',{id,favorite:track(id).favorite ? 0 : 1}); break;
                 case 'upload': $('[data-audio-files]').click(); break;
                 case 'create-playlist': createPlaylist(); break;
-                case 'close-dialog': if (!dialogSubmitting) dialog.close(); break;
+                case 'close-dialog': if (!dialogSubmitting) closeDialog(); break;
                 case 'edit-current': editTrack(current); break;
                 case 'edit-track': editTrack(id); break;
                 case 'chapter-play': { const item = control.classList.contains('rp-chapter-marker') && event.detail > 0 ? chapterAtPointer(event) : currentChapters().find(item => item.id === id); if (item) jumpChapter(item.start,'user',event); break; }
@@ -1145,11 +1149,13 @@
         event.preventDefault(); const control = $('[data-dialog-submit]'); if (control.disabled) return;
         const request = dialogRequest;
         dialogSubmitting = true; control.disabled = true; $('[data-dialog-error]').hidden = true;
-        try { await dialogHandler(new FormData(event.currentTarget)); if (request === dialogRequest) dialog.close(); }
+        try { await dialogHandler(new FormData(event.currentTarget)); if (request === dialogRequest){dialogSubmitting=false;closeDialog();} }
         catch (error) { if (request === dialogRequest) { $('[data-dialog-error]').textContent = error.message; $('[data-dialog-error]').hidden = false; } }
         finally { if (request === dialogRequest) { dialogSubmitting = false; control.disabled = false; } }
     });
-    dialog.addEventListener('cancel', event => { if (dialogSubmitting) event.preventDefault(); });
+    dialogShell.addEventListener('hide.bs.modal',event=>{if(dialogSubmitting)event.preventDefault();});
+    dialogShell.addEventListener('shown.bs.modal',()=>{dialog.querySelector('input:not([type=hidden]):not([type=file]),textarea,a.btn')?.focus({preventScroll:true});});
+    new MutationObserver(()=>{dialogShell.querySelector('.modal-dialog').classList.toggle('modal-lg',dialog.matches('.rp-dialog--drive,.rp-dialog--chapters,.rp-dialog--album,.rp-dialog--artist'));}).observe(dialog,{attributes:true,attributeFilter:['class']});
     $('[data-search]').addEventListener('input', render);
     $('[data-chapter-search]')?.addEventListener('input',renderChapters);
     $('[data-chapter-markers]')?.addEventListener('pointermove',event => {
@@ -1212,6 +1218,7 @@
     audio.addEventListener('error', async () => {
         if (!current) return; preloader.cancel(); setBuffering(false); stopMeters('native-error'); meterController.nativeFailure(audio.error?.code || 0);
         const t = activeTrack(), version = generation;
+        if(t?.browserLocal){toast(window.TapeRoomTorrents.playbackError(audio.error?.code||2),true);return;}
         if (t?.source !== 'drive') { toast('Не удалось прочитать аудиофайл. Возможно, браузер не поддерживает его кодек.',true); return; }
         if (errorProbe === version) return; errorProbe = version;
         let message = 'Не удалось загрузить песню из Google Drive. Повторите воспроизведение или проверьте подключение.';
@@ -1257,7 +1264,7 @@
     window.addEventListener('dragleave', event => { if (--dragDepth <= 0) { dragDepth = 0; $('[data-drop-overlay]').hidden = true; } });
     window.addEventListener('drop', event => { event.preventDefault(); dragDepth = 0; $('[data-drop-overlay]').hidden = true; uploadFiles([...(event.dataTransfer?.files || [])]); });
     document.addEventListener('keydown', event => {
-        if (dialog.open || /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(event.target.tagName) || event.target.isContentEditable || event.altKey || event.ctrlKey || event.metaKey) return;
+        if (dialogOpen() || /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(event.target.tagName) || event.target.isContentEditable || event.altKey || event.ctrlKey || event.metaKey) return;
         if (event.code === 'Space') { event.preventDefault(); if (audio.paused) play('user',event); else audio.pause(); }
         if (['ArrowLeft','ArrowRight'].includes(event.code)) {
             event.preventDefault();
@@ -1403,14 +1410,14 @@
             do {
                 const params = new URLSearchParams(); if (token) params.set('page',token); if (folder) params.set('folder',folder);
                 result = await api('drive/files' + (params.size ? '?' + params : ''));
-                if ($('[data-drive-files]') !== list || !dialog.open || browseGeneration !== driveBrowseGeneration) return;
+                if ($('[data-drive-files]') !== list || !dialogOpen() || browseGeneration !== driveBrowseGeneration) return;
                 files = (result.files || []).filter(file => isDriveAudio(file) || (folder && isDriveFolder(file)));
                 const next = result.nextPageToken || '';
                 if (!next || next === token || files.length) break;
                 token = next;
             } while (++attempts < 3);
         } catch (error) {
-            if ($('[data-drive-files]') !== list || !dialog.open || browseGeneration !== driveBrowseGeneration) return;
+            if ($('[data-drive-files]') !== list || !dialogOpen() || browseGeneration !== driveBrowseGeneration) return;
             if (more) { more.disabled = false; more.textContent = 'Повторить загрузку'; }
             else { list.replaceChildren(element('p','rp-drive-empty',error.message)); const retry = element('button','rp-button','Повторить загрузку'); retry.type = 'button'; retry.dataset.action = 'drive-more'; list.append(retry); }
             throw error;
@@ -1443,7 +1450,7 @@
         if (result.nextPageToken) { const next = element('button','rp-button rp-drive-more','Показать ещё'); next.type = 'button'; next.dataset.action = 'drive-more'; next.dataset.page = result.nextPageToken; list.append(next); }
         updateDriveSelection();
     }
-    dialog.addEventListener('close', () => { unlockDialogScroll(); dialogRequest++; driveBrowseGeneration++; chapterJob?.abort(); chapterJob = null; $('[data-dialog-submit]').hidden = false; if (coverPreviewUrl) { URL.revokeObjectURL(coverPreviewUrl); coverPreviewUrl = undefined; } });
+    dialogShell.addEventListener('hidden.bs.modal', () => { if(dialogReturnFocus?.isConnected)dialogReturnFocus.focus({preventScroll:true}); dialogRequest++; driveBrowseGeneration++; chapterJob?.abort(); chapterJob = null; $('[data-dialog-submit]').hidden = false; if (coverPreviewUrl) { URL.revokeObjectURL(coverPreviewUrl); coverPreviewUrl = undefined; } });
     app.querySelectorAll('[data-theme-cover]').forEach(image=>{ image.decode?.().catch(()=>{}); });
     // These small theme placeholders are reused across cards and editors.
     // Warming both variants avoids a blank artist card on its first theme swap.

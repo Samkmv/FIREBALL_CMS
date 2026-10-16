@@ -28,7 +28,8 @@ try {
             $manifest = $this->loadUpdateManifest($this->package);
             $this->validateUpdateManifest($manifest, $this->package);
             if (version_compare((string)$manifest['version'], (string)$this->engineRelease['version'], '<=')) throw new RuntimeException('Package must be newer than the installed version.');
-            $this->assertPackageComposerReady($this->package, $this->captureDependencyFingerprint());
+            $fingerprint = $this->captureDependencyFingerprint();
+            $this->assertPackageComposerReady($this->package, $fingerprint);
             $git = $this->getLocalGitState();
             $commit = '';
             $previous = (string)($git['commit_hash'] ?? '');
@@ -47,22 +48,11 @@ try {
             $this->createPreUpdateBackups();
             $this->installationMutated = true;
             if ($commit !== '') {
-                $diff = $this->runCommand('git diff --name-only HEAD ' . escapeshellarg($commit), ROOT);
-                if ($diff['exit_code'] !== 0) throw new RuntimeException('Cannot enumerate release paths.');
-                foreach (preg_split('/\R/', trim($diff['stdout'])) ?: [] as $path) {
-                    if ($path === '' || !$this->shouldPreservePath($path, $manifest)) continue;
-                    $this->assertUpdateDestination(ROOT, $path);
-                    $tracked = $this->runCommand('git ls-files --error-unmatch -- ' . escapeshellarg($path), ROOT);
-                    if ($tracked['exit_code'] === 0) {
-                        $clean = $this->runCommand('git restore --source=HEAD --worktree -- ' . escapeshellarg($path), ROOT);
-                        if ($clean['exit_code'] !== 0) throw new RuntimeException('Cannot prepare preserved path for Git merge.');
-                    }
-                }
-                $merge = $this->runCommand('git merge --ff-only ' . escapeshellarg($commit), ROOT);
-                if ($merge['exit_code'] !== 0) throw new RuntimeException('Release cannot be applied with a fast-forward merge.');
+                $this->fastForwardToCommit($commit, $manifest);
                 $this->restorePreservedGitPaths($previous, $commit, $manifest);
             }
             $this->copyPackageToRoot($this->package, ROOT, $manifest);
+            $this->runComposerIfDependencyFilesChanged($fingerprint);
             (new App\Services\MigrationRunner())->run();
             app()->plugins = new FBL\Plugins\PluginManager();
             app()->plugins->migrateInstalledPlugins();

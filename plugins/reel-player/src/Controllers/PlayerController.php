@@ -17,7 +17,11 @@ final class PlayerController
 {
     private function library(): Library { return new Library((int)get_user()['id']); }
     private function drive(): GoogleDrive { return new GoogleDrive((int)get_user()['id'], null, check_creator()); }
-    private function catalog(): Catalog { return new Catalog((int)get_user()['id'],check_creator()); }
+    private function catalog(): Catalog { return new Catalog((int)(get_user()['id'] ?? 0),check_creator(),in_array(get_user()['role'] ?? '',['admin','creator'],true)); }
+    private function playerState(): array
+    {
+        return check_auth() ? $this->library()->state() : ['tracks'=>[],'playlists'=>[],'catalog'=>$this->catalog()->state()];
+    }
     private function trackDrive(array $track): GoogleDrive { return new GoogleDrive((int)$track['owner_id']); }
 
     /** The plugin entry in the CMS is an overview; the theme owns the player UI. */
@@ -57,7 +61,10 @@ final class PlayerController
                 'version' => (string)$manifest['version'],
                 'api' => base_href('/tape-room/api'),
                 'csrf' => (string)session()->get('needCSRFToken', ''),
-                'storageKey' => 'fireball-tape-room:' . (int)get_user()['id'],
+                'storageKey' => 'fireball-tape-room:' . (check_auth() ? (int)get_user()['id'] : 'guest'),
+                'authenticated' => check_auth(),
+                'login' => base_href('/login'),
+                'register' => base_href('/register'),
                 'defaultCover' => $defaultCovers['light'],
                 'defaultArtwork' => $defaultCovers['light'],
                 'defaultCovers' => $defaultCovers,
@@ -66,8 +73,8 @@ final class PlayerController
                 'defaultArtistVariants' => $defaultArtistVariants,
                 'defaultArtworkSize' => '1254x1254',
                 'maxUpload' => UploadPolicy::limits()['effective'],
-                'state' => $this->library()->state(),
-                'drive' => $this->drive()->status(),
+                'state' => $this->playerState(),
+                'drive' => check_auth() ? $this->drive()->status() : ['connected'=>false,'canManage'=>false],
                 'pwa' => ['enabled' => !empty($pwa['enabled']), 'worker' => $pwa['service_worker_url'] ?? ''],
                 'torrent' => ['worker' => base_url('/tape-room/torrent-worker.js'), 'scope' => base_url('/')],
             ],
@@ -90,7 +97,7 @@ final class PlayerController
     public function state(): void
     {
         header('Cache-Control: private, no-store');
-        response()->json(['status' => true, ...$this->library()->state()]);
+        response()->json(['status' => true, ...$this->playerState()]);
     }
 
     public function action(): void

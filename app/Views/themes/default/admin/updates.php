@@ -166,6 +166,19 @@ $statusIcon = match ($statusVariant) {
                 </div>
             <?php endif; ?>
 
+            <?php if (!empty($updateLocal['managed_dirty_files'])): ?>
+                <div class="admin-update-notice admin-update-notice--warning">
+                    <i class="ci-info" aria-hidden="true"></i>
+                    <div>
+                        <strong><?= print_translation('admin_update_managed_changes_title') ?></strong>
+                        <div class="small mt-1"><?= print_translation('admin_update_managed_changes_text') ?></div>
+                        <details class="small mt-2"><summary><?= print_translation('admin_update_managed_changes_files') ?></summary><ul class="mb-0 mt-2 ps-3">
+                            <?php foreach ($updateLocal['managed_dirty_files'] as $path): ?><li><?= htmlSC((string)$path) ?></li><?php endforeach; ?>
+                        </ul></details>
+                    </div>
+                </div>
+            <?php endif; ?>
+
             <?php if (!empty($updateBlockers)): ?>
                 <div class="admin-update-notice admin-update-notice--danger">
                     <i class="ci-banned" aria-hidden="true"></i>

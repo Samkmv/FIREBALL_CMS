@@ -79,6 +79,7 @@ class UpdateCenter
                 'dirty_files' => $localGitState['dirty_files'],
                 'blocking_dirty_files' => $localGitState['blocking_dirty_files'],
                 'ignored_dirty_files' => $localGitState['ignored_dirty_files'],
+                'managed_dirty_files' => $localGitState['managed_dirty_files'],
             ],
             'last_check' => $lastCheck,
             'update_blockers' => $this->buildUpdateBlockers($repository, $localGitState, $channel),
@@ -391,9 +392,10 @@ class UpdateCenter
 
         $previousCommit = (string)($localGitState['commit_hash'] ?? '');
         $this->fetchRemoteBranch($branch);
-        $manifest = $this->loadRemoteGitManifest($branch);
-        $this->validateUpdateManifest($manifest);
         $branchState = $this->getBranchStateFromGit($branch);
+        $targetCommit = (string)$branchState['remote_commit_hash'];
+        $manifest = $this->loadGitManifestAtRef($targetCommit);
+        $this->validateUpdateManifest($manifest);
 
         if (($branchState['status'] ?? '') === 'identical') {
             $this->refreshLastCheckAfterUpdate();
@@ -413,19 +415,12 @@ class UpdateCenter
             throw new RuntimeException(return_translation('admin_update_branch_diverged'));
         }
 
-            $this->validateGitDiffAgainstManifest($branch, $manifest);
+            $this->validateGitDiffAgainstRef($targetCommit, $manifest);
             $this->createPreUpdateBackups();
             $this->siteSettings->setMany(['updater_rollback_commit' => $previousCommit]);
             try {
             $this->installationMutated = true;
-            $pullResult = $this->runCommand(
-                'git pull --ff-only origin ' . escapeshellarg($branch),
-                ROOT
-            );
-
-            if ($pullResult['exit_code'] !== 0) {
-                throw new RuntimeException($this->formatCommandError($pullResult, return_translation('admin_update_pull_failed')));
-            }
+            $this->fastForwardToCommit($targetCommit, $manifest);
 
             $currentCommit = trim($this->runCommand('git rev-parse HEAD', ROOT)['stdout']);
             if ($previousCommit !== '' && $currentCommit !== '' && $previousCommit !== $currentCommit) {
@@ -720,13 +715,7 @@ class UpdateCenter
 
         try {
             $this->installationMutated = true;
-            $mergeResult = $this->runCommand(
-                'git merge --ff-only ' . escapeshellarg($releaseCommit),
-                ROOT
-            );
-            if ($mergeResult['exit_code'] !== 0) {
-                throw new RuntimeException($this->formatCommandError($mergeResult, return_translation('admin_update_pull_failed')));
-            }
+            $this->fastForwardToCommit($releaseCommit, $manifest);
 
             $this->restorePreservedGitPaths($previousCommit, $releaseCommit, $manifest);
             $this->runComposerIfNeeded($previousCommit, $releaseCommit);
@@ -1914,7 +1903,7 @@ class UpdateCenter
             }
         }
 
-        return in_array($relativePath, ['config/config.local.php'], true);
+        return in_array($relativePath, ['config/config.local.php', 'composer.phar', 'auth.json'], true);
     }
 
     protected function isDevelopmentPath(string $path): bool
@@ -2155,13 +2144,10 @@ class UpdateCenter
 
     protected function restorePreservedGitPaths(string $from, string $to, array $manifest): void
     {
-        $diff = $this->runCommand('git diff --name-only ' . escapeshellarg($from) . ' ' . escapeshellarg($to), ROOT);
-        if ($diff['exit_code'] !== 0) throw new RuntimeException('Unable to enumerate preserved update paths.');
-        $descriptor = json_decode((string)file_get_contents(STORAGE . '/update-recovery.json'), true, 512, JSON_THROW_ON_ERROR);
-        $zip = new \ZipArchive();
-        if ($zip->open($descriptor['files']) !== true) throw new RuntimeException('Unable to open preserved files snapshot.');
+        $paths = $this->gitChangedPaths($from, $to);
+        $zip = $this->openUpdateSnapshot();
         try {
-            foreach (preg_split('/\R/', trim((string)$diff['stdout'])) ?: [] as $path) {
+            foreach ($paths as $path) {
                 if ($path === '' || !$this->shouldPreservePath($path, $manifest)) continue;
                 if (str_contains($path, '..') || str_starts_with($path, '/')) throw new RuntimeException('Unsafe preserved path.');
                 $target = ROOT . '/' . $path;
@@ -2489,6 +2475,7 @@ class UpdateCenter
             'dirty_files' => [],
             'blocking_dirty_files' => [],
             'ignored_dirty_files' => [],
+            'managed_dirty_files' => [],
         ];
 
         $gitCheck = $this->runCommand('command -v git', ROOT);
@@ -2515,6 +2502,7 @@ class UpdateCenter
         $statusOutput = (string)($status['stdout_raw'] ?? $status['stdout']);
         $dirtyFiles = $statusOutput === '' ? [] : $this->normalizeDirtyFiles($statusOutput);
         $blockingDirtyFiles = $this->filterBlockingDirtyFiles($dirtyFiles);
+        if (preg_match('/(?:^|\x00)(?:DD|AU|UD|UA|DU|AA|UU) /', $statusOutput)) $blockingDirtyFiles = $dirtyFiles;
         $ignoredDirtyFiles = array_values(array_diff($dirtyFiles, $blockingDirtyFiles));
 
         return [
@@ -2531,6 +2519,7 @@ class UpdateCenter
             'dirty_files' => $dirtyFiles,
             'blocking_dirty_files' => $blockingDirtyFiles,
             'ignored_dirty_files' => $ignoredDirtyFiles,
+            'managed_dirty_files' => array_values(array_filter($dirtyFiles, fn(string $path): bool => $this->isManagedDirtyFile($path))),
         ];
     }
 
@@ -2544,9 +2533,7 @@ class UpdateCenter
             ROOT
         );
 
-        if ($diffResult['exit_code'] !== 0 || trim($diffResult['stdout']) === '') {
-            return;
-        }
+        if ($diffResult['exit_code'] !== 0) throw new RuntimeException('Unable to inspect dependency changes.');
 
         if ($this->composerVendorMatchesLock(ROOT)) {
             return;
@@ -2607,17 +2594,10 @@ class UpdateCenter
     }
 
     /**
-     * При изменении composer-файлов запускает Composer или прерывает обновление.
+     * Проверяет vendor и после ZIP-замены с неизменившимся lock-файлом.
      */
     protected function runComposerIfDependencyFilesChanged(array $before): void
     {
-        $after = $this->captureDependencyFingerprint();
-        if (($before['composer_json'] ?? '') === ($after['composer_json'] ?? '')
-            && ($before['composer_lock'] ?? '') === ($after['composer_lock'] ?? '')
-        ) {
-            return;
-        }
-
         if ($this->composerVendorMatchesLock(ROOT)) {
             return;
         }
@@ -2659,29 +2639,39 @@ class UpdateCenter
 
         $lock = json_decode((string)file_get_contents($lockPath), true);
         $installed = json_decode((string)file_get_contents($installedPath), true);
-        if (!is_array($lock) || !is_array($installed)) {
+        if (!is_array($lock) || !isset($lock['packages']) || !is_array($lock['packages']) || !array_is_list($lock['packages']) || !is_array($installed)) {
             return false;
         }
 
         $installedPackages = $installed['packages'] ?? $installed;
-        if (!is_array($installedPackages)) {
+        if (!is_array($installedPackages) || !array_is_list($installedPackages)) {
             return false;
         }
 
         $installedVersions = [];
         foreach ($installedPackages as $package) {
+            if (!is_array($package)) return false;
             $name = trim((string)($package['name'] ?? ''));
             $version = trim((string)($package['version'] ?? ''));
-            if ($name !== '' && $version !== '') {
-                $installedVersions[$name] = $version;
-            }
+            if ($name === '' || $version === '' || isset($installedVersions[$name])) return false;
+            $installedVersions[$name] = $package;
         }
 
         foreach ((array)($lock['packages'] ?? []) as $package) {
+            if (!is_array($package)) return false;
             $name = trim((string)($package['name'] ?? ''));
             $version = trim((string)($package['version'] ?? ''));
-            if ($name === '' || $version === '' || ($installedVersions[$name] ?? null) !== $version) {
+            $local = $installedVersions[$name] ?? [];
+            if ($name === '' || $version === '' || ($local['version'] ?? '') !== $version) {
                 return false;
+            }
+            foreach (['source', 'dist'] as $kind) {
+                $reference = (string)($package[$kind]['reference'] ?? '');
+                if ($reference !== '' && $reference !== (string)($local[$kind]['reference'] ?? '')) return false;
+            }
+            if (($package['type'] ?? '') !== 'metapackage') {
+                $path = isset($local['install-path']) ? dirname($installedPath) . '/' . $local['install-path'] : $root . '/vendor/' . $name;
+                if (!is_dir($path)) return false;
             }
         }
 
@@ -3040,6 +3030,8 @@ class UpdateCenter
         if ($path !== trim($path) || str_contains($path, '\\')) return false;
         $normalizedPath = ltrim(str_replace('\\', '/', trim($path)), '/');
         if ($this->shouldPreservePath($normalizedPath)) return true;
+        if ($this->isManagedDirtyFile($path)) return true;
+        if (str_starts_with($normalizedPath, 'vendor/')) return false;
 
         $ignoredExact = [
             '.DS_Store',
@@ -3070,6 +3062,118 @@ class UpdateCenter
         }
 
         return false;
+    }
+
+    /** Reproducible dependencies and non-executable component documentation. */
+    protected function isManagedDirtyFile(string $path): bool
+    {
+        if ($path !== trim($path) || preg_match('/[\x00-\x1f\x7f\\\\]/', $path)
+            || str_starts_with($path, '/') || str_contains($path, ':')
+            || array_intersect(explode('/', $path), ['', '.', '..'])) return false;
+        $managed = $path === 'composer.lock' || str_starts_with($path, 'vendor/')
+            || preg_match('~^(?:plugins|themes)/[a-zA-Z0-9_-]+/(?:docs/(?:[^/]+/)*[^/]+\.(?:md|txt|rst)|(?:README|CHANGELOG|LICENSE)(?:\.(?:md|txt|rst))?)$~iD', $path);
+        if (!$managed) return false;
+        // A Composer path repository or symlink cannot be captured by our ZIP
+        // snapshot. It must never be silently treated as reproducible vendor.
+        $current = ROOT;
+        foreach (explode('/', $path) as $part) {
+            $current .= '/' . $part;
+            if (is_link($current)) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Only after the complete recovery snapshot exists, reconcile generated
+     * files with Git so a normal Composer update cannot prevent fast-forward.
+     * Source edits remain blockers; the snapshot retains the previous vendor.
+     */
+    protected function prepareManagedGitFiles(array $manifest, string $targetCommit = ''): void
+    {
+        $state = $this->getLocalGitState();
+        if (!$state['is_update_clean']) throw new RuntimeException(return_translation('admin_update_dirty_worktree'));
+        $paths = array_values(array_filter($state['managed_dirty_files'], fn(string $path): bool =>
+            $this->shouldUpdatePath($path, $manifest) && !$this->shouldPreservePath($path, $manifest)));
+        if ($targetCommit !== '') {
+            $incoming = array_fill_keys($this->gitChangedPaths('HEAD', $targetCommit), true);
+            foreach ($state['dirty_files'] as $path) {
+                if (isset($incoming[$path]) && $this->shouldPreservePath($path, $manifest)) $paths[] = $path;
+            }
+            $paths = array_values(array_unique($paths));
+        }
+        if ($paths === []) return;
+        $zip = $this->openUpdateSnapshot();
+        $tracked = [];
+        $untracked = [];
+        try {
+            $tree = $this->runCommand('git ls-tree -r --name-only -z HEAD', ROOT);
+            if ($tree['exit_code'] !== 0) throw new RuntimeException('Unable to inspect tracked managed files.');
+            $headPaths = array_fill_keys(array_filter(explode("\0", (string)($tree['stdout_raw'] ?? $tree['stdout'])), 'strlen'), true);
+            // Verify every file before changing even the first one. A file
+            // changed after the snapshot must not be discarded by this step.
+            foreach ($paths as $path) {
+                $this->assertUpdateDestination(ROOT, $path);
+                $absolute = ROOT . '/' . $path;
+                if (file_exists($absolute)) {
+                    if (!is_file($absolute)) throw new RuntimeException('Unexpected managed update path: ' . $path);
+                    $stream = $zip->getStream($path);
+                    if (!is_resource($stream)) throw new RuntimeException('Local file is missing from the update snapshot: ' . $path);
+                    try { $hash = hash_init('sha256'); hash_update_stream($hash, $stream); $saved = hash_final($hash); }
+                    finally { fclose($stream); }
+                    if (!hash_equals($saved, (string)hash_file('sha256', $absolute))) {
+                        throw new RuntimeException('Local file changed after the update snapshot: ' . $path);
+                    }
+                } elseif ($zip->locateName($path) !== false) {
+                    throw new RuntimeException('Local file was removed after the update snapshot: ' . $path);
+                }
+                if (isset($headPaths[$path])) $tracked[] = $path; else $untracked[] = $path;
+            }
+            foreach (array_chunk($tracked, 50) as $batch) {
+                $result = $this->runCommand('git --literal-pathspecs restore --source=HEAD --staged --worktree -- '
+                    . implode(' ', array_map('escapeshellarg', $batch)), ROOT);
+                if ($result['exit_code'] !== 0) throw new RuntimeException($this->formatCommandError($result, 'Unable to prepare generated files for update.'));
+            }
+            foreach (array_chunk($untracked, 50) as $batch) {
+                $result = $this->runCommand('git --literal-pathspecs rm --cached --force --ignore-unmatch -- '
+                    . implode(' ', array_map('escapeshellarg', $batch)), ROOT);
+                if ($result['exit_code'] !== 0) throw new RuntimeException('Unable to prepare new managed Git files.');
+            }
+            foreach ($untracked as $path) {
+                $absolute = ROOT . '/' . $path;
+                if (is_file($absolute) && !unlink($absolute)) throw new RuntimeException('Unable to prepare managed file: ' . $path);
+            }
+        } finally { $zip->close(); }
+    }
+
+    protected function openUpdateSnapshot(): \ZipArchive
+    {
+        $path = STORAGE . '/update-recovery.json';
+        if (!is_file($path)) throw new RuntimeException('Verified file snapshot is required before preparing update files.');
+        $descriptor = json_decode((string)file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+        $backup = realpath((string)($descriptor['files'] ?? ''));
+        $directory = realpath(STORAGE . '/backups');
+        if (!$backup || !$directory || !is_file($backup) || !str_starts_with($backup, $directory . '/')
+            || !hash_equals((string)($descriptor['files_sha256'] ?? ''), (string)hash_file('sha256', $backup))) {
+            throw new RuntimeException('Verified file snapshot is required before preparing update files.');
+        }
+        $zip = new \ZipArchive();
+        if ($zip->open($backup) !== true) throw new RuntimeException('Unable to open the pre-update file snapshot.');
+        return $zip;
+    }
+
+    protected function gitChangedPaths(string $from, string $to): array
+    {
+        $result = $this->runCommand('git diff --no-renames --name-only -z ' . escapeshellarg($from) . ' ' . escapeshellarg($to) . ' --', ROOT);
+        if ($result['exit_code'] !== 0) throw new RuntimeException('Unable to enumerate update paths.');
+        return array_values(array_filter(explode("\0", (string)($result['stdout_raw'] ?? $result['stdout'])), 'strlen'));
+    }
+
+    protected function fastForwardToCommit(string $commit, array $manifest): void
+    {
+        if (!preg_match('/^[a-f0-9]{40}$/D', $commit)) throw new RuntimeException('Invalid update commit.');
+        $this->prepareManagedGitFiles($manifest, $commit);
+        $result = $this->runCommand('git merge --ff-only ' . escapeshellarg($commit), ROOT);
+        if ($result['exit_code'] !== 0) throw new RuntimeException($this->formatCommandError($result, return_translation('admin_update_pull_failed')));
     }
 
     /**

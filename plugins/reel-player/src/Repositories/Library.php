@@ -35,7 +35,7 @@ final class Library
             $playlist['id'] = (int)$playlist['id'];
             $playlist['tracks'] = array_map(static fn(array $row): int => (int)$row['track_id'], array_values(array_filter($memberships, static fn(array $row): bool => (int)$row['playlist_id'] === $playlist['id'])));
         }
-        return ['tracks' => $tracks, 'playlists' => $playlists, 'catalog'=>(new Catalog($this->owner,function_exists('check_creator') && check_creator()))->state()];
+        return ['tracks' => $tracks, 'playlists' => $playlists, 'catalog'=>(new Catalog($this->owner,function_exists('check_creator') && check_creator(),in_array(get_user()['role'] ?? '',['admin','creator'],true)))->state()];
     }
 
     public function track(int $id, bool $lock = false): array
@@ -123,7 +123,8 @@ final class Library
 
     private function recheckAlbums(int $track): void
     {
-        db()->query("UPDATE reel_albums SET moderation_status='pending',moderation_note='',reviewed_by=NULL,reviewed_at=NULL,moderation_version=moderation_version+1 WHERE published=1 AND EXISTS(SELECT 1 FROM reel_album_tracks at WHERE at.album_id=reel_albums.id AND at.track_id=?)",[$track]);
+        $trusted=in_array(get_user()['role'] ?? '',['admin','creator'],true) ? $this->owner : 0;
+        db()->query("UPDATE reel_albums SET moderation_status=CASE WHEN owner_id=? THEN 'approved' ELSE 'pending' END,moderation_note='',reviewed_by=CASE WHEN owner_id=? THEN owner_id ELSE NULL END,reviewed_at=CASE WHEN owner_id=? THEN ? ELSE NULL END,moderation_version=moderation_version+1 WHERE published=1 AND EXISTS(SELECT 1 FROM reel_album_tracks at WHERE at.album_id=reel_albums.id AND at.track_id=?)",[$trusted,$trusted,$trusted,date('Y-m-d H:i:s'),$track]);
     }
 
     public function metadataTrack(int $id): array

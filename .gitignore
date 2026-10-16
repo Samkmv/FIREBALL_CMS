@@ -18,6 +18,8 @@ tmp/theme-import-*
 public/assets/cartzilla-html
 config/config.local.php
 config/config.local.php.tmp
+/composer.phar
+/auth.json
 storage/installed.lock
 storage/installed.lock.tmp
 storage/backups/*

@@ -58,7 +58,8 @@ $router->get('/admin/reel-player/review-cover/(?P<id>\d+)', [PlayerController::c
 // New browser requests use the front-end URLs. Keep administrator aliases for
 // existing sessions and the registered OAuth callback URL for Google Drive.
 foreach (['/tape-room' => ['auth'], '/admin/reel-player' => ['auth', 'admin']] as $prefix => $guard) {
-    $router->get($prefix . '/api/state', [PlayerController::class, 'state'])->middleware($guard);
+    $readGuard=$prefix==='/tape-room' ? [] : $guard;
+    $router->get($prefix . '/api/state', [PlayerController::class, 'state'])->middleware($readGuard);
     $router->get($prefix . '/api/quality/(?P<id>\d+)', [PlayerController::class, 'quality'])->middleware($guard);
     $router->post($prefix . '/api/action', [PlayerController::class, 'action'])->middleware($guard);
     $router->post($prefix . '/api/upload', [PlayerController::class, 'upload'])->middleware($guard);
@@ -71,11 +72,11 @@ foreach (['/tape-room' => ['auth'], '/admin/reel-player' => ['auth', 'admin']] a
     $router->get($prefix . '/api/drive/files', [PlayerController::class, 'driveFiles'])->middleware($guard);
     $router->post($prefix . '/api/drive/metadata', [PlayerController::class, 'driveMetadata'])->middleware($guard);
     $router->get($prefix . '/drive/callback', [PlayerController::class, 'driveCallback'])->middleware(['auth']);
-    $router->get($prefix . '/catalog/media/(?P<id>\d+)', [PlayerController::class, 'catalogMedia'])->middleware($guard);
-    $router->get($prefix . '/catalog/cover/(?P<id>\d+)', [PlayerController::class, 'catalogCover'])->middleware($guard);
-    $router->get($prefix . '/catalog/album-cover/(?P<id>\d+)', [PlayerController::class, 'albumCover'])->middleware($guard);
-    $router->get($prefix . '/catalog/artist-image/(?P<id>\d+)', [PlayerController::class, 'artistImage'])->middleware($guard);
-    $router->get($prefix . '/api/catalog/quality/(?P<id>\d+)', [PlayerController::class, 'catalogQuality'])->middleware($guard);
+    $router->get($prefix . '/catalog/media/(?P<id>\d+)', [PlayerController::class, 'catalogMedia'])->middleware($readGuard);
+    $router->get($prefix . '/catalog/cover/(?P<id>\d+)', [PlayerController::class, 'catalogCover'])->middleware($readGuard);
+    $router->get($prefix . '/catalog/album-cover/(?P<id>\d+)', [PlayerController::class, 'albumCover'])->middleware($readGuard);
+    $router->get($prefix . '/catalog/artist-image/(?P<id>\d+)', [PlayerController::class, 'artistImage'])->middleware($readGuard);
+    $router->get($prefix . '/api/catalog/quality/(?P<id>\d+)', [PlayerController::class, 'catalogQuality'])->middleware($readGuard);
     $router->post($prefix . '/api/catalog/prepare', [PlayerController::class, 'catalogPrepare'])->middleware($guard);
     $router->post($prefix . '/api/catalog/listen', [PlayerController::class, 'catalogListen'])->middleware($guard);
 }

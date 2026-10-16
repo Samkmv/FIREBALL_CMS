@@ -3,4 +3,5 @@
 <link rel="preload" href="<?= htmlSC(theme_asset('icons/cartzilla-icons.woff2')) ?>" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="<?= htmlSC(theme_asset_versioned('icons/cartzilla-icons.min.css')) ?>">
 <link rel="stylesheet" href="<?= htmlSC(theme_asset_versioned('css/shell.css')) ?>">
+<?php if(!empty($player_shell)): ?><script src="<?= htmlSC(theme_asset_versioned('bootstrap/bootstrap.bundle.min.js')) ?>" defer></script><script src="<?= htmlSC(theme_asset_versioned('js/bootstrap-ui.js')) ?>" defer></script><?php endif; ?>
 <script>(()=>{let theme=document.documentElement.dataset.theme||'light';try{const saved=localStorage.getItem('tape-room:theme');if(saved==='light'||saved==='dark')theme=saved;<?php if(!empty($player_shell)): ?>localStorage.setItem(<?= json_encode($config['storageKey'].':theme',JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT) ?>,theme);<?php endif; ?>}catch(_){}document.documentElement.dataset.theme=theme;document.documentElement.dataset.bsTheme=theme;document.querySelectorAll('meta[name="theme-color"]').forEach(meta=>meta.content=theme==='dark'?'#191c1a':'#f7f5f0');})();</script>
