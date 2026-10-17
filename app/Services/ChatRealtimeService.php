@@ -47,7 +47,7 @@ final class ChatRealtimeService
         $lastSnapshot = null;
 
         while ((microtime(true) - $startedAt) < self::STREAM_LIFETIME_SECONDS) {
-            if (connection_aborted()) {
+            if (connection_aborted() || \FBL\UpdateLock::pending(STORAGE)) {
                 break;
             }
 

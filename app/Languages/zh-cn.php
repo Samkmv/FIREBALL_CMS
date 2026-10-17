@@ -1013,7 +1013,7 @@ return [
     'admin_update_no_release_data' => '第一次检查后，这里会显示远程分支和更新元数据。',
     'admin_update_blockers' => '当前无法更新',
     'admin_update_already_running' => '另一个 CMS 或插件更新正在进行中，请等待其完成。',
-    'admin_update_requests_busy' => '网站请求未在 30 秒内结束。请关闭播放器或等待文件传输完成，然后重试更新。CMS 文件未被修改。',
+    'admin_update_requests_busy' => '网站的活动操作未在 30 秒内完成。请等待保存或数据处理结束后重试。听众无需关闭播放器。CMS 文件未被修改。',
     'admin_update_lock_unavailable' => '无法获取更新锁。请检查 PHP 对 storage 目录的访问权限以及服务器对文件锁的支持。',
     'admin_update_session_unavailable' => '等待请求后无法恢复会话，尚未启动更新。请检查服务器上的 PHP 会话存储。',
     'admin_update_recovery_required' => '上次更新需要恢复，尚未启动新的更新。',

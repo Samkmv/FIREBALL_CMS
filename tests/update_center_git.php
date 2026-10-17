@@ -58,6 +58,18 @@ try {
     $raw=$subject->command("printf ' M vendor/autoload.php\\000'");
     verify('Command reader retains raw status bytes',$raw['stdout_raw']===" M vendor/autoload.php\0");
     verify('Git status failure blocks inspection',rejects(fn()=>(new BrokenGitStatusCheck())->inspect()));
+    $bootstrapFiles=['app/Services/UpdateCenter.php','core/UpdateLock.php','core/Database.php','public/runtime-gate.php',
+        'app/Services/ChatRealtimeService.php','app/Services/GroupChatRealtimeService.php'];
+    foreach($bootstrapFiles as $name){$path=ROOT.'/'.$name;if(!is_dir(dirname($path)))mkdir(dirname($path),0700,true);file_put_contents($path,"<?php // official bootstrap\n");}
+    git(['add','--',...$bootstrapFiles]);git(['commit','-qm','Official streaming bootstrap']);
+    git(['update-ref','refs/remotes/origin/main','HEAD']);
+    verify('Official streaming bootstrap can be synchronized safely',$subject->blocking($bootstrapFiles)===[]);
+    foreach($bootstrapFiles as $name)file_put_contents(ROOT.'/'.$name,"<?php // custom code\n");
+    verify('Custom changes to every streaming bootstrap source still block',$subject->blocking($bootstrapFiles)===$bootstrapFiles);
+    verify('Plugin transfer sources are updated only as part of their verified package',$subject->blocking(['plugins/reel-player/src/Services/MediaStorage.php','plugins/reel-player/src/Services/GoogleDrive.php'])===['plugins/reel-player/src/Services/MediaStorage.php','plugins/reel-player/src/Services/GoogleDrive.php']);
+    file_put_contents(ROOT.'/core/Database.php',"<?php // official bootstrap\n");
+    rename(ROOT.'/core/Database.php',ROOT.'/core/database-target.php');symlink('database-target.php',ROOT.'/core/Database.php');
+    verify('A byte-identical bootstrap symlink is not managed',$subject->blocking(['core/Database.php'])===['core/Database.php']);
     $report=['passed'=>count($checks),'checks'=>$checks];$artifact=__DIR__.'/artifacts/update-center';if(!is_dir($artifact))mkdir($artifact,0700,true);
     file_put_contents($artifact.'/git-status-checks.json',json_encode($report,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE)."\n");echo json_encode($report,JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE),PHP_EOL;
 } finally {removeOwnedScratch($scratch);}

@@ -10,6 +10,22 @@ class Database
 
     protected \PDO $connection;
     protected \PDOStatement $stmt;
+    private bool $streamOnly = false;
+
+    /** A detached response must never access a database being migrated. */
+    final public function closeForStreaming(): void
+    {
+        if (isset($this->connection) && $this->connection->inTransaction()) {
+            throw new \LogicException('An active database transaction cannot become a detached stream.');
+        }
+        unset($this->stmt, $this->connection);
+        $this->streamOnly = true;
+    }
+
+    private function assertDatabaseAvailable(): void
+    {
+        if ($this->streamOnly) throw new \LogicException('Database access is unavailable in a detached stream.');
+    }
 
     /**
      * Создаёт подключение к базе данных по настройкам проекта.
@@ -67,6 +83,7 @@ class Database
 
     public function query(string $query, array $params = []): static
     {
+        $this->assertDatabaseAvailable();
         $queryStarted = PerformanceProfiler::begin();
         try {
             $this->stmt = $this->connection->prepare($query);
@@ -176,6 +193,7 @@ class Database
      */
     public function getInsertId(): false|string
     {
+        $this->assertDatabaseAvailable();
         return $this->connection->lastInsertId();
     }
 
@@ -192,6 +210,7 @@ class Database
      */
     public function beginTransaction(): bool
     {
+        $this->assertDatabaseAvailable();
         return $this->connection->beginTransaction();
     }
 
@@ -200,6 +219,7 @@ class Database
      */
     public function commit(): bool
     {
+        $this->assertDatabaseAvailable();
         return $this->connection->commit();
     }
 
@@ -208,11 +228,13 @@ class Database
      */
     public function rollBack(): bool
     {
+        $this->assertDatabaseAvailable();
         return $this->connection->rollBack();
     }
 
     public function inTransaction(): bool
     {
+        $this->assertDatabaseAvailable();
         return $this->connection->inTransaction();
     }
 

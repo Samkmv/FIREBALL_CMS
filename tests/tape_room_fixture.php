@@ -102,12 +102,19 @@ $router->get('/tape-room/api/drive/files',static function() use($testRoot){
     response()->json(['status'=>true,'files'=>$folder==='root' ? [['id'=>'fixture-folder-01','name'=>'Music','mimeType'=>'application/vnd.google-apps.folder']] : $files,'nextPageToken'=>'']);
 })->middleware(['auth']);
 require ROOT . '/plugins/reel-player/routes.php';
-$router->get('/test/recovery-media.wav',static function()use($testRoot):never{
-    $counter=$testRoot.'/recovery-requests.json';$items=is_file($counter)?json_decode(file_get_contents($counter),true):[];$items[]=['range'=>$_SERVER['HTTP_RANGE']??'','retry'=>isset($_GET['_tr_retry'])];file_put_contents($counter,json_encode($items));
-    if(count($items)<=2){http_response_code(503);header('Content-Type: text/plain');echo 'Synthetic temporary upstream interruption';exit;}
+$recoveryFixture=static function()use($testRoot):never{
+    $maintenance=str_contains($_SERVER['REQUEST_URI'],'/test/maintenance-media.wav');
+    $counter=$testRoot.($maintenance?'/maintenance-requests.json':'/recovery-requests.json');$items=is_file($counter)?json_decode(file_get_contents($counter),true):[];$items[]=['range'=>$_SERVER['HTTP_RANGE']??'','retry'=>isset($_GET['_tr_retry'])];file_put_contents($counter,json_encode($items));
+    if(count($items)<=($maintenance?4:2)){http_response_code(503);header('Content-Type: text/plain');if($maintenance){header('X-Fireball-Maintenance: 1');header('Retry-After: 1');}echo 'Synthetic temporary upstream interruption';exit;}
     $bytes=file_get_contents($testRoot.'/storage/reel-player/2/'.str_repeat('a',40).'.wav');$size=strlen($bytes);$start=0;$end=$size-1;
     if(preg_match('/^bytes=(\d+)-(\d*)$/',$_SERVER['HTTP_RANGE']??'', $m)){$start=(int)$m[1];$end=$m[2]!==''?min($end,(int)$m[2]):$end;http_response_code(206);header("Content-Range: bytes $start-$end/$size");}
     header('Content-Type: audio/wav');header('Accept-Ranges: bytes');header('Cache-Control: no-store');header('Content-Length: '.($end-$start+1));echo substr($bytes,$start,$end-$start+1);exit;
+};
+$router->get('/test/recovery-media.wav',$recoveryFixture);
+$router->get('/test/maintenance-media.wav',$recoveryFixture);
+add_filter('cms_rendered_html',static function(string $html):string{
+    if(($_GET['maintenance_recovery_test']??'')!=='1')return $html;
+    return preg_replace_callback('~(<script type="application/json" data-player-config>)(.*?)(</script>)~s',static function($m){$config=json_decode($m[2],true);$config['storageKey'].=':maintenance-recovery';foreach($config['state']['tracks'] as &$item)if($item['id']===1){$item['url']=base_href('/test/maintenance-media.wav');$item['title']='Проверка после обновления';}$config['state']['catalog']['albums']=[];$config['state']['catalog']['tracks']=[];return $m[1].json_encode($config,JSON_HEX_TAG|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE).$m[3];},$html);
 });
 add_filter('cms_rendered_html',static function(string $html):string{
     if(($_GET['drive_recovery_test']??'')!=='1')return $html;

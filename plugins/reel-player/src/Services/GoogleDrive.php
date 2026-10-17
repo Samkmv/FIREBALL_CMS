@@ -545,6 +545,10 @@ final class GoogleDrive
         $this->meterStream = $meterStream;
         session()->close(); $this->token();
         $file = self::assertAudio($this->file($id)); $started = false;
+        // Load DriveStream/DriveCache/MediaStorage before releasing the runtime
+        // reader. The remaining pipeline uses only cURL and protected files.
+        $pipeline = $this->pipeline();
+        class_exists(MediaStorage::class);
         if ($meterStream) $this->meterSpeed = self::meterRate((int)$file['size'],$duration);
         while (ob_get_level() > 0) ob_end_clean();
         header('Cache-Control: private, no-store, max-age=0'); header('X-Content-Type-Options: nosniff'); header('X-Accel-Buffering: no');
@@ -552,30 +556,31 @@ final class GoogleDrive
             http_response_code($status); foreach ($fields as $name=>$value) header($name.': '.$value); $started = true;
         };
         $output = static function(string $bytes): bool { if (connection_aborted()) return false; echo $bytes; flush(); return !connection_aborted(); };
-        try {
-            for ($attempt=0; $attempt<2; $attempt++) {
-                try { $this->pipeline()->serve($file,(string)($_SERVER['HTTP_RANGE'] ?? ''),$this->download(...),$headers,$output); break; }
-                catch (\RuntimeException $error) {
-                    if ($started || $attempt > 0 || !in_array($error->getCode(),[403,404,416],true)) throw $error;
-                    $wasRevision = !empty($file['headRevisionId']);
-                    $file = self::assertAudio($this->file($id,true));
-                    if ($wasRevision && in_array($error->getCode(),[403,404],true)) {
-                        unset($file['headRevisionId']);
-                        try { $this->cache()->saveMetadata($file); } catch (\Throwable) {}
+        \FBL\UpdateLock::stream(function() use ($id,$file,$pipeline,$headers,$output,&$started): void {
+            try {
+                for ($attempt=0; $attempt<2; $attempt++) {
+                    try { $pipeline->serve($file,(string)($_SERVER['HTTP_RANGE'] ?? ''),$this->download(...),$headers,$output); break; }
+                    catch (\RuntimeException $error) {
+                        if ($started || $attempt > 0 || !in_array($error->getCode(),[403,404,416],true)) throw $error;
+                        $wasRevision = !empty($file['headRevisionId']);
+                        $file = self::assertAudio($this->file($id,true));
+                        if ($wasRevision && in_array($error->getCode(),[403,404],true)) {
+                            unset($file['headRevisionId']);
+                            try { $this->cache()->saveMetadata($file); } catch (\Throwable) {}
+                        }
                     }
                 }
+            } catch (\Throwable $error) {
+                if (!connection_aborted() && in_array($error->getCode(),[401,403,404,416],true)) {
+                    try { $this->cache()->invalidate($id); } catch (\Throwable) {}
+                }
+                // Never append an error message to audio bytes already sent.
+                if (!$started) {
+                    http_response_code(in_array($error->getCode(),[401,403,404,416,429],true) ? $error->getCode() : 502);
+                    if ($error->getCode() === 416) { header('Content-Range: bytes */'.(int)$file['size']); header('Content-Length: 0'); }
+                    else { header('Content-Type: text/plain; charset=utf-8'); echo $error->getMessage(); }
+                } elseif (!connection_aborted()) log_error_details('Tape Room Drive stream interrupted',[], $error);
             }
-        } catch (\Throwable $error) {
-            if (!connection_aborted() && in_array($error->getCode(),[401,403,404,416],true)) {
-                try { $this->cache()->invalidate($id); } catch (\Throwable) {}
-            }
-            // Never append an error message to audio bytes already sent.
-            if (!$started) {
-                http_response_code(in_array($error->getCode(),[401,403,404,416,429],true) ? $error->getCode() : 502);
-                if ($error->getCode() === 416) { header('Content-Range: bytes */'.(int)$file['size']); header('Content-Length: 0'); }
-                else { header('Content-Type: text/plain; charset=utf-8'); echo $error->getMessage(); }
-            } elseif (!connection_aborted()) log_error_details('Tape Room Drive stream interrupted',[], $error);
-        }
-        exit;
+        }, app()->db);
     }
 }

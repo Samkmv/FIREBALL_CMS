@@ -42,7 +42,7 @@ final class GroupChatRealtimeService
         $lastRevision = '';
 
         while ((microtime(true) - $startedAt) < self::STREAM_LIFETIME_SECONDS) {
-            if (connection_aborted() || !$groups->isMember($conversationId, $currentUserId)) {
+            if (connection_aborted() || \FBL\UpdateLock::pending(STORAGE) || !$groups->isMember($conversationId, $currentUserId)) {
                 break;
             }
 

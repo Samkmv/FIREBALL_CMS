@@ -133,7 +133,7 @@ $button = static function (string $action, string $label, string $name, string $
         </div>
         <div class="rp-secondary-controls">
             <div class="rp-playback-options"><?= $button('shuffle', 'Случайный порядок: выключен', 'shuffle') ?><span class="rp-repeat-wrap"><?= $button('repeat', 'Повтор: выключен', 'repeat') ?><span data-repeat-one hidden>1</span></span></div>
-            <span class="rp-source" data-source>ВАША МУЗЫКА. ВАШ РИТМ.</span>
+            <span class="rp-source" data-player-source>ВАША МУЗЫКА. ВАШ РИТМ.</span>
             <div class="rp-volume"><?= $button('mute', 'Выключить звук', 'volume') ?><label><span class="rp-sr-only">Громкость</span><input type="range" class="rp-range" data-volume min="0" max="1" step="0.01" value="0.8"></label></div>
         </div>
         <div class="rp-meter-recovery" data-meter-recovery hidden><button type="button" class="rp-button" data-action="meters">Включить индикаторы</button></div>

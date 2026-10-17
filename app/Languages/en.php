@@ -1020,7 +1020,7 @@ return [
     'admin_update_no_release_data' => 'Remote branch and update metadata will appear here after the first check.',
     'admin_update_blockers' => 'Update is currently blocked',
     'admin_update_already_running' => 'Another CMS or plugin update is already running. Wait for it to finish.',
-    'admin_update_requests_busy' => 'Site requests did not finish within 30 seconds. Close the player or wait for file transfers to finish, then retry the update. CMS files have not been changed.',
+    'admin_update_requests_busy' => 'Active site operations did not finish within 30 seconds. Wait for saving or data processing to finish, then retry. Listeners do not need to close their players. CMS files have not been changed.',
     'admin_update_lock_unavailable' => 'Unable to acquire the update lock. Check PHP access to the storage directory and file-lock support on the server.',
     'admin_update_session_unavailable' => 'Unable to resume the session after waiting for requests. No update has started; check PHP session storage on the server.',
     'admin_update_recovery_required' => 'The previous update requires recovery. No new update has started.',

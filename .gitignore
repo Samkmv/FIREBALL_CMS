@@ -60,9 +60,11 @@ dist/fireball-cms-*.zip*
 !/tests/update_center_dependencies.php
 !/tests/update_center_runtime.php
 !/tests/update_center_recovery.php
+!/tests/update_streaming.php
 !/tests/pwa_installation_check.py
 !/tests/pwa_installation_fixture.php
 !/tests/tape_room_playback_source.cjs
+!/tests/tape_room_media_recovery.cjs
 !/tests/tape_room_sync.cjs
 !/tests/tape_room_sync_check.py
 !/tests/tape_room_site_player_check.py

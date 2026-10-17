@@ -111,13 +111,24 @@
     const recovery=new window.TapeRoomMediaRecovery({
         retry:async({position,valid})=>{
             if(!valid())return;
+            if(recovery.maintenance){
+                const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),10000);
+                try{
+                    const probe=await fetch(activeTrack().url,{credentials:'same-origin',cache:'no-store',headers:{Range:'bytes=0-1'},signal:controller.signal});
+                    await probe.body?.cancel();
+                    if(probe.status===503 && probe.headers.get('X-Fireball-Maintenance')==='1'){
+                        const error=new Error('Site maintenance');error.maintenance=true;error.retryAfter=probe.headers.get('Retry-After');throw error;
+                    }
+                    if(!valid())return;recovery.maintenance=false;
+                }finally{clearTimeout(timeout);}
+            }
             const url=new URL(activeTrack().url,location.href);url.searchParams.set('_tr_retry',String(Date.now()));
             preloader.cancel();stopMeters('reconnect');restoreTime=position;errorProbe=-1;
             audio.src=url.href;audio.load();if(!valid())return;
             configureAudioSession();await audio.play();resumeMeters();
         },
         onState:()=>{if(recoveryReady)updateButtons();},
-        onStop:gesture=>toast(gesture?'Браузер ожидает нажатия. Нажмите воспроизведение, чтобы продолжить.':'Не удалось восстановить соединение после трёх попыток. Нажмите воспроизведение, чтобы повторить.',true)
+        onStop:(gesture,reason)=>toast(reason==='maintenance'?'Сайт ещё недоступен после обновления. Нажмите воспроизведение, чтобы повторить.':gesture?'Браузер ожидает нажатия. Нажмите воспроизведение, чтобы продолжить.':'Не удалось восстановить соединение после трёх попыток. Нажмите воспроизведение, чтобы повторить.',true)
     });
     recoveryReady=true;
     function pausePlayback(){recovery.pause();audio.pause();updateButtons();}
@@ -183,7 +194,7 @@
         const row = element('article', `rp-track${t.id === current ? ' is-current' : ''}`);
         row.dataset.trackId = t.id;
         const play = element('button', 'rp-track-play'); play.type = 'button'; play.dataset.action = 'play-track'; play.dataset.id = t.id;
-        if(source)play.dataset.source=source;
+        if(source)play.dataset.queueSource=source;
         play.setAttribute('aria-label', `Воспроизвести ${t.title}`);
         play.innerHTML = `<span class="rp-track-number">${String(index + 1).padStart(2, '0')}</span>${icon(t.id === current && !audio.paused ? 'pause' : 'play')}`;
         const cover = element('img', 'rp-track-cover'); cover.alt = ''; cover.loading = 'lazy'; cover.decoding = 'async'; cover.width=48; cover.height=48;
@@ -337,7 +348,7 @@
         if (customArtwork) window.TapeRoomImages.apply($('[data-cover]'),customArtwork,config,theme);
         else { $('[data-cover]').removeAttribute('srcset'); $('[data-cover]').removeAttribute('src'); }
         $('[data-cover]').closest('.rp-cover-button').classList.toggle('has-custom-cover',Boolean(customArtwork));
-        $('[data-source]').textContent = current ? (queueName || 'Вся музыка') + (t?.source === 'drive' ? ' · GOOGLE DRIVE' : ' · STEREO') : 'ВАША МУЗЫКА. ВАШ РИТМ.';
+        $('[data-player-source]').textContent = current ? (queueName || 'Вся музыка') + (t?.source === 'drive' ? ' · GOOGLE DRIVE' : ' · STEREO') : 'ВАША МУЗЫКА. ВАШ РИТМ.';
         if (t && 'mediaSession' in navigator && 'MediaMetadata' in window) {
             const defaultArt = config.defaultCoverVariants?.[theme]?.[640];
             const artwork = customArtwork ? {src:new URL(window.TapeRoomImages.thumbnail(customArtwork,640),location.href).href}
@@ -1160,7 +1171,7 @@
                 }
                 case 'prev': previous('user',event); break;
                 case 'next': next(false,'user',event); break;
-                case 'play-track': setQueue(control.dataset.source === 'popular' ? {type:'popular'} : selectedSource()); if (current === id) { if (audio.paused&&!recovery.pending) await play('user',event); else pausePlayback(); } else { load(id); await play('user',event); } break;
+                case 'play-track': setQueue(control.dataset.queueSource === 'popular' ? {type:'popular'} : selectedSource()); if (current === id) { if (audio.paused&&!recovery.pending) await play('user',event); else pausePlayback(); } else { load(id); await play('user',event); } break;
                 case 'shuffle': shuffle = !shuffle; bag = []; futureBag = []; shuffleCycleStarted = false; history = []; preloader.reset(); updateButtons(); prepareUpcoming(); save(); break;
                 case 'repeat': repeat = {off:'all',all:'one',one:'off'}[repeat]; preloader.cancel(); futureBag = []; updateButtons(); prepareUpcoming(); save(); break;
                 case 'mute': toggleMute(); break;
@@ -1342,22 +1353,25 @@
         if (!current) return; preloader.cancel(); setBuffering(false); stopMeters('native-error'); meterController.nativeFailure(audio.error?.code || 0);
         const t = activeTrack(), version = generation;
         if(t?.browserLocal){toast(window.TapeRoomTorrents.playbackError(audio.error?.code||2),true);return;}
-        if (t?.source !== 'drive') { toast('Не удалось прочитать аудиофайл. Возможно, браузер не поддерживает его кодек.',true); return; }
         if (errorProbe === version) return; errorProbe = version;
-        const failurePosition=playbackPosition(),failureCode=audio.error?.code||2;let status=0,terminal=false;
-        let message = 'Не удалось загрузить песню из Google Drive. Повторите воспроизведение или проверьте подключение.';
+        const failurePosition=playbackPosition(),failureCode=audio.error?.code||2;let status=0,terminal=false,maintenance=false,retryAfter=12;
+        let message = t?.source==='drive'?'Не удалось загрузить песню из Google Drive. Повторите воспроизведение или проверьте подключение.':'Не удалось прочитать аудиофайл. Проверьте формат и подключение.';
         const controller = new AbortController(), timeout = setTimeout(() => controller.abort(),10000);
         try {
             const response = await fetch(t.url,{credentials:'same-origin',cache:'no-store',headers:{Range:'bytes=0-1'},signal:controller.signal});
             status=response.status;terminal=response.redirected;
+            maintenance=status===503&&response.headers.get('X-Fireball-Maintenance')==='1';retryAfter=Number(response.headers.get('Retry-After'))||12;
             if (version === generation) meterController.nativeFailure(audio.error?.code || 0,response.status);
             if (response.redirected) message = 'Сессия завершена. Обновите страницу и войдите в CMS.';
             else if (!response.ok && response.headers.get('Content-Type')?.startsWith('text/plain')) message = (await response.text()).slice(0,500) || message;
             else if (response.status === 401) message = 'Сессия завершена. Обновите страницу и войдите в CMS.';
-            else if (response.ok && [3,4].includes(audio.error?.code)) message = 'Google Drive отдал начало файла, но воспроизведение прервалось. Возможны неполные данные или неподдерживаемый формат.';
-            else if (response.ok) message = 'Соединение с Google Drive прервалось. Нажмите воспроизведение, чтобы повторить.';
+            else if (t?.source==='drive' && response.ok && [3,4].includes(audio.error?.code)) message = 'Google Drive отдал начало файла, но воспроизведение прервалось. Возможны неполные данные или неподдерживаемый формат.';
+            else if (response.ok) message = 'Соединение прервалось. Нажмите воспроизведение, чтобы повторить.';
+            await response.body?.cancel();
         } catch (_) {} finally { clearTimeout(timeout); }
-        if(version===generation&&!terminal&&recovery.failed({code:failureCode,status,position:failurePosition}))return;
+        if(version===generation&&!terminal&&recovery.failed({code:failureCode,status,position:failurePosition,maintenance,retryAfter})){
+            if(maintenance)toast('Сайт обновляется. Воспроизведение продолжится автоматически.');return;
+        }
         if (version === generation) toast(message,true);
     });
     $('[data-cover]').addEventListener('error', event => {

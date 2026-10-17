@@ -734,3 +734,20 @@ html.pwa-standalone .rp-dialog::backdrop{backdrop-filter:none;-webkit-backdrop-f
 :is(.rp-track-play,.rp-catalog-inline-play){padding:0}
 :is(.rp-track-play,.rp-catalog-inline-play) .rp-icon[data-icon]{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;font-size:20px;line-height:1}
 :is(.rp-track-play,.rp-catalog-inline-play) .rp-icon[data-icon=play]{transform:translateX(1px)}
+
+/* Animate artwork only; card titles and play controls keep their positions. */
+.rp-app :is(.rp-album-artwork,.rp-artist-artwork){transition:box-shadow .24s ease,border-color .24s ease}
+.rp-app .rp-album-card:focus-within .rp-album-artwork,
+.rp-app .rp-artist-card:focus-visible .rp-artist-artwork{box-shadow:0 0 0 3px color-mix(in srgb,var(--rp-accent) 28%,transparent)}
+@media(hover:hover) and (pointer:fine){
+    .rp-app :is(.rp-album-artwork,.rp-artist-artwork):hover{box-shadow:0 12px 26px #00000024}
+    .rp-app .rp-album-artwork:hover .rp-album-open,
+    .rp-app .rp-artist-artwork:hover{border-color:var(--rp-accent)}
+}
+@media(hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference){
+    .rp-app :is(.rp-album-open,.rp-artist-artwork) img{transition:transform .35s cubic-bezier(.2,.7,.3,1)}
+    .rp-app :is(.rp-album-artwork:hover .rp-album-open,.rp-artist-artwork:hover) img{transform:scale(1.035)}
+}
+@media(prefers-reduced-motion:reduce){
+    .rp-app.tr-bootstrap :is(.rp-album-card,.rp-artist-card,.rp-album-artwork,.rp-artist-artwork,.rp-album-open img,.rp-artist-artwork img){transition:none}
+}

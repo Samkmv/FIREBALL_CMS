@@ -1,0 +1,26 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs');
+const Recovery=require('../themes/tape-room/assets/js/media-recovery.js');
+let count=0;const check=(value,label)=>{assert.ok(value,label);count++;};
+function fixture(retry){let clock=0,online=true,next=1;const timers=new Map(),calls=[],stops=[];const r=new Recovery({retry:retry|| (async data=>{calls.push(data);}),onStop:value=>stops.push(value),now:()=>clock,online:()=>online,schedule:(fn,ms)=>{const id=next++;timers.set(id,{fn,at:clock+ms});return id;},cancel:id=>timers.delete(id)});r.select(4,true);r.play();return {r,calls,stops,timers,setOnline:v=>{online=v;},advance:async(ms)=>{clock+=ms;for(const [id,t]of [...timers])if(t.at<=clock){timers.delete(id);await t.fn();}},setClock:v=>{clock=v;}};}
+(async()=>{
+ let f=fixture();f.r.progress(58);check(f.r.failed({code:3,position:58}),'A mid-song decoder interruption is recoverable');check(f.r.pending,'Recovery is visibly pending');await f.advance(1000);check(f.calls[0].position===58,'Retry resumes at the same position');check(f.calls[0].valid(),'Retry belongs to the current intent');
+ f.r.failed({code:2,position:59});await f.advance(2500);f.r.failed({code:2,position:59});await f.advance(5000);check(f.calls.length===3,'Three bounded retry attempts');check(!f.r.failed({code:2,position:59})&&!f.r.desired,'Persistent failure stops automatic playback');check(f.stops.length===1,'Exhaustion gives one actionable notification');
+ f=fixture();f.r.failed({code:2,position:8});f.r.pause();await f.advance(20000);check(f.calls.length===0,'User pause cancels a scheduled reconnect');
+ f=fixture();f.r.failed({code:2,position:8});f.r.select(7,true);await f.advance(20000);check(f.calls.length===0,'Track changes cancel old reconnections');
+ f=fixture();check(!f.r.failed({code:4,position:0}),'Unsupported audio at the beginning is not retried forever');
+ for(const status of [401,403,404,410]){f=fixture();check(!f.r.failed({code:2,status,position:58}),'Permanent HTTP '+status+' does not reconnect');}
+ f=fixture();f.setOnline(false);f.r.failed({code:2,position:58});check(f.r.attempts===0&&f.r.pending,'Offline mode preserves the retry budget');f.setOnline(true);f.r.connected();await f.advance(1000);check(f.calls.length===1&&f.calls[0].position===58,'Reconnect after online resumes the song');
+ f=fixture();f.r.progress(20);f.r.waiting();f.setClock(11999);f.r.tick();check(!f.r.pending,'Short buffering does not restart audio');f.setClock(12000);f.r.tick();await f.advance(1000);check(f.calls.length===1,'Twelve seconds of stalled playback trigger recovery');
+ f=fixture();f.r.select(8,false);f.r.play();check(!f.r.failed({code:2,position:58}),'Local and torrent songs do not enter Drive recovery');
+ f=fixture();f.r.failed({code:2,position:20});await f.advance(1000);f.r.progress(31);check(f.r.attempts===0,'Sustained playback restores the budget for a later incident');
+ let resolve;f=fixture(()=>new Promise(done=>{resolve=done;}));f.r.failed({code:2,position:58});const [id,t]=[...f.timers][0];f.timers.delete(id);const running=t.fn();f.r.pause();resolve();await running;check(!f.r.desired&&!f.r.pending,'An in-flight retry cannot override a user pause');
+ f=fixture();f.r.select(8,false);f.r.play();check(f.r.failed({code:4,status:503,maintenance:true,retryAfter:12,position:58}),'Explicit CMS maintenance also reconnects local audio');await f.advance(11999);check(f.calls.length===0,'Maintenance honors Retry-After instead of retrying every second');await f.advance(1);check(f.calls.length===1&&f.calls[0].position===58,'Maintenance resumes the same audio position');check(f.r.attempts===0,'Maintenance does not consume the normal failure budget');
+ f=fixture(async()=>{const error=new Error('maintenance');error.maintenance=true;error.retryAfter=12;throw error;});f.r.failed({status:503,maintenance:true,position:58});for(let i=0;i<5;i++)await f.advance(12000);check(f.r.pending&&f.r.attempts===0,'An update longer than three retries remains recoverable');f.r.pause();await f.advance(12000);check(!f.r.pending&&!f.r.maintenance,'Manual pause cancels maintenance reconnection');
+ f=fixture();f.r.failed({status:503,maintenance:true});f.r.select(9,true);await f.advance(12000);check(f.calls.length===0,'Switching tracks cancels the old maintenance retry');
+ f=fixture();f.r.failed({status:503,maintenance:true});check(!f.r.failed({status:403,maintenance:true})&&!f.r.desired,'Maintenance never bypasses a revoked permission');
+ f=fixture();f.r.select(8,false);f.r.play();check(!f.r.failed({status:503}),'An unmarked local error does not become an indefinite maintenance retry');
+ f=fixture(async()=>{const error=new Error('maintenance');error.maintenance=true;throw error;});f.r.failed({status:503,maintenance:true});await f.advance(30*60*1000+1);check(!f.r.pending&&!f.r.desired&&f.stops.length===1,'Maintenance waiting remains bounded at thirty minutes');
+ fs.mkdirSync('tests/artifacts/tape-room-mobile-fixes',{recursive:true});
+ const report={passed:count,checks:'Recovery limits, resume position, pause and track cancellation, permanent failures, offline mode and stalled playback'};fs.writeFileSync('tests/artifacts/tape-room-mobile-fixes/recovery-checks.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report));
+})().catch(error=>{console.error(error);process.exit(1);});

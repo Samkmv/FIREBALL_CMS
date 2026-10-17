@@ -1013,7 +1013,7 @@ return [
     'admin_update_no_release_data' => 'Remote-Branch und Update-Metadaten werden hier nach der ersten Pruefung angezeigt.',
     'admin_update_blockers' => 'Das Update ist derzeit blockiert',
     'admin_update_already_running' => 'Ein anderes CMS- oder Plugin-Update läuft bereits. Warten Sie, bis es abgeschlossen ist.',
-    'admin_update_requests_busy' => 'Website-Anfragen wurden nicht innerhalb von 30 Sekunden beendet. Schließen Sie den Player oder warten Sie auf das Ende der Dateiübertragung und versuchen Sie es erneut. CMS-Dateien wurden nicht geändert.',
+    'admin_update_requests_busy' => 'Aktive Website-Vorgänge wurden nicht innerhalb von 30 Sekunden beendet. Warten Sie, bis das Speichern oder die Datenverarbeitung abgeschlossen ist, und versuchen Sie es erneut. Zuhörer müssen ihre Player nicht schließen. CMS-Dateien wurden nicht geändert.',
     'admin_update_lock_unavailable' => 'Die Update-Sperre konnte nicht angefordert werden. Prüfen Sie den PHP-Zugriff auf das Verzeichnis storage und die Unterstützung von Dateisperren auf dem Server.',
     'admin_update_session_unavailable' => 'Die Sitzung konnte nach dem Warten auf Anfragen nicht wiederhergestellt werden. Es wurde kein Update gestartet; prüfen Sie den PHP-Sitzungsspeicher auf dem Server.',
     'admin_update_recovery_required' => 'Das vorherige Update muss wiederhergestellt werden. Es wurde kein neues Update gestartet.',

@@ -5,6 +5,7 @@ $fireballStorage = dirname(__DIR__) . '/storage';
 $fireballUnavailable = static function () use ($fireballStorage): never {
     http_response_code(503);
     header('Retry-After: 12');
+    header('X-Fireball-Maintenance: 1');
     header('Cache-Control: no-store');
     header('Content-Type: text/html; charset=utf-8');
     header('X-Content-Type-Options: nosniff');

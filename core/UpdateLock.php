@@ -12,6 +12,48 @@ final class UpdateLock
     private bool $restoreRuntime = false;
     private bool $restoreSession = false;
 
+    /** DB-backed long polls keep their reader until they exit, but yield promptly. */
+    public static function pending(string $storage): bool
+    {
+        clearstatcache(true, $storage . '/update.maintenance');
+        if (is_file($storage . '/update.maintenance')) return true;
+        $intent = @fopen($storage . '/update-intent.lock', 'c+');
+        if (!is_resource($intent)) return true;
+        try {
+            if (!flock($intent, LOCK_SH | LOCK_NB)) return true;
+            flock($intent, LOCK_UN);
+            return false;
+        } finally { fclose($intent); }
+    }
+
+    /**
+     * Terminal handoff after authorization, opening the source and preloading
+     * every transfer class. The callback may use only loaded code and protected
+     * runtime files, never SQL, the router, session writes or further autoload.
+     */
+    public static function stream(callable $transfer, ?Database $database = null): never
+    {
+        if (session_status() === PHP_SESSION_ACTIVE && !session_write_close()) {
+            throw new RuntimeException('Unable to close the session before streaming.');
+        }
+        $database?->closeForStreaming();
+        $reader = $GLOBALS['fireball_runtime_lock'] ?? null;
+        if (is_resource($reader)) {
+            if (!flock($reader, LOCK_UN)) throw new RuntimeException('Unable to release the stream runtime reader.');
+            fclose($reader);
+        }
+        $GLOBALS['fireball_runtime_lock'] = null;
+        $GLOBALS['fireball_stream_detached'] = true;
+        try { $transfer(); }
+        catch (\Throwable $error) {
+            // Do not invoke the application exception renderer/autoloader while
+            // its sources may be changing, or append diagnostics to media bytes.
+            error_log('Detached stream failed: ' . $error->getMessage());
+            if (!headers_sent()) { http_response_code(500); header('Content-Length: 0'); }
+        }
+        exit;
+    }
+
     public static function acquire(string $storage, float $waitSeconds = 30): self
     {
         $lock = new self();

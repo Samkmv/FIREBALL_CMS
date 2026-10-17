@@ -3157,6 +3157,8 @@ class UpdateCenter
             'app/Services/PluginUpdateService.php', 'app/Services/PwaService.php',
             'app/Services/PwaIconStorage.php', 'app/Services/ManagedPluginInstallations.php',
             'core/Plugins/PluginManager.php',
+            'core/UpdateLock.php', 'core/Database.php', 'public/runtime-gate.php',
+            'app/Services/ChatRealtimeService.php', 'app/Services/GroupChatRealtimeService.php',
         ], true) || !is_file(ROOT . '/' . $path)) return false;
         $result = $this->runCommand('git --literal-pathspecs ls-tree refs/remotes/origin/main -- ' . escapeshellarg($path), ROOT);
         if ($result['exit_code'] !== 0 || !preg_match('/^100(?:644|755) blob ([a-f0-9]{40})\\t/', $result['stdout'], $match)) return false;

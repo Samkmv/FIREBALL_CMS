@@ -275,17 +275,22 @@ final class MediaStorage
         header('Content-Length: ' . ($end - $start + 1));
         if ($partial) header("Content-Range: bytes {$start}-{$end}/{$size}");
         if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'HEAD') exit;
-        $handle = fopen($path, 'rb');
-        fseek($handle, $start);
-        $remaining = $end - $start + 1;
-        while ($remaining > 0 && !feof($handle) && !connection_aborted()) {
-            $chunk = fread($handle, min(65536, $remaining));
-            if ($chunk === false || $chunk === '') break;
-            $remaining -= strlen($chunk);
-            echo $chunk;
-            flush();
+        $handle = @fopen($path, 'rb');
+        if (!is_resource($handle) || fseek($handle, $start) !== 0) {
+            if (is_resource($handle)) fclose($handle);
+            http_response_code(404); header('Content-Length: 0'); exit;
         }
-        fclose($handle);
-        exit;
+        // Authorization and all path/header work have finished under the reader.
+        // Keep the opened inode alive while the updater replaces application code.
+        \FBL\UpdateLock::stream(static function() use ($handle,$start,$end): void {
+            try {
+                $remaining = $end - $start + 1;
+                while ($remaining > 0 && !feof($handle) && !connection_aborted()) {
+                    $chunk = fread($handle, min(65536, $remaining));
+                    if ($chunk === false || $chunk === '') break;
+                    $remaining -= strlen($chunk); echo $chunk; flush();
+                }
+            } finally { fclose($handle); }
+        }, app()->db);
     }
 }
