@@ -278,10 +278,10 @@ class Page extends Model
     public function findPublishedBySlug(string $slug): array|false
     {
         $slug = trim($slug, '/');
-        $cacheKey = $this->publicCacheKey('published:' . md5($slug));
+        $cacheKey = $this->publicCacheKey('raw-published:v1:' . md5($slug));
         $cached = cache()->get($cacheKey);
         if (is_array($cached)) {
-            return $cached ?: false;
+            return $cached ? $this->normalizePage($cached, true) : false;
         }
 
         $this->ensureSchema();
@@ -298,10 +298,10 @@ class Page extends Model
             return false;
         }
 
-        $item = $this->normalizePage($page, true);
-        cache()->set($cacheKey, $item, 600);
+        // Video/block access is visitor-specific and must never enter the shared cache.
+        cache()->set($cacheKey, $page, 600);
 
-        return $item;
+        return $this->normalizePage($page, true);
     }
 
     /**
@@ -313,10 +313,10 @@ class Page extends Model
             return false;
         }
 
-        $cacheKey = $this->publicCacheKey('published_id:' . $id);
+        $cacheKey = $this->publicCacheKey('raw-published-id:v1:' . $id);
         $cached = cache()->get($cacheKey);
         if (is_array($cached)) {
-            return $cached ?: false;
+            return $cached ? $this->normalizePage($cached, true) : false;
         }
 
         $this->ensureSchema();
@@ -333,10 +333,9 @@ class Page extends Model
             return false;
         }
 
-        $item = $this->normalizePage($page, true);
-        cache()->set($cacheKey, $item, 600);
+        cache()->set($cacheKey, $page, 600);
 
-        return $item;
+        return $this->normalizePage($page, true);
     }
 
     /**

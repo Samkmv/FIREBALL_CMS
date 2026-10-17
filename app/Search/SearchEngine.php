@@ -7,6 +7,8 @@ namespace App\Search;
  */
 final class SearchEngine
 {
+    public const RESULT_FILTER_VERSION = 1;
+
     public function __construct(
         private readonly SearchRegistry $registry,
         private readonly SearchIndexer $indexer,
@@ -83,7 +85,7 @@ final class SearchEngine
         $limit = max(1, min($maximum, $limit));
         $offset = max(0, $offset);
         $items = array_map(
-            fn(array $item): array => $this->formatResult($item['document'], $item['score'], $tokens),
+            fn(array $item): array => $this->formatResult($item['document'], $item['score'], $tokens, $context),
             array_slice($ranked, $offset, $limit)
         );
 
@@ -170,12 +172,12 @@ final class SearchEngine
         )->get() ?: [];
     }
 
-    private function formatResult(SearchDocument $document, int $score, array $tokens): array
+    private function formatResult(SearchDocument $document, int $score, array $tokens, array $context = []): array
     {
         $excerpt = SearchText::excerpt($document->content !== '' ? $document->content : $document->subtitle);
         $entityId = (string)$document->entityId;
 
-        return [
+        $result = [
             'type' => $document->type,
             'id' => ctype_digit($entityId) ? (int)$entityId : $entityId,
             'title' => $document->title,
@@ -189,6 +191,12 @@ final class SearchEngine
             'highlighted_excerpt' => SearchHighlighter::highlight($excerpt, $tokens),
             'metadata' => $document->metadata,
         ];
+
+        // Discovery and reading rights are separate: plugins can expose a link
+        // while replacing private snippets/metadata in both JSON and HTML search.
+        return function_exists('apply_filters')
+            ? (array)apply_filters('search_result', $result, $document, $context + ['tokens' => $tokens])
+            : $result;
     }
 
     private function emptyResult(string $query, string $normalizedQuery, array $tokens = []): array

@@ -52,6 +52,16 @@ $router->get('/tape-room/ui-kit', static function (): string {
     $preview = db()->query("SELECT id FROM reel_albums WHERE published=1 AND moderation_status='approved' ORDER BY id DESC LIMIT 1")->getOne();
     return theme()->render('ui-kit',['title'=>'UI-компоненты Tape Room','tr_wide_page'=>true,'tr_ui_embed_album_id'=>(int)($preview['id'] ?? 0)]);
 })->middleware(['auth','admin']);
+$router->get('/tape-room/changelog', static function (): string {
+    if (theme()->getActiveTheme()['slug'] !== 'tape-room') abort('Страница недоступна.',404);
+    $plugin=json_decode((string)file_get_contents(__DIR__.'/plugin.json'),true,512,JSON_THROW_ON_ERROR);
+    $engine=require CONFIG.'/version.php';
+    return theme()->render('changelog',[
+        'title'=>'Change Log Tape Room','tr_wide_page'=>true,
+        'changelog'=>require __DIR__.'/resources/changelog.php',
+        'release_versions'=>['Tape Room'=>$plugin['version'],'Тема'=>theme()->getActiveTheme()['version'],'CMS'=>$engine['version']],
+    ]);
+})->middleware(['auth','admin']);
 $router->get('/admin/reel-player/genres', [\Fireball\ReelPlayer\Controllers\AdminCatalogController::class, 'genres'])->middleware(['auth','admin']);
 $router->post('/admin/reel-player/genres/save', [\Fireball\ReelPlayer\Controllers\AdminCatalogController::class, 'saveGenre'])->middleware(['auth','admin']);
 $router->get('/admin/reel-player/albums/(?P<id>\d+)', [\Fireball\ReelPlayer\Controllers\AdminCatalogController::class, 'album'])->middleware(['auth','admin']);

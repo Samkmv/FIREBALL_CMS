@@ -87,7 +87,7 @@ class Post extends Model
             $pagination = new Pagination((int)($cached['total'] ?? 0), $perPage);
 
             return [
-                'posts' => is_array($cached['posts'] ?? null) ? $cached['posts'] : [],
+                'posts' => $this->normalizePosts(is_array($cached['posts'] ?? null) ? $cached['posts'] : []),
                 'total' => (int)($cached['total'] ?? 0),
                 'pagination' => $pagination,
                 'current_category' => $category,
@@ -114,13 +114,14 @@ class Post extends Model
         )->get() ?: [];
 
         $result = [
-            'posts' => $this->normalizePosts($posts),
+            'posts' => $posts,
             'total' => $total,
             'current_category' => $category,
             'current_category_label' => $category ? $this->getCategoryNameBySlug($category) : null,
             'current_category_meta' => $category ? $this->getCategoryMetaBySlug($category) : null,
         ];
         cache()->set($cacheKey, $result, 300);
+        $result['posts'] = $this->normalizePosts($posts);
         $result['pagination'] = $pagination;
 
         return $result;
@@ -135,7 +136,7 @@ class Post extends Model
         $cacheKey = $this->publicCacheKey('published:' . md5($slug));
         $cached = cache()->get($cacheKey);
         if (is_array($cached)) {
-            return $cached ?: false;
+            return $cached ? $this->normalizePost($cached) : false;
         }
 
         $this->ensureSchema();
@@ -153,10 +154,11 @@ class Post extends Model
             return false;
         }
 
-        $item = $this->normalizePost($post);
-        cache()->set($cacheKey, $item, 600);
+        // Block rendering runs subscription/plugin access hooks for this visitor.
+        // Only raw rows may be shared between guests and subscribers.
+        cache()->set($cacheKey, $post, 600);
 
-        return $item;
+        return $this->normalizePost($post);
     }
 
     /**
@@ -231,7 +233,7 @@ class Post extends Model
         $cacheKey = $this->publicCacheKey('home_featured:' . $limit);
         $cached = cache()->get($cacheKey);
         if (is_array($cached)) {
-            return $cached;
+            return $this->normalizePosts($cached);
         }
 
         $this->ensureSchema();
@@ -245,10 +247,9 @@ class Post extends Model
              LIMIT {$limit}"
         )->get() ?: [];
 
-        $items = $this->normalizePosts($posts);
-        cache()->set($cacheKey, $items, 300);
+        cache()->set($cacheKey, $posts, 300);
 
-        return $items;
+        return $this->normalizePosts($posts);
     }
 
     /**
@@ -260,7 +261,7 @@ class Post extends Model
         $cacheKey = $this->publicCacheKey('latest:' . $limit);
         $cached = cache()->get($cacheKey);
         if (is_array($cached)) {
-            return $cached;
+            return $this->normalizePosts($cached);
         }
 
         $this->ensureSchema();
@@ -273,10 +274,9 @@ class Post extends Model
              LIMIT {$limit}"
         )->get() ?: [];
 
-        $items = $this->normalizePosts($posts);
-        cache()->set($cacheKey, $items, 300);
+        cache()->set($cacheKey, $posts, 300);
 
-        return $items;
+        return $this->normalizePosts($posts);
     }
 
     /** Date-sorted widget feed; raw published data is cached before user access filters. */
@@ -288,7 +288,7 @@ class Post extends Model
         $excludeSlug = trim((string)$excludeSlug);
         $key = $this->publicCacheKey('widget.latest:' . hash('sha256', json_encode([$limit, $category, $order, $excludeSlug])));
         $cached = cache()->get($key);
-        if (is_array($cached)) return $cached;
+        if (is_array($cached)) return $this->normalizePosts($cached);
         $this->ensureSchema();
         [$where, $params] = $this->buildPublishedWhereClause($category);
         $where .= ' AND p.published_at <= CURRENT_TIMESTAMP';
@@ -299,9 +299,8 @@ class Post extends Model
         $rows = db()->query("SELECT {$this->publicPostSelectColumns()} FROM {$this->table} p
             LEFT JOIN {$this->categoriesTable} c ON c.id = p.category_id {$where}
             ORDER BY p.published_at {$order}, p.id {$order} LIMIT {$limit}", $params)->get() ?: [];
-        $items = $this->normalizePosts($rows);
-        cache()->set($key, $items, 60);
-        return $items;
+        cache()->set($key, $rows, 60);
+        return $this->normalizePosts($rows);
     }
 
     /**
@@ -314,7 +313,7 @@ class Post extends Model
         $cacheKey = $this->publicCacheKey('popular:' . $limit . ':' . md5($excludeSlug));
         $cached = cache()->get($cacheKey);
         if (is_array($cached)) {
-            return $cached;
+            return $this->normalizePosts($cached);
         }
 
         $this->ensureSchema();
@@ -336,10 +335,9 @@ class Post extends Model
             $params
         )->get() ?: [];
 
-        $items = $this->normalizePosts($posts);
-        cache()->set($cacheKey, $items, 300);
+        cache()->set($cacheKey, $posts, 300);
 
-        return $items;
+        return $this->normalizePosts($posts);
     }
 
     /**
@@ -588,7 +586,7 @@ class Post extends Model
         $cacheKey = $this->publicCacheKey('trending:' . $limit . ':' . md5($excludeSlug));
         $cached = cache()->get($cacheKey);
         if (is_array($cached)) {
-            return $cached;
+            return $this->normalizePosts($cached);
         }
 
         $this->ensureSchema();
@@ -610,10 +608,9 @@ class Post extends Model
             $params
         )->get() ?: [];
 
-        $items = $this->normalizePosts($posts);
-        cache()->set($cacheKey, $items, 300);
+        cache()->set($cacheKey, $posts, 300);
 
-        return $items;
+        return $this->normalizePosts($posts);
     }
 
     /**

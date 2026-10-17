@@ -2,7 +2,7 @@
   "name": "Tape Room",
   "slug": "reel-player",
   "class": "FireballPluginReelPlayer",
-  "version": "1.7.10",
+  "version": "1.7.11",
   "type": "system",
   "description": "Reel-to-reel player with a shared album catalogue, artists, personal collections, playlists and audio chapters.",
   "name_i18n": {
@@ -19,17 +19,14 @@
     "cms": ">=1.8.19"
   },
   "release_notes": [
-    "Keep authorized local and Google Drive transfers independent of the CMS update lock, without database access after handoff.",
-    "Wait through CMS maintenance and resume playback automatically; fix popular-list play buttons in mini mode and animate only album and artist artwork on hover."
+    "Add a Change Log page alongside the UI library, with the full saved release history and an audit of current capabilities and limitations."
   ],
   "release_notes_i18n": {
     "en": [
-      "Keep authorized local and Google Drive transfers independent of the CMS update lock, without database access after handoff.",
-      "Wait through CMS maintenance and resume playback automatically; fix popular-list play buttons in mini mode and animate only album and artist artwork on hover."
+      "Add a Change Log page alongside the UI library, with the full saved release history and an audit of current capabilities and limitations."
     ],
     "ru": [
-      "Передача локальной музыки и Google Drive больше не блокирует обновление CMS; после передачи управления поток не обращается к базе данных.",
-      "Плеер ждёт завершения обслуживания и повторяет воспроизведение; исправлена подмена кнопок в «Чаще слушают», добавлены анимации только изображений альбомов и артистов."
+      "Добавлена страница Change Log рядом с UI-компонентами: история сохранённых выпусков и сверка текущих возможностей и ограничений."
     ]
   },
   "update": {

@@ -112,6 +112,7 @@ final class FireballPluginSubscriptions implements PluginInterface
         add_action('admin_post_deleting', static fn(int $postId) => (new ContentRuleRepository())->delete('post', $postId));
         add_action('admin_user_deleting', [self::class, 'deleteUserData']);
         add_filter('search_document_access', [self::class, 'filterSearchDocumentAccess'], 20);
+        add_filter('search_result', [self::class, 'filterSearchResult'], 20);
         add_filter('public_post_before_render', [self::class, 'filterPublicPost'], 20);
         add_filter('public_posts_before_render', [self::class, 'filterPublicPosts'], 20);
         add_filter('public_page_before_render', [self::class, 'filterPublicPage'], 20);
@@ -278,9 +279,7 @@ final class FireballPluginSubscriptions implements PluginInterface
         }
 
         $allowedPlans = array_values(array_unique(array_filter(array_map('intval', (array)($blockData['subscriptionPlanIds'] ?? [])))));
-        $subscription = $access->activeSubscription($userId);
-
-        return $subscription !== null && in_array((int)$subscription['plan_id'], $allowedPlans, true);
+        return $access->activeSubscriptionForPlans($userId, $allowedPlans) !== null;
     }
 
     /**
@@ -482,11 +481,44 @@ final class FireballPluginSubscriptions implements PluginInterface
 
     public static function filterSearchDocumentAccess(bool $allowed, \App\Search\SearchDocument $document, array $context = []): bool
     {
-        if (!$allowed || $document->type !== 'post') return $allowed;
+        // A subscription controls reading, not discovery. Keep other providers'
+        // publication/access restrictions; redact locked results separately.
+        // Older CMS versions cannot redact snippets; retain the previous safe
+        // behavior until the matching core update is installed as well.
+        if ($allowed && $document->type === 'post' && !defined(\App\Search\SearchEngine::class . '::RESULT_FILTER_VERSION')) {
+            return !empty(self::accessService()->contentDecision((int)($context['user']['id'] ?? 0), 'post', (int)$document->entityId)['allowed']);
+        }
+        return $allowed;
+    }
+
+    public static function filterSearchResult(array $result, \App\Search\SearchDocument $document, array $context = []): array
+    {
+        if ($document->type !== 'post') return $result;
         $userId = (int)($context['user']['id'] ?? 0);
         $decision = self::accessService()->contentDecision($userId, 'post', (int)$document->entityId);
-        // Do not rank or expose indexed text/keywords for a viewer without access.
-        return !empty($decision['allowed']);
+        if (!empty($decision['allowed'])) return $result;
+
+        $rule = (array)($decision['rule'] ?? []);
+        $tokens = (array)($context['tokens'] ?? []);
+        if (empty($rule['show_title'])) {
+            $result['title'] = self::t('subscriptions_protected_content');
+        }
+        // The indexed body is never a teaser for a locked post. Only the author's
+        // explicitly permitted excerpt may be returned, including in live search.
+        $result['excerpt'] = !empty($rule['show_excerpt'])
+            ? \App\Search\SearchText::excerpt((string)($document->metadata['excerpt'] ?? ''))
+            : '';
+        $result['highlighted_title'] = \App\Search\SearchHighlighter::highlight((string)$result['title'], $tokens);
+        $result['highlighted_excerpt'] = \App\Search\SearchHighlighter::highlight($result['excerpt'], $tokens);
+        $result['metadata'] = array_intersect_key($document->metadata, array_flip([
+            'slug', 'category', 'category_label', 'published_at',
+        ]));
+        $result['metadata']['excerpt'] = $result['excerpt'];
+        if (!empty($rule['show_image'])) {
+            $result['metadata']['image'] = (string)($document->metadata['image'] ?? '');
+        }
+
+        return $result;
     }
 
     public static function filterPublicPost(array $post, array $user = []): array

@@ -20,14 +20,31 @@ final class AccessService
 
     public function activeSubscription(int $userId, bool $lock = false): ?array
     {
+        return $this->findActiveSubscription($userId, $lock);
+    }
+
+    /** Match any current subscription, not just the longest/latest one. */
+    public function activeSubscriptionForPlans(int $userId, array $planIds): ?array
+    {
+        $planIds = array_values(array_unique(array_filter(array_map('intval', $planIds), static fn(int $id): bool => $id > 0)));
+        if ($planIds === []) return null;
+        sort($planIds);
+
+        return $this->findActiveSubscription($userId, false, $planIds);
+    }
+
+    private function findActiveSubscription(int $userId, bool $lock, array $planIds = []): ?array
+    {
         if ($userId <= 0) {
             return null;
         }
-        if (!$lock && array_key_exists($userId, $this->subscriptionCache)) {
-            return $this->subscriptionCache[$userId];
+        $cacheKey = $planIds === [] ? $userId : 'plans:' . $userId . ':' . implode(',', $planIds);
+        if (!$lock && array_key_exists($cacheKey, $this->subscriptionCache)) {
+            return $this->subscriptionCache[$cacheKey];
         }
         $now = date('Y-m-d H:i:s');
         $suffix = $lock ? ' FOR UPDATE' : '';
+        $planWhere = $planIds === [] ? '' : ' AND s.plan_id IN (' . implode(',', array_fill(0, count($planIds), '?')) . ')';
         $row = db()->query(
             "SELECT s.*, p.name AS plan_name, p.slug AS plan_slug, p.grace_period_days
              FROM subscriptions s
@@ -38,14 +55,15 @@ final class AccessService
                     (s.status IN ('active', 'cancelled') AND s.starts_at <= ? AND (s.ends_at IS NULL OR s.ends_at > ?))
                     OR (s.status = 'grace_period' AND s.starts_at <= ? AND COALESCE(s.grace_ends_at, s.ends_at) > ?)
                )
+             {$planWhere}
              ORDER BY (s.ends_at IS NULL) DESC, COALESCE(s.grace_ends_at, s.ends_at) DESC, s.id DESC
              LIMIT 1{$suffix}",
-            [$userId, $now, $now, $now, $now]
+            [$userId, $now, $now, $now, $now, ...$planIds]
         )->getOne();
 
         $subscription = is_array($row) ? $row : null;
         if (!$lock) {
-            $this->subscriptionCache[$userId] = $subscription;
+            $this->subscriptionCache[$cacheKey] = $subscription;
         }
 
         return $subscription;
@@ -105,9 +123,11 @@ final class AccessService
         if (!$subscription) {
             return ['allowed' => false, 'reason' => 'subscription_required', 'rule' => $rule];
         }
-        if ((string)$rule['access_mode'] === 'plans'
-            && !in_array((int)$subscription['plan_id'], (array)$rule['plan_ids'], true)) {
-            return ['allowed' => false, 'reason' => 'plan_required', 'rule' => $rule];
+        if ((string)$rule['access_mode'] === 'plans') {
+            $subscription = $this->activeSubscriptionForPlans($userId, (array)$rule['plan_ids']);
+            if (!$subscription) {
+                return ['allowed' => false, 'reason' => 'plan_required', 'rule' => $rule];
+            }
         }
         if ((string)$rule['access_mode'] === 'permission') {
             $permission = trim((string)($rule['required_permission'] ?? 'posts.view_paid')) ?: 'posts.view_paid';

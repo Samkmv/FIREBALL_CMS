@@ -203,5 +203,6 @@ if ($asset && !str_contains($path, '..') && is_file($asset)) {
     header('Content-Type: ' . (['css' => 'text/css', 'js' => 'application/javascript', 'png' => 'image/png', 'webp' => 'image/webp', 'woff2' => 'font/woff2'][pathinfo($asset, PATHINFO_EXTENSION)] ?? 'application/octet-stream'));
     readfile($asset); exit;
 }
+if(PHP_SAPI==='cli' && getenv('TAPE_ROOM_TEST_BOOTSTRAP_ONLY')==='1')return;
 try { echo $router->dispatch(); }
 catch (Throwable $error) { http_response_code(500); echo $error::class . ': ' . $error->getMessage() . "\n" . $error->getTraceAsString(); }
