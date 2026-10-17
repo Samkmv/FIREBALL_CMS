@@ -49,7 +49,7 @@
             artwork.append(image);
             return image;
         });
-        const textPairs = [['[data-title]','[data-mini-title]'],['[data-artist]','[data-mini-artist]'],['[data-play-status]','[data-mini-status]']].map(([from,to]) => [app.querySelector(from),mini.querySelector(to)]);
+        const textPairs = [['[data-title]','[data-mini-title]'],['[data-artist]','[data-mini-artist]'],['[data-audio-quality]','[data-mini-status]']].map(([from,to]) => [app.querySelector(from),mini.querySelector(to)]);
         function sync() {
             for (const [source, target] of textPairs) {
                 const text=target.querySelector('[data-tr-marquee-text]') || target;

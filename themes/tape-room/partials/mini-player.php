@@ -9,7 +9,7 @@ $miniIcon = static function (string $name): string {
     <div class="tr-mini-inner">
         <div class="tr-mini-info">
             <div class="tr-mini-artwork" <?= $isDemo ? '' : 'data-mini-artwork' ?>><?php if ($isDemo): ?><img class="rp-theme-cover rp-theme-cover--light" src="<?= htmlSC(theme_asset('images/cover-light-320.webp')) ?>" alt="" width="48" height="48"><img class="rp-theme-cover rp-theme-cover--dark" src="<?= htmlSC(theme_asset('images/cover-dark-320.webp')) ?>" alt="" width="48" height="48"><?php endif; ?></div>
-            <div class="tr-mini-copy"><strong <?= $isDemo ? '' : 'data-mini-title' ?>><?= $isDemo ? 'Вечерняя лента' : 'Ваша первая лента' ?></strong><span <?= $isDemo ? '' : 'data-mini-artist' ?>><?= $isDemo ? 'Tape Room · Личная коллекция' : 'Выберите музыку в библиотеке' ?></span><small <?= $isDemo ? '' : 'data-mini-status' ?>><?= $isDemo ? 'ЛЕНТА В ДВИЖЕНИИ' : 'ГОТОВ К ПРОСЛУШИВАНИЮ' ?></small></div>
+            <div class="tr-mini-copy"><strong <?= $isDemo ? '' : 'data-mini-title' ?>><?= $isDemo ? 'Вечерняя лента' : 'Ваша первая лента' ?></strong><span <?= $isDemo ? '' : 'data-mini-artist' ?>><?= $isDemo ? 'Tape Room · Личная коллекция' : 'Выберите музыку в библиотеке' ?></span><small <?= $isDemo ? '' : 'data-mini-status' ?>><?= $isDemo ? 'FLAC · 16 БИТ · 44,1 КГЦ · ≈ 962 КБИТ/С · СТЕРЕО' : 'АУДИО' ?></small></div>
         </div>
         <div class="tr-mini-transport" <?= $isDemo ? '' : 'data-mini-transport' ?>>
             <?php if ($isDemo): ?><div class="rp-main-controls">

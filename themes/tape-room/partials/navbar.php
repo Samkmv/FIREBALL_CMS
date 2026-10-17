@@ -12,7 +12,7 @@ $roomLinks=[['overview','Обзор','grid'],['albums','Альбомы','disc'],
             <a class="navbar-brand tr-wordmark m-0" href="<?= htmlSC(base_href('/')) ?>" <?= $isPlayer?'data-action="catalog-view" data-view="overview"':'' ?>><span class="tr-wordmark-name">TAPE ROOM<small class="tr-beta">БЕТА</small></span><span class="tr-wordmark-caption">ЛИЧНАЯ МУЗЫКАЛЬНАЯ КОМНАТА</span></a>
             <div class="tr-navbar-actions d-flex align-items-center gap-2">
                 <div class="dropdown tr-account-dropdown">
-                    <button class="btn tr-nav-icon tr-account-toggle" type="button" id="tr-account-toggle" data-bs-toggle="dropdown" aria-expanded="false" aria-controls="tr-account-menu" aria-label="Аккаунт" title="Аккаунт"><?= $siteIcon('user') ?></button>
+                    <button class="btn tr-nav-icon tr-account-toggle" type="button" id="tr-account-toggle" data-bs-toggle="dropdown" aria-expanded="false" aria-controls="tr-account-menu" aria-label="Аккаунт" title="Аккаунт"><?php if($authenticated&&!empty(get_user()['avatar'])): ?><img class="tr-nav-avatar" src="<?= htmlSC(get_user_avatar(get_user()['avatar'],'sm')) ?>" width="26" height="26" alt=""><?php else: ?><?= $siteIcon('user') ?><?php endif; ?></button>
                     <ul class="dropdown-menu dropdown-menu-end tr-account-menu" id="tr-account-menu" aria-labelledby="tr-account-toggle">
                         <li><h2 class="dropdown-header"><?= $authenticated?htmlSC((string)(get_user()['name']??'Аккаунт')):'Аккаунт' ?></h2></li>
                         <?php if ($authenticated): ?>

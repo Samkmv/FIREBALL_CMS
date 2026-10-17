@@ -64,6 +64,8 @@ $router->get('/admin/reel-player/review-cover/(?P<id>\d+)', [PlayerController::c
 foreach (['/tape-room' => ['auth'], '/admin/reel-player' => ['auth', 'admin']] as $prefix => $guard) {
     $readGuard=$prefix==='/tape-room' ? [] : $guard;
     $router->get($prefix . '/api/state', [PlayerController::class, 'state'])->middleware($readGuard);
+    $router->get($prefix . '/api/playback', [PlayerController::class, 'playback'])->middleware($guard);
+    $router->post($prefix . '/api/playback', [PlayerController::class, 'playback'])->middleware($guard);
     $router->get($prefix . '/api/quality/(?P<id>\d+)', [PlayerController::class, 'quality'])->middleware($guard);
     $router->post($prefix . '/api/action', [PlayerController::class, 'action'])->middleware($guard);
     $router->post($prefix . '/api/upload', [PlayerController::class, 'upload'])->middleware($guard);

@@ -86,7 +86,10 @@
         if(visibility){const input=document.getElementById(visibility.dataset.trPassword);if(!input)return;const shown=input.type==='password';input.type=shown?'text':'password';visibility.setAttribute('aria-label',shown?'Скрыть пароль':'Показать пароль');visibility.setAttribute('aria-pressed',String(shown));const icon=visibility.querySelector('.tr-icon');icon.classList.toggle('ci-eye',!shown);icon.classList.toggle('ci-eye-off',shown);return;}
         if(event.target.closest('[data-tr-show-toast]'))bootstrap.Toast.getOrCreateInstance(document.getElementById('tr-demo-toast')).show();
     });
-    document.addEventListener('change',event=>{if(event.target.matches('[data-tr-file-picker] input[type=file]'))event.target.closest('[data-tr-file-picker]').querySelector('[data-tr-file-name]').textContent=event.target.files[0]?.name||'Файл не выбран';});
+    document.addEventListener('change',event=>{
+        if(event.target.matches('[data-tr-file-picker] input[type=file]'))event.target.closest('[data-tr-file-picker]').querySelector('[data-tr-file-name]').textContent=event.target.files[0]?.name||'Файл не выбран';
+        if(event.target.matches('[data-tr-demo-buffering]')){const demo=document.querySelector('.tr-mini-player--demo');demo.classList.toggle('is-buffering',event.target.checked);demo.querySelector('.rp-play').setAttribute('aria-busy',String(event.target.checked));}
+    });
     document.querySelectorAll('[data-tr-demo-form]').forEach(form=>form.addEventListener('submit',event=>{
         event.preventDefault();form.classList.add('was-validated');if(form.checkValidity())bootstrap.Toast.getOrCreateInstance(document.getElementById('tr-demo-toast')).show();
     }));

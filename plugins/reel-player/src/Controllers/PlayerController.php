@@ -63,6 +63,7 @@ final class PlayerController
                 'csrf' => (string)session()->get('needCSRFToken', ''),
                 'storageKey' => 'fireball-tape-room:' . (check_auth() ? (int)get_user()['id'] : 'guest'),
                 'authenticated' => check_auth(),
+                'playback' => check_auth() ? (new \Fireball\ReelPlayer\Repositories\Playback((int)get_user()['id']))->read() : null,
                 'login' => base_href('/login'),
                 'register' => base_href('/register'),
                 'defaultCover' => $defaultCovers['light'],
@@ -146,6 +147,15 @@ final class PlayerController
             }
             $id = $this->library()->action($action, $data, $_FILES['cover'] ?? null);
             return ['id' => $id, ...$this->library()->state()];
+        });
+    }
+
+    public function playback(): void
+    {
+        header('Cache-Control: private, no-store');
+        $this->respond(function (): array {
+            $playback = new \Fireball\ReelPlayer\Repositories\Playback((int)get_user()['id']);
+            return request()->isPost() ? $playback->write(request()->getData()) : ['playback'=>$playback->read()];
         });
     }
 

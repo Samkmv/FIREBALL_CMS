@@ -28,6 +28,8 @@
     let data = config.state, serverState = config.state, browserLibrary = {tracks:[],albums:[]}, browserRestored = false, sourceJob = null, saved = {};
     try { saved = JSON.parse(localStorage.getItem(config.storageKey) || '{}'); } catch (_) {}
     if (!saved || typeof saved !== 'object' || Array.isArray(saved)) saved = {};
+    if(config.playback?.state)saved={...saved,...config.playback.state,time:window.TapeRoomPlaybackSync.position(config.playback)};
+    let playbackSync=null, remotePlayback=config.playback?.state ? {...config.playback,received:performance.now()} : null;
     let audibleVolume = Number(saved.audibleVolume) > 0 ? Math.min(1, Number(saved.audibleVolume)) : Number(saved.volume) > 0 ? Math.min(1, Number(saved.volume)) : .8;
     let selected = Number(saved.playlist) || 0;
     let current = 0, queue = [], queueName = '', queuePlaylist = Number(saved.queuePlaylist) || 0, repeat = ['off', 'all', 'one'].includes(saved.repeat) ? saved.repeat : 'off';
@@ -72,7 +74,13 @@
     const activeTrack = () => track(current);
     const chapters = window.TapeRoomChapters;
     const currentChapters = () => activeTrack()?.chapters || [];
-    const playbackPosition = () => audio.readyState === 0 && restoreTime ? restoreTime : audio.currentTime || 0;
+    const remotePosition = () => Math.min(Number(activeTrack()?.duration)||Infinity,window.TapeRoomPlaybackSync.position(remotePlayback,(performance.now()-remotePlayback.received)/1000));
+    const playbackPosition = () => remotePlayback?.state.current===current ? remotePosition() : audio.readyState === 0 && restoreTime ? restoreTime : audio.currentTime || 0;
+    const remotePlaying = () => remotePlayback?.playing && (remotePlayback.serverTime-remotePlayback.updatedAt+performance.now()-remotePlayback.received)<30000;
+    function claimPlayback() {
+        if(remotePlayback){const time=playbackPosition();remotePlayback=null;if(current){if(audio.readyState===0)restoreTime=time;else audio.currentTime=time;}}
+        if(!activeTrack()?.browserLocal)playbackSync?.claim();
+    }
     let chapterKey = '', chapterIndex = -2, chapterDuration = -1, chapterRows = [], chapterMarkers = [];
     let chapterJob = null;
     const qualityCache = new Map();
@@ -131,6 +139,7 @@
     }
     function save() {
         try { localStorage.setItem(config.storageKey, JSON.stringify({playlist:selected, libraryView, queueSource, current, queue, queueName, queuePlaylist, queueSort, librarySort, playlistSort, time:playbackPosition(), volume:audio.volume, audibleVolume, muted:audio.muted, shuffle, repeat})); } catch (_) {}
+        playbackSync?.changed();
     }
     function closeSort() {
         const options = $('[data-sort-options]'), restoreFocus = options.contains(document.activeElement);
@@ -349,7 +358,7 @@
         const play = $('[data-action="play"]'); setIcon(play, playing ? 'pause' : 'play');
         play.setAttribute('aria-busy', String(loading||recovery.pending));
         play.setAttribute('aria-label', playing ? 'Пауза' : 'Воспроизвести'); play.title = playing ? 'Пауза' : 'Воспроизвести';
-        $('[data-play-status]').textContent = recovery.pending ? 'ВОССТАНАВЛИВАЕМ СОЕДИНЕНИЕ…' : bufferVisible ? 'БУФЕРИЗАЦИЯ…' : playing ? 'ЛЕНТА В ДВИЖЕНИИ' : current ? 'ПАУЗА' : 'ГОТОВ К ПРОСЛУШИВАНИЮ';
+        $('[data-play-status]').textContent = remotePlaying() ? 'ИГРАЕТ НА ДРУГОМ УСТРОЙСТВЕ' : recovery.pending ? 'ВОССТАНАВЛИВАЕМ СОЕДИНЕНИЕ…' : bufferVisible ? 'БУФЕРИЗАЦИЯ…' : playing ? 'ЛЕНТА В ДВИЖЕНИИ' : current ? 'ПАУЗА' : 'ГОТОВ К ПРОСЛУШИВАНИЮ';
         const sh = $('[data-action="shuffle"]'); sh.classList.toggle('is-active', shuffle); sh.setAttribute('aria-pressed', String(shuffle));
         sh.setAttribute('aria-label', `Случайный порядок: ${shuffle ? 'включён' : 'выключен'}`); sh.title = sh.getAttribute('aria-label');
         const re = $('[data-action="repeat"]'); re.classList.toggle('is-active', repeat !== 'off'); re.setAttribute('aria-label', `Повтор: ${repeat === 'off' ? 'выключен' : repeat === 'one' ? 'одного трека' : 'плейлиста'}`); re.title = re.getAttribute('aria-label'); $('[data-repeat-one]').hidden = repeat !== 'one';
@@ -565,10 +574,11 @@
             const source = playbackSource(), first = collections.collection(data,source,selectedSort())[0]; if (!first) return;
             setQueue(source); load(first.id);
         }
+        if(origin==='user'||origin==='system')claimPlayback();
         configureAudioSession();
         if (audio.error || (activeTrack()?.browserLocal && !audio.hasAttribute('src'))) load(current,playbackPosition());
         recovery.play(origin==='user'||origin==='system');
-        if (audio.ended) audio.currentTime = 0;
+        if (audio.ended || (Number.isFinite(audio.duration) && audio.currentTime>=audio.duration-.05)) audio.currentTime = 0;
         if(activeTrack()?.browserLocal && !audio.hasAttribute('src')){
             const t=activeTrack(),sourceVersion=generation;
             sourceJob=window.TapeRoomTorrents.resolve(t).then(url=>{if(sourceVersion===generation){audio.src=url;audio.load();}});
@@ -583,7 +593,7 @@
             if(version!==generation)return;
         }
         // Keep play() inside the tap's activation; meter setup never gates sound.
-        try { const playback = audio.play(); resumeMeters(origin,event); await playback; }
+        try { const playback = audio.play(); resumeMeters(origin,event); await playback; playbackSync?.changed(0); }
         catch (error) { if (version === generation && error.name !== 'AbortError') { if(error.name==='NotAllowedError')recovery.pause();else if(activeTrack()?.source==='drive'&&audio.error)return;setBuffering(false); stopMeters('native-error'); toast(error.name==='NotAllowedError'?'Браузер ожидает подтверждения воспроизведения. Нажмите кнопку запуска ещё раз.':activeTrack()?.browserLocal?window.TapeRoomTorrents.playbackError(audio.error?.code||2):'Не удалось воспроизвести трек. Проверьте формат, соединение и доступ к файлу.', true); } }
     }
     function shuffled(exclude) {
@@ -657,7 +667,7 @@
     function previous(origin = 'automatic', event) {
         if (!current) return;
         if (seekChapter(-1,origin,event)) return;
-        if (audio.currentTime > 3) { audio.currentTime = 0; drawProgress(); return; }
+        if (playbackPosition() > 3) { seekTo(0); return; }
         const id = shuffle && history.length ? history.pop() : queue[(Math.max(0, queue.indexOf(current)) - 1 + queue.length) % queue.length];
         if (id) { futureBag = []; load(id); play(origin,event); }
     }
@@ -858,6 +868,7 @@
     }
     function seekTo(time) {
         if (!current || !Number.isFinite(Number(time))) return;
+        claimPlayback();
         const duration = Number.isFinite(audio.duration) ? audio.duration : activeTrack()?.duration || 0;
         const position = Math.max(0,duration > 0 ? Math.min(duration,Number(time)) : Number(time));
         if (audio.readyState === 0) restoreTime = position; else audio.currentTime = position;
@@ -1402,7 +1413,7 @@
         }
     });
     reducedMotion.addEventListener('change', () => { syncReels(); drawTape(); });
-    setInterval(()=>recovery.tick(),1000);
+    setInterval(()=>{recovery.tick();if(remotePlayback){drawProgress();updateButtons();}},1000);
     window.addEventListener('offline', () => { preloader.connectivity(false); meterController.network(false); });
     window.addEventListener('online', () => { recovery.connected();preloader.connectivity(true); meterController.network(true); prepareUpcoming(); if (!audio.paused) resumeMeters(); });
     window.addEventListener('pageshow', () => { drawProgress(); if (!audio.paused) { resumeMeters(); startAnimation(); } });
@@ -1611,6 +1622,22 @@
     render();
     if (track(saved.current)) { queue = Array.isArray(saved.queue) ? saved.queue.filter(id => Boolean(track(id))) : []; if (!queue.length) setQueue(); queueName = saved.queueName || 'Вся музыка'; load(saved.current,Number(saved.time) || 0); }
     else if (data.tracks.length && !(saved.current>=4e15)) { setQueue(); load(selectedTracks()[0]?.id || data.tracks[0].id); }
+    if(config.authenticated!==false){
+        playbackSync=new window.TapeRoomPlaybackSync({url:`${config.api}/playback`,csrf:config.csrf,initial:config.playback,
+            snapshot:()=>current&&!activeTrack()?.browserLocal ? {playing:!audio.paused&&!audio.ended,state:{current,queue:queue.filter(id=>!track(id)?.browserLocal),queueSource,queueName,queueSort,queuePlaylist,time:playbackPosition(),shuffle,repeat}} : null,
+            apply:async(value,valid)=>{
+                if(activeTrack()?.browserLocal&&!audio.paused)return;
+                const state=value.state;
+                if(!track(state.current)||state.queue.some(id=>!track(id))){const result=await api('state');if(!valid())return;applyState(result);}
+                if(!valid()||!track(state.current))return;
+                remotePlayback={...value,received:performance.now()};pausePlayback();
+                queue=state.queue.filter(id=>Boolean(track(id)));queueSource=collections.descriptor(state.queueSource);queueName=state.queueName;queueSort=state.queueSort;queuePlaylist=state.queuePlaylist;shuffle=state.shuffle;repeat=state.repeat;
+                bag=[];futureBag=[];history=[];
+                if(current!==state.current||audio.error)load(state.current,window.TapeRoomPlaybackSync.position(value));
+                else{updateNow();updateButtons();renderPlaybackQueue();drawProgress();save();}
+            }});
+        playbackSync.start();
+    }
     drawProgress(); drawMeters(false);
     if(linkedAlbum>0)requestAnimationFrame(()=>$('.rp-library').scrollIntoView({block:'start'}));
     if (params.has('drive')) { toast(params.get('drive') === 'connected' ? 'Google Drive подключён. Можно добавить музыку.' : 'Google Drive не подключён. Проверьте OAuth-настройки и попробуйте снова.',params.get('drive') !== 'connected'); window.history.replaceState({},'',location.pathname); }

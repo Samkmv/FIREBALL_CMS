@@ -1,11 +1,14 @@
 <section class="card tr-card tr-settings-card">
+    <?= $this->partial('account-navigation',['section'=>'settings']) ?>
     <header class="tr-settings-heading"><span class="tr-eyebrow">ВАШ АККАУНТ</span><h1>Настройки аккаунта</h1><p>Личные данные и безопасность входа.</p></header>
     <?= $this->partial('form-errors') ?>
+    <?= $this->partial('account-avatar',['user'=>$user]) ?>
     <form class="tr-form tr-settings-form" action="<?= htmlSC(base_href('/profile/settings')) ?>" method="post">
         <?= get_csrf_field() ?><input type="hidden" name="profile_action" value="details">
         <?= $this->partial('field', ['name' => 'name', 'label' => 'Имя', 'value' => $user['name'], 'autocomplete' => 'name']) ?>
         <?= $this->partial('field', ['name' => 'login', 'label' => 'Логин', 'value' => $user['login'], 'autocomplete' => 'username']) ?>
         <?= $this->partial('field', ['name' => 'email', 'label' => 'Электронная почта', 'value' => $user['email'], 'type' => 'email', 'autocomplete' => 'email']) ?>
+        <?= $this->partial('field', ['id'=>'tr-details-current-password','name'=>'current_password','label'=>'Текущий пароль','type'=>'password','autocomplete'=>'current-password','optional'=>true]) ?><p class="small text-body-secondary mb-0">Нужен только при изменении логина или электронной почты.</p>
         <div class="tr-settings-actions"><button class="btn btn-primary" type="submit">Сохранить изменения</button></div>
     </form>
     <?php $securityOpen=(string)request()->get('section','')==='security'; ?>

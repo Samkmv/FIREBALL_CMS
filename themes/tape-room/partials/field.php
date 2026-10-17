@@ -1,5 +1,5 @@
 <?php
-$fieldId='tr-'.$name;$inputType=$type??'text';$fieldErrors=(array)((session()->get('form_errors',[])?:[])[$name]??[]);
+$fieldId=$id??'tr-'.$name;$inputType=$type??'text';$fieldErrors=(array)((session()->get('form_errors',[])?:[])[$name]??[]);
 $fieldValue=$inputType==='password'?'':(string)((session()->get('form_data',[])?:[])[$name]??$value??'');
 ?>
 <div class="tr-field">

@@ -63,5 +63,9 @@ dist/fireball-cms-*.zip*
 !/tests/pwa_installation_check.py
 !/tests/pwa_installation_fixture.php
 !/tests/tape_room_playback_source.cjs
+!/tests/tape_room_sync.cjs
+!/tests/tape_room_sync_check.py
+!/tests/tape_room_fixture.php
+!/tests/tape_room_fixture_setup.py
 /tests/.tmp/
 /tests/artifacts/

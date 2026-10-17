@@ -225,19 +225,17 @@ html[data-theme=dark] .rp-app.tr-bootstrap .rp-catalog-delete.btn:is(:hover,:foc
 
 .tr-ui-embed-preview{display:block;width:100%;max-width:700px;height:520px;border:0;border-radius:18px;overflow:hidden}
 
-/* Mobile navigation and album actions keep symmetric columns. */
-.rp-album-edit-label{display:none}
+/* Album actions use one grid so every button has the same size. */
+.rp-app.tr-bootstrap .rp-album-controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:1fr;gap:12px;max-width:760px;margin-top:20px}
+.rp-app.tr-bootstrap .rp-album-controls>:is(.rp-album-detail-actions,.rp-album-detail-management){display:contents}
+.rp-app.tr-bootstrap .rp-album-controls .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;height:100%;min-width:0;min-height:46px;margin:0;padding:11px 12px;border-radius:9px;font-size:12px;line-height:1.5;white-space:normal;text-align:center}
+.rp-app.tr-bootstrap .rp-album-controls .rp-icon{flex-shrink:0}
 @media(max-width:760px){
     .tr-bootstrap .tr-navbar .tr-navbar-inner{grid-template-columns:88px minmax(0,1fr) 88px;gap:0}
     .tr-bootstrap .tr-navbar .tr-wordmark{justify-self:center;width:100%;min-width:0}
     .tr-bootstrap .tr-navbar .tr-nav-icon{width:40px;height:40px;min-height:40px;flex:0 0 40px;padding:9px;border-radius:50%;aspect-ratio:1}
     .tr-bootstrap .tr-navbar-actions{gap:8px!important}
-    .rp-app.tr-bootstrap .rp-album-detail-actions,.rp-app.tr-bootstrap .rp-album-detail-management{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:stretch;width:100%}
-    .rp-app.tr-bootstrap .rp-album-detail-actions>.btn,.rp-app.tr-bootstrap .rp-album-detail-management>.btn{width:100%;min-width:0;min-height:44px;margin:0;padding:9px 10px;font-size:12px;line-height:1.5;white-space:normal;text-align:center;justify-content:center}
-    .rp-app.tr-bootstrap .rp-album-detail-actions>.btn:last-child:nth-child(odd),.rp-app.tr-bootstrap .rp-album-detail-management>.btn:last-child:nth-child(odd){grid-column:1/-1}
-    .rp-app.tr-bootstrap .rp-album-detail-actions>.rp-album-edit.btn{height:auto;aspect-ratio:auto;flex:auto;border:1px solid var(--tr-line);border-radius:7px;background:transparent;color:var(--tr-ink)}
-    .rp-app.tr-bootstrap .rp-album-edit-label{display:inline}
-    .rp-app.tr-bootstrap .rp-album-edit.btn:is(:hover,:focus-visible){background:var(--tr-soft);border-color:var(--tr-accent)}
+    .rp-app.tr-bootstrap .rp-album-controls{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:18px}
     .rp-app.tr-bootstrap .rp-chapter-row{grid-template-columns:minmax(0,1fr) auto;gap:8px;min-height:64px;padding:8px 10px}
     .rp-app.tr-bootstrap .rp-chapter-actions{gap:4px}
     .rp-app.tr-bootstrap .rp-chapter-actions .rp-icon-button.btn{width:36px;height:36px;flex-basis:36px}
@@ -284,6 +282,24 @@ html[data-theme=dark] .rp-app.tr-bootstrap .rp-catalog-delete.btn:is(:hover,:foc
 /* Keep the Cartzilla bookmark silhouette, filling it only for saved music. */
 .tr-bootstrap :is(.rp-favorite[aria-pressed=true],.rp-catalog-save.is-saved,.rp-album-saved) .ci-bookmark::before{content:"";display:block;width:1em;height:1em;background:currentColor;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z'/%3E%3C/svg%3E") center/contain no-repeat}
 .rp-app.tr-bootstrap .rp-catalog-save:focus-visible{outline:2px solid var(--tr-accent);outline-offset:3px}
+.tr-bootstrap .tr-account-tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:5px;margin:0 0 30px;border:1px solid var(--tr-line);border-radius:12px;background:var(--tr-paper)}
+.tr-bootstrap .tr-account-tabs .nav-link{display:flex;align-items:center;justify-content:center;gap:9px;min-height:44px;padding:10px;border-radius:8px;font-size:12px;text-decoration:none;color:var(--tr-muted);text-align:center;line-height:1.5}
+.tr-bootstrap .tr-account-tabs .nav-link.active{background:var(--tr-button);color:var(--tr-button-text)}
+.tr-bootstrap .tr-account-tabs .nav-link:not(.active):hover{background:var(--tr-soft);color:var(--tr-ink)}
+.tr-account-tabs .tr-icon{flex:0 0 18px;font-size:18px}
+.tr-nav-avatar{display:block;width:26px;height:26px;border-radius:50%;object-fit:cover}
+.tr-profile-card{max-width:760px}.tr-profile-heading{display:flex;align-items:center;gap:24px;margin-bottom:28px;min-width:0}.tr-profile-heading>div{min-width:0}.tr-profile-heading h1{margin:8px 0 10px}.tr-profile-heading p{margin:4px 0;overflow-wrap:anywhere}
+.tr-profile-avatar,.tr-avatar-preview img{display:block;width:88px;height:88px;border-radius:50%;object-fit:cover;border:1px solid var(--tr-line);background:var(--tr-soft);flex-shrink:0}
+.tr-profile-sync{display:flex;align-items:flex-start;gap:14px;padding:20px;border:1px solid var(--tr-line);border-radius:12px;background:var(--tr-paper);margin-bottom:26px}.tr-profile-sync>.tr-icon{flex:0 0 20px;font-size:20px;color:var(--tr-accent);margin-top:2px}.tr-profile-sync p{margin:0}.tr-profile-sync strong,.tr-profile-sync span{display:block;font-size:13px;line-height:1.6}.tr-profile-sync strong{font-weight:500;margin-bottom:6px;color:var(--tr-ink)}
+.tr-profile-actions{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}.tr-profile-logout{padding-top:24px;margin-top:24px;border-top:1px solid var(--tr-line)}
+.tr-bootstrap .tr-profile-actions .btn{min-height:46px;font-size:13px;text-decoration:none}
+.tr-avatar-editor{display:grid;grid-template-columns:88px minmax(0,1fr);align-items:start;gap:24px;margin:26px 0 0;padding:0 0 28px;border-bottom:1px solid var(--tr-line)}
+.tr-avatar-fields{min-width:0}.tr-avatar-fields h2{font:500 16px/1.5 var(--bs-body-font-family);margin:0 0 5px}.tr-avatar-fields p{font-size:12px;line-height:1.65;margin:0 0 16px}.tr-avatar-fields small{display:block;color:var(--tr-muted);font-size:11px;line-height:1.6;margin:10px 0 16px}
+.tr-avatar-picker{display:flex;align-items:center;flex-wrap:wrap;gap:10px}.tr-avatar-picker [data-tr-file-name]{font-size:11px;line-height:1.5;color:var(--tr-muted);overflow-wrap:anywhere;min-width:0;max-width:100%}.tr-avatar-error{color:#b34235}.tr-avatar-preview{position:relative}
+@media(max-width:575.98px){
+    .tr-avatar-editor{grid-template-columns:minmax(0,1fr);gap:18px}.tr-avatar-preview{justify-self:center}.tr-avatar-fields{text-align:center}.tr-avatar-picker{justify-content:center}.tr-avatar-fields>.btn{width:100%;min-height:44px}
+    .tr-bootstrap .tr-account-tabs .nav-link{font-size:11px;gap:6px;padding:9px 7px}.tr-account-tabs .tr-icon{font-size:16px;flex-basis:16px}.tr-profile-heading{flex-direction:column;gap:18px;text-align:center}.tr-profile-actions{grid-template-columns:minmax(0,1fr)}.tr-profile-sync{padding:16px}
+}
 @media(hover:hover) and (pointer:fine){
     .tr-bootstrap .rp-favorite[aria-pressed=true]:not(:disabled):hover,.rp-app.tr-bootstrap .rp-favorite.btn[aria-pressed=true]:not(:disabled):hover{color:var(--tr-button-text);background:var(--tr-button);box-shadow:inset 0 0 0 2px var(--tr-accent)}
     .rp-app.tr-bootstrap .rp-catalog-save.is-saved:not(:disabled):hover{color:var(--tr-button-text);background:color-mix(in srgb,var(--tr-button) 88%,var(--tr-accent));border-color:var(--tr-button)}
