@@ -6,7 +6,7 @@
 - `bootstrap.bundle.min.js` (включает Popper): https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js
 - `LICENSE`: лицензия MIT из официального пакета Bootstrap 5.3.8.
 
-Официальные контрольные суммы SHA-384 (SRI):
+Официальные контрольные суммы SHA-384 (SRI), до локальной обработки:
 
 ```
 bootstrap.min.css
@@ -14,6 +14,18 @@ sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB
 
 bootstrap.bundle.min.js
 sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI
+```
+
+В локальных файлах удалены только завершающие комментарии `sourceMappingURL`: карты `.map` в поставку не входят. Код, стили и MIT-заголовки сохранены. Обработку повторяет скрипт сборки; проверка восстанавливает исходный комментарий в памяти и сверяет официальную сумму всего файла.
+
+Контрольные суммы поставляемых файлов после удаления комментариев:
+
+```
+bootstrap.min.css
+sha384-QQlyd9zM1gKg9ksYVEmqmL9k5+50gpTdcEW2it9tMDwe76hvZBzwMb3e68oyJe63
+
+bootstrap.bundle.min.js
+sha384-GcmBBmOVkAAk+wLFyGvfTZbRlQDDHBJqEv3LX5lODmWn7wFPos90Wgv6CPjbz7oy
 ```
 
 Сайт загружает файлы только из этой папки. `bootstrap.min.css` — исходник для сборки, непосредственно подключается `bootstrap.scoped.css`. Его создаёт `tools/build-tape-room-bootstrap.py`, чтобы Bootstrap не менял стили аудиоплеера. Скрипт оставляет глобальными только правила `.modal-backdrop`: Bootstrap добавляет этот элемент непосредственно в `body`.

@@ -22,6 +22,7 @@ $button = static function (string $action, string $label, string $name, string $
             let theme = 'light';
             try { if (localStorage.getItem(<?= json_encode($config['storageKey'] . ':theme', JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>) === 'dark') theme = 'dark'; } catch (_) {}
             document.documentElement.dataset.theme = theme;
+            try { document.documentElement.dataset.playerView = localStorage.getItem('tape-room:player-view') === 'mini' ? 'mini' : 'deck'; } catch (_) {}
             if (navigator.standalone === true || matchMedia('(display-mode: standalone)').matches) document.documentElement.classList.add('pwa-standalone');
             document.querySelector('meta[name="color-scheme"]').content = theme;
             document.querySelectorAll('meta[name="theme-color"]').forEach(meta => { meta.content = theme === 'dark' ? '#191c1a' : '#f7f5f0'; });
@@ -162,7 +163,7 @@ $button = static function (string $action, string $label, string $name, string $
                 <button type="button" class="rp-catalog-nav-button" data-action="catalog-view" data-view="genres"><?= $icon('list') ?><span>Жанры</span></button>
                 <button type="button" class="rp-catalog-nav-button" data-action="catalog-view" data-view="new"><?= $icon('disc') ?><span>Новинки</span></button>
                 <button type="button" class="rp-catalog-nav-button" data-action="catalog-view" data-view="popular"><?= $icon('trending') ?><span>Популярное</span></button>
-                <button type="button" class="rp-catalog-nav-button" data-action="catalog-view" data-view="mine"><?= $icon('heart') ?><span>Моя музыка</span><span class="rp-catalog-nav-count" data-catalog-saved-count></span></button>
+                <button type="button" class="rp-catalog-nav-button" data-action="catalog-view" data-view="mine"><?= $icon('collection') ?><span>Моя музыка</span><span class="rp-catalog-nav-count" data-catalog-saved-count></span></button>
             </nav>
             <div class="rp-section-heading rp-personal-heading"><h2>Мои ленты</h2><?= $button('create-playlist', 'Создать плейлист', 'plus') ?></div>
             <nav data-playlists aria-label="Личные песни и плейлисты"></nav>
@@ -189,6 +190,7 @@ $button = static function (string $action, string $label, string $name, string $
             <div class="rp-drop-hint" <?= empty($config['authenticated'])?'hidden':'' ?>>Перетащите музыку в эту область · <span data-upload-limit></span> на файл</div>
         </div>
     </section>
+    <?= $this->partial('mini-player') ?>
     <footer class="rp-footer"><button type="button" class="rp-about" data-action="meter-report" aria-label="Проверить индикаторы и версию плеера">TAPE ROOM · <?= htmlSC($config['version'] ?? '') ?></button><span>Пробел — пауза · ← / → — перемотка · Shift + ← / → — глава / трек</span><span>СОЗДАНО ДЛЯ ПРОСЛУШИВАНИЯ</span></footer>
     <div class="rp-drop-overlay" hidden data-drop-overlay><?= $icon('upload') ?><strong>Положите музыку на ленту</strong><span>Файлы добавятся в открытый плейлист</span></div>
     <div class="rp-upload-progress" hidden data-upload-progress><span data-upload-message></span><progress max="100" value="0" aria-label="Загрузка музыки"></progress></div>

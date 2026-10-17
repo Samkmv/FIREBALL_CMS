@@ -31,6 +31,10 @@
         for(const name of ['--tr-viewport-height','--tr-viewport-top','--tr-keyboard-space','--tr-modal-content-height'])modal.style.removeProperty(name);
         modalLayout=null;
     });
+    for (const event of ['show.bs.offcanvas','hidden.bs.offcanvas']) document.addEventListener(event,item=>{
+        if(item.target.id!=='tr-demo-playback-queue')return;
+        document.querySelector('[aria-controls="tr-demo-playback-queue"]')?.setAttribute('aria-expanded',String(event==='show.bs.offcanvas'));
+    });
     document.addEventListener('focusin',event=>{
         if(!modalLayout||!modalLayout.modal.contains(event.target)||!isTyping(event.target))return;
         const modal=modalLayout.modal;
@@ -64,9 +68,18 @@
         const demoSort=event.target.closest('[data-tr-demo-sort]');
         if(demoSort){const dropdown=demoSort.closest('.dropdown');dropdown.querySelector('[data-tr-demo-sort-label]').textContent=demoSort.firstElementChild.textContent;dropdown.querySelectorAll('[data-tr-demo-sort]').forEach(option=>{const selected=option===demoSort;option.setAttribute('aria-selected',String(selected));option.querySelector('[data-tr-demo-sort-check]').hidden=!selected;});return;}
         const demoPlay=event.target.closest('[data-tr-demo-play]');
-        if(demoPlay){const active=demoPlay.getAttribute('aria-pressed')!=='true';demoPlay.setAttribute('aria-pressed',String(active));demoPlay.setAttribute('aria-label',active?'Пауза — пример':'Воспроизвести — пример');demoPlay.querySelector('.tr-icon').className=`ci-${active?'pause':'play-filled'} tr-icon`;return;}
+        if(demoPlay){
+            const active=demoPlay.getAttribute('aria-pressed')!=='true',queue=demoPlay.closest('.tr-playback-queue--demo');
+            if(queue)queue.querySelectorAll('[data-tr-demo-play]').forEach(button=>{
+                button.classList.toggle('is-current',button===demoPlay);
+                if(button!==demoPlay){button.setAttribute('aria-pressed','false');button.setAttribute('aria-label',`Воспроизвести ${button.querySelector('.tr-queue-info strong').textContent} — пример`);button.querySelector('.tr-icon').className='ci-play-filled tr-icon';}
+            });
+            demoPlay.setAttribute('aria-pressed',String(active));demoPlay.setAttribute('aria-label',active?'Пауза — пример':'Воспроизвести — пример');demoPlay.querySelector('.tr-icon').className=`ci-${active?'pause':'play-filled'} tr-icon`;return;
+        }
         const demoFavorite=event.target.closest('[data-tr-demo-favorite]');
-        if(demoFavorite){const active=demoFavorite.getAttribute('aria-pressed')!=='true';demoFavorite.setAttribute('aria-pressed',String(active));demoFavorite.setAttribute('aria-label',active?'Убрать из избранного — пример':'Добавить в избранное — пример');demoFavorite.querySelector('.tr-icon').className=`ci-${active?'heart-filled':'heart'} tr-icon`;return;}
+        if(demoFavorite){const active=demoFavorite.getAttribute('aria-pressed')!=='true';demoFavorite.setAttribute('aria-pressed',String(active));demoFavorite.setAttribute('aria-label',active?'Убрать из избранного — пример':'Добавить в избранное — пример');demoFavorite.querySelector('.tr-icon').className='ci-bookmark tr-icon';return;}
+        const demoCollection=event.target.closest('[data-tr-demo-collection]');
+        if(demoCollection){const saved=demoCollection.getAttribute('aria-pressed')!=='true';demoCollection.classList.toggle('is-saved',saved);demoCollection.setAttribute('aria-pressed',String(saved));demoCollection.querySelector('span').textContent=saved?'В коллекции':'В коллекцию';return;}
         const themeToggle=event.target.closest('[data-tr-theme-toggle]');
         if(themeToggle){document.documentElement.dataset.theme=document.documentElement.dataset.theme==='dark'?'light':'dark';return;}
         const visibility=event.target.closest('[data-tr-password]');

@@ -75,6 +75,8 @@ $roleSlug = (string)($currentUser['role'] ?? 'user');
             <a
                 class="fb-sidebar-footer-link"
                 href="<?= base_href('/') ?>"
+                target="_blank"
+                rel="noopener noreferrer"
                 aria-label="<?= htmlSC(return_translation('tpl_menu_nav_index')) ?>"
                 title="<?= htmlSC(return_translation('tpl_menu_nav_index')) ?>"
             >

@@ -32,6 +32,9 @@ if($path==='/test/select'){
 if($path==='/'){
     header('Content-Type: text/html; charset=utf-8');echo '<!doctype html><html><head><meta charset="utf-8">'.pwa_head_tags().'</head><body>PWA icon fixture</body></html>';exit;
 }
+if($path==='/themes/tape-room/assets/images/apple-touch-icon.png'){
+    header('Content-Type: image/png');readfile(ROOT.$path);exit;
+}
 if(str_starts_with($path,'/uploads/pwa/') || str_starts_with($path,'/assets/default/pwa/')){
     $file=realpath(WWW.$path);
     if($file && str_starts_with($file,realpath(WWW).'/') && str_ends_with($file,'.png')){header('Content-Type: image/png');readfile($file);exit;}

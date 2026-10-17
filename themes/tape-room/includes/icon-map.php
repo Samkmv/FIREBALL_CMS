@@ -28,6 +28,7 @@ return [
     'cloud' => 'cloud',
     'download' => 'download',
     'list' => 'list',
+    'queue' => 'align-left',
     'play' => 'play-filled',
     'pause' => 'pause',
     'prev' => 'skip-back',
@@ -48,6 +49,7 @@ return [
     'back' => 'arrow-left',
     'microphone' => 'mic',
     'trending' => 'trending-up',
-    'heart' => 'heart',
-    'heart-filled' => 'heart-filled',
+    'bookmark' => 'bookmark',
+    'heart' => 'bookmark',
+    'heart-filled' => 'bookmark',
 ];

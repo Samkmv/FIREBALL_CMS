@@ -47,7 +47,8 @@ $roomLinks=[['overview','Обзор','grid'],['albums','Альбомы','disc'],
             <?php if ($authenticated): ?><div class="tr-menu-divider"></div><nav class="nav flex-column tr-side-links" aria-label="Аккаунт и настройки"><a class="nav-link <?= str_contains($path,'/profile')?'active':'' ?>" href="<?= htmlSC(base_href('/profile')) ?>"><?= $siteIcon('user') ?><span>Аккаунт</span></a>
                 <?php if (check_admin()): ?><a class="nav-link <?= str_contains($path,'/tape-room/ui-kit')?'active':'' ?>" href="<?= htmlSC(base_href('/tape-room/ui-kit')) ?>"><?= $siteIcon('grid') ?><span>UI-компоненты</span></a><a class="nav-link" href="<?= htmlSC(base_href('/admin')) ?>"><?= $siteIcon('settings') ?><span>Панель управления</span></a><?php endif; ?>
             </nav><?php endif; ?>
-            <div class="tr-menu-bottom mt-auto"><span class="tr-status-dot"></span> СОЗДАНО ДЛЯ ПРОСЛУШИВАНИЯ<p>Ваша музыка. Ваше пространство.</p></div>
+            <div class="tr-menu-preferences mt-auto"><?= $this->partial('player-mode-toggle') ?></div>
+            <div class="tr-menu-bottom"><span class="tr-status-dot"></span> СОЗДАНО ДЛЯ ПРОСЛУШИВАНИЯ<p>Ваша музыка. Ваше пространство.</p></div>
         </div>
     </aside>
 </div>

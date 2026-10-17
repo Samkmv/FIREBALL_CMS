@@ -7,6 +7,8 @@
     const audio = $('[data-audio]');
     const dialog = $('[data-dialog]'), dialogShell=$('[data-player-modal]');
     const dialogModal=bootstrap.Modal.getOrCreateInstance(dialogShell);
+    const queuePanel=$('[data-playback-queue]'), queueToggle=$('[data-action="playback-queue"]');
+    const queueDrawer=queuePanel ? bootstrap.Offcanvas.getOrCreateInstance(queuePanel) : null;
     const dialogOpen=()=>dialogShell.classList.contains('show');
     const closeDialog=()=>dialogModal.hide();
     let dialogReturnFocus=null;
@@ -82,6 +84,7 @@
     const selectedSort = () => selected > 0 ? playlistSort : librarySort;
     const selectedSource = () => collections.descriptor(libraryView,descriptorForPlaylist(selected));
     const selectedTracks = () => collections.collection(data,selectedSource(),selectedSort());
+    const playbackSource = () => collections.playbackSource(data,libraryView,selectedSource(),selectedSort());
     const element = (tag, className, text) => { const node = document.createElement(tag); node.className = className; if (text !== undefined) node.textContent = text; return node; };
     const setIcon = (node, name) => { const item=node.querySelector('.rp-icon');if(!item)return;for(const value of [...item.classList])if(value.startsWith('ci-'))item.classList.remove(value);item.classList.add(`ci-${window.TapeRoomIconMap[name] || 'music'}`);item.dataset.icon=name; };
     const rangeFill = (node, fraction) => node.style.setProperty('--fill', `${Math.max(0, Math.min(1, fraction)) * 100}%`);
@@ -174,7 +177,15 @@
         const labelGenre=t.genre || genre;
         if(labelGenre){const label=element('span','rp-track-genre',labelGenre);label.title=`Жанр: ${labelGenre}`;info.append(label);}
         const actions = element('div', 'rp-track-actions');
-        actions.innerHTML = button('share-track','Поделиться песней','share',t.id) + (canReorder ? button('move-up', 'Переместить выше', 'up', t.id, 'rp-reorder') + button('move-down', 'Переместить ниже', 'down', t.id, 'rp-reorder') : '') + button('favorite', t.favorite ? 'Убрать из избранного' : 'Добавить в избранное', t.favorite ? 'heart-filled' : 'heart', t.id, `rp-favorite${t.favorite ? ' is-active' : ''}`) + button('add-to-playlist', 'Добавить в плейлист', 'plus', t.id) + (!t.shared ? button('edit-track', 'Изменить трек', 'edit', t.id) : '') + (playlistId > 0 ? button('remove-track','Убрать из плейлиста','trash',t.id) : !t.shared && viewType === 'songs' ? button('delete-track','Удалить из библиотеки','trash',t.id) : '');
+        if (canReorder) {
+            const reorder = element('div', 'rp-track-reorder');
+            reorder.setAttribute('role', 'group'); reorder.setAttribute('aria-label', 'Порядок песни');
+            reorder.innerHTML = button('move-up', 'Переместить выше', 'up', t.id, 'rp-reorder') + button('move-down', 'Переместить ниже', 'down', t.id, 'rp-reorder');
+            actions.append(reorder);
+        }
+        const tools = element('div', 'rp-track-tools');
+        tools.innerHTML = button('favorite', t.favorite ? 'Убрать из избранного' : 'Добавить в избранное', 'bookmark', t.id, `rp-favorite${t.favorite ? ' is-active' : ''}`) + button('share-track','Поделиться песней','share',t.id) + button('add-to-playlist', 'Добавить в плейлист', 'plus', t.id) + (!t.shared ? button('edit-track', 'Изменить трек', 'edit', t.id) : '') + (playlistId > 0 ? button('remove-track','Убрать из плейлиста','trash',t.id) : !t.shared && viewType === 'songs' ? button('delete-track','Удалить из библиотеки','trash',t.id) : '');
+        actions.append(tools);
         actions.querySelector('[data-action="favorite"]').setAttribute('aria-pressed', String(t.favorite));
         if(t.browserLocal)actions.querySelector('[data-action="add-to-playlist"]')?.remove();
         if (canReorder) {
@@ -199,7 +210,7 @@
             const node = element('button', `rp-playlist nav-link${active ? ' is-selected' : ''}`);
             node.type = 'button'; node.dataset.action = 'select-playlist'; node.dataset.id = item.id;
             node.setAttribute('aria-current', active ? 'page' : 'false');
-            node.innerHTML = icon(item.id === -1 ? 'heart' : item.id ? 'list' : 'music');
+            node.innerHTML = icon(item.id === -1 ? 'bookmark' : item.id ? 'list' : 'music');
             node.append(element('span', 'rp-playlist-name', item.name), element('span', 'rp-playlist-count', item.tracks.length));
             nav.append(node);
         }
@@ -219,12 +230,53 @@
         window.TapeRoomImages.patch(rows,fragment);
         $('[data-empty]').hidden = !catalog.listMode || visible.length > 0;
         $('[data-empty-title]').textContent = query ? 'Ничего не найдено' : catalog.emptyTitle || (selected === -1 ? 'Любимые песни будут здесь' : selected > 0 ? 'Эта лента пока пустая' : 'Здесь начинается ваша коллекция');
-        $('[data-empty-description]').textContent = query ? 'Попробуйте другое название или имя исполнителя.' : catalog.emptyDescription || (selected === -1 ? 'Нажмите сердечко рядом с песней, чтобы добавить её в избранное.' : selected > 0 ? 'Загрузите музыку сюда или добавьте треки из общей библиотеки.' : 'Перетащите аудиофайлы сюда или добавьте их кнопкой выше.');
-        $('[data-action="play"]').disabled = !current && list.length === 0;
+        $('[data-empty-description]').textContent = query ? 'Попробуйте другое название или имя исполнителя.' : catalog.emptyDescription || (selected === -1 ? 'Нажмите закладку рядом с песней, чтобы добавить её в избранное.' : selected > 0 ? 'Загрузите музыку сюда или добавьте треки из общей библиотеки.' : 'Перетащите аудиофайлы сюда или добавьте их кнопкой выше.');
+        $('[data-action="play"]').disabled = !current && collections.collection(data,playbackSource(),selectedSort()).length === 0;
         $('[data-action="prev"]').disabled = !current;
         $('[data-action="next"]').disabled = !current;
         $('[data-action="edit-current"]').disabled = !current || Boolean(activeTrack()?.shared);
-        updateNow(); updateButtons(); renderChapters(); prepareUpcoming();
+        updateNow(); updateButtons(); renderChapters(); renderPlaybackQueue(); prepareUpcoming();
+    }
+    function playbackQueue() {
+        const source = current || queue.length ? queueSource : playbackSource();
+        const items = current || queue.length ? queue.map(track).filter(Boolean) : collections.collection(data,source,selectedSort());
+        if (!items.length && activeTrack()) items.push(activeTrack());
+        return {source,items,name:(current || queue.length ? queueName : '') || collections.name(data,source)};
+    }
+    function syncPlaybackQueue() {
+        if (!queuePanel) return;
+        const playing = (!audio.paused && !audio.ended) || recovery.pending;
+        queuePanel.querySelectorAll('[data-action="queue-play"]').forEach(control => {
+            const item=track(control.dataset.id), active=Number(control.dataset.id)===current;
+            control.classList.toggle('is-current',active);
+            control.setAttribute('aria-current',String(active));
+            control.setAttribute('aria-pressed',String(active && playing));
+            control.setAttribute('aria-label',`${active && playing ? 'Приостановить' : 'Воспроизвести'} ${item?.title || ''}`);
+            setIcon(control,active && playing ? 'pause' : 'play');
+        });
+    }
+    function renderPlaybackQueue(force = false) {
+        if (!queuePanel || (!force && !queuePanel.classList.contains('show'))) return;
+        const entry=playbackQueue(), fragment=document.createDocumentFragment();
+        $('[data-queue-name]').textContent=entry.name;
+        $('[data-queue-summary]').textContent=`${entry.items.length} ${entry.items.length % 10 === 1 && entry.items.length % 100 !== 11 ? 'песня' : entry.items.length % 10 >= 2 && entry.items.length % 10 <= 4 && !(entry.items.length % 100 >= 12 && entry.items.length % 100 <= 14) ? 'песни' : 'песен'}${entry.items.some(item=>item.duration) ? ' · '+formatTime(entry.items.reduce((sum,item)=>sum+(Number(item.duration)||0),0)) : ''}`;
+        for (const item of entry.items) {
+            const row=element('li',''); row.dataset.trackId=item.id;
+            const control=element('button','btn tr-queue-song'); control.type='button'; control.dataset.action='queue-play'; control.dataset.id=item.id;
+            const mark=element('span','tr-queue-play'); mark.innerHTML=icon('play');
+            const image=element('img','tr-queue-cover'); image.alt=''; image.width=image.height=36; image.loading='lazy'; image.decoding='async';
+            image.dataset.libraryImage='cover'; image.dataset.compactImage='';
+            const cover=item.cover || (entry.source.type==='album' ? album(entry.source.id)?.cover : '') || '';
+            if (!cover) image.dataset.defaultCover='';
+            window.TapeRoomImages.apply(image,cover,config,theme,'cover',true);
+            const info=element('span','tr-queue-info');
+            info.append(element('strong','',item.title),element('small','',item.artist || 'Неизвестный исполнитель'));
+            control.append(mark,image,info,element('span','tr-queue-duration',item.duration ? formatTime(item.duration) : '—'));
+            row.append(control); fragment.append(row);
+        }
+        window.TapeRoomImages.patch($('[data-queue-list]'),fragment);
+        $('[data-queue-empty]').hidden=entry.items.length>0;
+        syncPlaybackQueue();
     }
     function drawAudioQuality() {
         const t = activeTrack(), node = $('[data-audio-quality]');
@@ -259,7 +311,9 @@
         const t = activeTrack();
         drawAudioQuality();
         $('[data-title]').textContent = t?.title || 'Ваша первая лента';
-        $('[data-artist]').textContent = t?.artist || (t ? 'НЕИЗВЕСТНЫЙ ИСПОЛНИТЕЛЬ' : 'ДОБАВЬТЕ ЛЮБИМУЮ МУЗЫКУ');
+        const artist=$('[data-artist]'), artistText=artist.querySelector('[data-tr-marquee-text]') || artist;
+        const artistName=t?.artist || (t ? 'НЕИЗВЕСТНЫЙ ИСПОЛНИТЕЛЬ' : 'ДОБАВЬТЕ ЛЮБИМУЮ МУЗЫКУ');
+        if (artistText.textContent!==artistName) artistText.textContent=artistName;
         const albumArtwork = queueSource.type === 'album' ? album(queueSource.id)?.cover : '';
         const customArtwork = t?.cover || albumArtwork || '';
         if (customArtwork) window.TapeRoomImages.apply($('[data-cover]'),customArtwork,config,theme);
@@ -300,6 +354,7 @@
         sh.setAttribute('aria-label', `Случайный порядок: ${shuffle ? 'включён' : 'выключен'}`); sh.title = sh.getAttribute('aria-label');
         const re = $('[data-action="repeat"]'); re.classList.toggle('is-active', repeat !== 'off'); re.setAttribute('aria-label', `Повтор: ${repeat === 'off' ? 'выключен' : repeat === 'one' ? 'одного трека' : 'плейлиста'}`); re.title = re.getAttribute('aria-label'); $('[data-repeat-one]').hidden = repeat !== 'one';
         syncVolume();
+        syncPlaybackQueue();
         catalogUI.syncPlayback(current,playing);
         for (const row of $('[data-tracks]').children) {
             row.classList.toggle('is-current', Number(row.dataset.trackId) === current);
@@ -507,8 +562,8 @@
     function startAnimation() { if (!frameId && !frameInProgress && !document.hidden) { frameTime = 0; progressFrame = meterFrame = tapeFrame = -Infinity; frameId = requestAnimationFrame(animate); } }
     async function play(origin = 'automatic', event) {
         if (!current) {
-            const first = selectedTracks()[0]; if (!first) return;
-            setQueue(); load(first.id);
+            const source = playbackSource(), first = collections.collection(data,source,selectedSort())[0]; if (!first) return;
+            setQueue(source); load(first.id);
         }
         configureAudioSession();
         if (audio.error || (activeTrack()?.browserLocal && !audio.hasAttribute('src'))) load(current,playbackPosition());
@@ -1075,6 +1130,14 @@
             switch (name) {
                 case 'auth':showSignIn();break;
                 case 'play': if (audio.paused&&!recovery.pending) await play('user',event); else pausePlayback(); break;
+                case 'playback-queue': queueDrawer?.toggle(); break;
+                case 'queue-play': {
+                    const entry=playbackQueue(); if (!entry.items.some(item=>Number(item.id)===id)) break;
+                    if (!current) setQueue(entry.source);
+                    if (current === id) { if (audio.paused&&!recovery.pending) await play('user',event); else pausePlayback(); }
+                    else { load(id); await play('user',event); }
+                    break;
+                }
                 case 'prev': previous('user',event); break;
                 case 'next': next(false,'user',event); break;
                 case 'play-track': setQueue(control.dataset.source === 'popular' ? {type:'popular'} : selectedSource()); if (current === id) { if (audio.paused&&!recovery.pending) await play('user',event); else pausePlayback(); } else { load(id); await play('user',event); } break;
@@ -1515,6 +1578,20 @@
             const info = element('span','rp-drive-file-info'); info.append(element('span','rp-drive-file-name',file.name),element('small','rp-drive-file-format',file.name.split('.').pop().toUpperCase()));
             label.append(box,mark,info,element('small','rp-drive-file-size',driveSize(file.size))); list.append(label);
         }
+    }
+    if (queuePanel) {
+        let queueReturnFocus=false;
+        queuePanel.addEventListener('show.bs.offcanvas',()=>{renderPlaybackQueue(true);queueToggle.setAttribute('aria-expanded','true');});
+        queuePanel.addEventListener('shown.bs.offcanvas',()=>{
+            if (queueToggle.getAttribute('aria-expanded')!=='true' || $('[data-mini-player]').hidden) return;
+            queuePanel.removeAttribute('aria-modal');
+            const active=queuePanel.querySelector('.tr-queue-song.is-current') || queuePanel.querySelector('.tr-queue-song');
+            active?.focus({preventScroll:true}); active?.scrollIntoView({block:'nearest'});
+        });
+        queuePanel.addEventListener('hide.bs.offcanvas',()=>{queueReturnFocus=queuePanel.contains(document.activeElement);queueToggle.setAttribute('aria-expanded','false');});
+        queuePanel.addEventListener('hidden.bs.offcanvas',()=>{if(queueReturnFocus && !$('[data-mini-player]').hidden)queueToggle.focus({preventScroll:true});});
+        document.addEventListener('keydown',event=>{if(event.key==='Escape' && !dialogOpen() && queuePanel.classList.contains('show'))queueDrawer.hide();});
+        document.addEventListener('click',event=>{if(queuePanel.classList.contains('show') && !queuePanel.contains(event.target) && !$('[data-mini-player]').contains(event.target))queueDrawer.hide();});
     }
     dialogShell.addEventListener('hidden.bs.modal', () => { if(dialogReturnFocus?.isConnected)dialogReturnFocus.focus({preventScroll:true}); dialogRequest++; driveBrowseGeneration++; chapterJob?.abort(); chapterJob = null; $('[data-dialog-submit]').hidden = false; if (coverPreviewUrl) { URL.revokeObjectURL(coverPreviewUrl); coverPreviewUrl = undefined; } });
     app.querySelectorAll('[data-theme-cover]').forEach(image=>{ image.decode?.().catch(()=>{}); });

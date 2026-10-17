@@ -70,8 +70,8 @@ class PwaService
             'background_color' => $this->color('pwa_background_color', '#ffffff'),
             'favicon_url' => $icons['favicon']['src'],
             'favicon_type' => $icons['favicon']['type'],
-            // A stable, revalidated PNG also serves Safari's root discovery.
-            'apple_touch_icon_url' => base_url('/apple-touch-icon.png'),
+            // Give the installer a versioned static image; root discovery remains available.
+            'apple_touch_icon_url' => $this->appleTouchIconUrl(),
             'app_icon_192_url' => $icons['sizes'][192] ?? '',
             'startup_image_url' => $this->startupImageUrl(),
             'vapid_public_key' => $this->settings->get('pwa_vapid_public_key', ''),
@@ -296,6 +296,21 @@ class PwaService
             if ($image && $image[2] === IMAGETYPE_PNG && $image[0] === 180 && $image[1] === 180) return $candidate;
         }
         return null;
+    }
+
+    public function appleTouchIconUrl(): string
+    {
+        $path = $this->appleTouchIconPath();
+        if ($path === null) return base_url('/apple-touch-icon.png');
+        $url = $this->assetUrlFromLocalPath($path);
+        if ($url === null && function_exists('theme')) {
+            try {
+                if (realpath(theme()->assetPath('images/apple-touch-icon.png')) === $path) {
+                    $url = theme()->asset('images/apple-touch-icon.png');
+                }
+            } catch (\Throwable) { /* Root discovery can still serve the validated PNG. */ }
+        }
+        return $this->withVersion($url ?: base_url('/apple-touch-icon.png'), $path);
     }
 
     public function serviceWorkerScript(): string

@@ -11,6 +11,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+import urllib.parse
 
 project = Path(__file__).resolve().parents[1]
 scratch = Path(tempfile.mkdtemp(prefix="pwa-installation-", dir=project / "tests/.tmp"))
@@ -80,6 +81,13 @@ try:
         status, headers, image = request("/apple-touch-icon.png")
         check("Default theme branding is served by the root Apple icon", status == 200 and image == theme_icon)
         check("Root icon is a correctly typed 180px PNG", headers.get_content_type() == "image/png" and dimensions(image) == (180, 180))
+        _, _, html = request("/")
+        links = Links()
+        links.feed(html.decode())
+        default_apple = [link for link in links.links if link.get("rel") == "apple-touch-icon"]
+        check("Default theme declares its own versioned static Apple PNG", len(default_apple) == 1 and urllib.parse.urlparse(default_apple[0]["href"]).path == "/themes/tape-room/assets/images/apple-touch-icon.png" and "v=" in default_apple[0]["href"])
+        status, _, static_default = request(default_apple[0]["href"].removeprefix(base))
+        check("Default static Apple icon matches root discovery", status == 200 and static_default == theme_icon)
         select("a")
         status, headers, image_a = request("/apple-touch-icon.png")
         etag_a = headers.get("ETag")
@@ -91,8 +99,11 @@ try:
         links = Links()
         links.feed(html.decode())
         apple = [link for link in links.links if link.get("rel") == "apple-touch-icon"]
-        check("HTML declares one clean canonical Apple icon URL", len(apple) == 1 and apple[0]["href"] == base + "/apple-touch-icon.png")
-        check("Apple icon is preloaded before opening the install sheet", any(link.get("rel") == "preload" and link.get("as") == "image" and link.get("href") == apple[0]["href"] for link in links.links))
+        check("HTML declares one versioned static PNG from the selected icon set", len(apple) == 1 and urllib.parse.urlparse(apple[0]["href"]).path.startswith("/uploads/pwa/generated-") and urllib.parse.urlparse(apple[0]["href"]).path.endswith("/apple-touch-icon.png") and "v=" in apple[0]["href"])
+        apple_url_a = apple[0]["href"]
+        status, static_headers, static_image = request(apple_url_a.removeprefix(base))
+        check("The declared static PNG is public and matches the root icon", status == 200 and static_headers.get_content_type() == "image/png" and static_image == image_a)
+        check("Apple installation icon does not trigger an unused image preload", not any(link.get("rel") == "preload" and link.get("href") == apple[0]["href"] for link in links.links))
         status, head_headers, body = request("/apple-touch-icon.png", method="HEAD")
         check("HEAD returns image headers without HTML or a body", status == 200 and not body and head_headers.get_content_type() == "image/png" and head_headers.get("Content-Length") == str(len(image_a)))
         status, _, body = request("/apple-touch-icon.png", {"If-None-Match": etag_a})
@@ -106,6 +117,13 @@ try:
         select("b")
         status, updated_headers, image_b = request("/apple-touch-icon.png", {"If-None-Match": etag_a})
         check("Changing the admin icon invalidates the previous ETag", status == 200 and image_b != image_a and updated_headers.get("ETag") != etag_a)
+        _, _, html = request("/")
+        links_b = Links()
+        links_b.feed(html.decode())
+        apple_url_b = next(link["href"] for link in links_b.links if link.get("rel") == "apple-touch-icon")
+        check("Changing the admin icon changes the URL advertised to Safari", apple_url_b != apple_url_a)
+        status, _, static_image_b = request(apple_url_b.removeprefix(base))
+        check("Safari's new URL serves the newly selected PNG", status == 200 and static_image_b == image_b)
         status, _, body = request("/apple-touch-icon.png", {"If-None-Match": '"other", W/' + updated_headers["ETag"]})
         check("Weak and multiple validators use standard conditional semantics", status == 304 and not body)
         _, _, manifest = request("/manifest.webmanifest")

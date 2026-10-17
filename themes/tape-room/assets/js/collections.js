@@ -21,6 +21,15 @@
         }
         static album(data,id) { return (data.catalog?.albums || []).find(album => Number(album.id) === Number(id)); }
         static myTracks(data) { return this.tracks(data).filter(track => !track.shared || track.collected || track.favorite); }
+        static playbackSource(data,view,source,sort = 'new') {
+            const selected = this.descriptor(source);
+            if (this.collection(data,selected,sort).length || !['overview','albums','new','artists','genres'].includes(view?.type)) return selected;
+            // A fresh guest has no personal queue. Start an available published
+            // album from the catalogue only when the user explicitly presses play.
+            const known = new Set(this.tracks(data).map(track => Number(track.id)));
+            const album = (data.catalog?.albums || []).find(album => album.published && album.tracks?.some(id => known.has(Number(id))));
+            return album ? {type:'album',id:Number(album.id)} : selected;
+        }
         static sort(tracks,mode) { return mode === 'playlist' ? [...tracks] : [...tracks].sort((a,b) => mode === 'old' ? a.id-b.id : b.id-a.id); }
         static collection(data,value,sort = 'new') {
             const descriptor = this.descriptor(value), pool = this.tracks(data), byId = new Map(pool.map(track => [Number(track.id),track]));
