@@ -30,6 +30,15 @@
     if (!saved || typeof saved !== 'object' || Array.isArray(saved)) saved = {};
     if(config.playback?.state)saved={...saved,...config.playback.state,time:window.TapeRoomPlaybackSync.position(config.playback)};
     let playbackSync=null, remotePlayback=config.playback?.state ? {...config.playback,received:performance.now()} : null;
+    app.addEventListener('tape-room:csrf',event=>{
+        if(typeof event.detail?.token!=='string'||!event.detail.token)return;
+        config.csrf=event.detail.token;if(playbackSync)playbackSync.csrf=config.csrf;
+    });
+    app.addEventListener('tape-room:navigate',event=>{
+        const url=new URL(event.detail.url,location.href),albumId=Number(url.searchParams.get('album')),view=new URLSearchParams(url.hash.slice(1)).get('room');
+        if(albumId>0)browse({type:'album',id:albumId});
+        else if(['overview','albums','artists','genres','new','popular','mine'].includes(view))browse({type:view});
+    });
     let audibleVolume = Number(saved.audibleVolume) > 0 ? Math.min(1, Number(saved.audibleVolume)) : Number(saved.volume) > 0 ? Math.min(1, Number(saved.volume)) : .8;
     let selected = Number(saved.playlist) || 0;
     let current = 0, queue = [], queueName = '', queuePlaylist = Number(saved.queuePlaylist) || 0, repeat = ['off', 'all', 'one'].includes(saved.repeat) ? saved.repeat : 'off';
@@ -1376,11 +1385,12 @@
         }
     },true);
     let dragDepth = 0;
-    window.addEventListener('dragenter', event => { if ([...(event.dataTransfer?.types || [])].includes('Files')) { event.preventDefault(); dragDepth++; $('[data-drop-overlay]').hidden = false; } });
-    window.addEventListener('dragover', event => { if ([...(event.dataTransfer?.types || [])].includes('Files')) event.preventDefault(); });
+    window.addEventListener('dragenter', event => { if (app.dataset.sitePage!=='1' && [...(event.dataTransfer?.types || [])].includes('Files')) { event.preventDefault(); dragDepth++; $('[data-drop-overlay]').hidden = false; } });
+    window.addEventListener('dragover', event => { if (app.dataset.sitePage!=='1' && [...(event.dataTransfer?.types || [])].includes('Files')) event.preventDefault(); });
     window.addEventListener('dragleave', event => { if (--dragDepth <= 0) { dragDepth = 0; $('[data-drop-overlay]').hidden = true; } });
-    window.addEventListener('drop', event => { event.preventDefault(); dragDepth = 0; $('[data-drop-overlay]').hidden = true; uploadFiles([...(event.dataTransfer?.files || [])]); });
+    window.addEventListener('drop', event => { if(app.dataset.sitePage==='1')return;event.preventDefault(); dragDepth = 0; $('[data-drop-overlay]').hidden = true; uploadFiles([...(event.dataTransfer?.files || [])]); });
     document.addEventListener('keydown', event => {
+        if(app.dataset.sitePage==='1' && !event.target.closest('[data-mini-player],[data-playback-queue]'))return;
         if (dialogOpen() || /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(event.target.tagName) || event.target.isContentEditable || event.altKey || event.ctrlKey || event.metaKey) return;
         if (event.code === 'Space') { event.preventDefault(); if (audio.paused&&!recovery.pending) play('user',event); else pausePlayback(); }
         if (['ArrowLeft','ArrowRight'].includes(event.code)) {

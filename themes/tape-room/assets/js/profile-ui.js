@@ -1,6 +1,8 @@
 (() => {
     'use strict';
-    document.querySelectorAll('[data-tr-avatar-editor]').forEach(form=>{
+    const mounted=new WeakSet(),releases=new Set();
+    function mount(){document.querySelectorAll('[data-tr-avatar-editor]').forEach(form=>{
+        if(mounted.has(form))return;mounted.add(form);
         const input=form.querySelector('[data-tr-avatar-file]'),preview=form.querySelector('[data-tr-avatar-preview]'),save=form.querySelector('[data-tr-avatar-save]'),error=form.querySelector('[data-tr-avatar-error]');
         const original=preview.src;let url='';
         const release=()=>{if(url)URL.revokeObjectURL(url);url='';};
@@ -15,6 +17,9 @@
         preview.addEventListener('error',()=>{
             if(!url)return;release();preview.src=original;save.disabled=true;input.value='';error.textContent='Не удалось открыть изображение. Выберите другой файл.';error.hidden=false;
         });
-        window.addEventListener('pagehide',release);
-    });
+        releases.add(release);
+    });}
+    const releaseAll=()=>{releases.forEach(release=>release());releases.clear();};
+    window.addEventListener('pagehide',releaseAll);document.addEventListener('tape-room:page-leave',releaseAll);
+    mount();document.addEventListener('tape-room:page',mount);
 })();

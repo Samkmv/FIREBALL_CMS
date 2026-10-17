@@ -3,6 +3,7 @@
 <script src="<?= htmlSC(theme_asset_versioned('js/drive-ui.js')) ?>" defer></script>
 <script src="<?= htmlSC(theme_asset_versioned('js/shell.js')) ?>" defer></script>
 <script src="<?= htmlSC(theme_asset_versioned('js/player-view.js')) ?>" defer></script>
+<script src="<?= htmlSC(theme_asset_versioned('js/site-player.js')) ?>" defer></script>
 <script src="<?= htmlSC(theme_asset_versioned('js/artist-marquee.js')) ?>" defer></script>
 <script src="<?= htmlSC(theme_asset_versioned('js/profile-ui.js')) ?>" defer></script>
 

@@ -1,7 +1,6 @@
 (() => {
     'use strict';
-    const nodes=[...document.querySelectorAll('.rp-now-playing [data-artist],[data-mini-artist],[data-tr-artist-marquee]')];
-    if (!nodes.length) return;
+    let nodes=[];
     const reduced=matchMedia('(prefers-reduced-motion: reduce)');
     const values=new WeakMap();
     let frame=0;
@@ -32,7 +31,13 @@
     const schedule=()=>{if(!frame)frame=requestAnimationFrame(measure);};
     const mutation=new MutationObserver(schedule);
     const resize='ResizeObserver' in window ? new ResizeObserver(schedule) : null;
-    nodes.forEach(node=>{mutation.observe(node,{childList:true,characterData:true,subtree:true});resize?.observe(node);});
+    function mount(){
+        for(const node of nodes)if(!node.isConnected)resize?.unobserve(node);
+        mutation.disconnect();
+        nodes=[...document.querySelectorAll('.rp-now-playing [data-artist],[data-mini-artist],[data-tr-artist-marquee]')];
+        nodes.forEach(node=>{mutation.observe(node,{childList:true,characterData:true,subtree:true});resize?.observe(node);});schedule();
+    }
+    mount();document.addEventListener('tape-room:page',mount);
     window.addEventListener('resize',schedule);
     reduced.addEventListener('change',schedule);
     document.fonts?.ready.then(schedule);

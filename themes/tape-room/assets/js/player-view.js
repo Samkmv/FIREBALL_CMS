@@ -1,11 +1,18 @@
 (() => {
     'use strict';
     const key = 'tape-room:player-view';
+    const siteKey = 'tape-room:site-player';
     const read = () => { try { return localStorage.getItem(key) === 'mini' ? 'mini' : 'deck'; } catch (_) { return 'deck'; } };
+    const readSite = () => { try { return localStorage.getItem(siteKey) === '1'; } catch (_) { return false; } };
     const app = document.querySelector('[data-player]');
     const mini = app?.querySelector('[data-mini-player]');
-    const toggles = [...document.querySelectorAll('[data-tr-mini-toggle]')];
     let mode = read();
+    let site = readSite();
+    const enabled = () => site && mode === 'mini';
+    function cookie() {
+        const home=JSON.parse(document.querySelector('meta[name="tr-site-navigation"]')?.content || '{}').home || '/';
+        document.cookie=`tr_site_player=${site?'1':'0'}; Path=${new URL(home,location.href).pathname}; Max-Age=31536000; SameSite=Lax${location.protocol==='https:'?'; Secure':''}`;
+    }
     // Move the existing transport, keeping its listeners, focus, queue and audio intact.
     const mounts = mini ? [
         [app.querySelector('.rp-main-controls'), mini.querySelector('[data-mini-transport]')],
@@ -26,16 +33,17 @@
                 if (mode === 'mini' && node.parentNode !== target) target.append(node);
                 else if (mode === 'deck' && node.previousSibling !== anchor) anchor.after(node);
             }
-            mini.hidden = mode !== 'mini';
+            mini.hidden = mode !== 'mini' || (app.dataset.sitePage === '1' && !enabled());
             if (mode !== 'mini') bootstrap.Offcanvas.getInstance(app.querySelector('[data-playback-queue]'))?.hide();
             app.dataset.playerView = mode;
-            document.body.classList.toggle('tr-mini-active', mode === 'mini');
+            document.body.classList.toggle('tr-mini-active', !mini.hidden);
             // append() may clear focus in Safari; keep keyboard control on the same button.
             if (focused && mounts.some(({node}) => node.contains(focused))) focused.focus({preventScroll:true});
             measure();
         }
         document.documentElement.dataset.playerView = mode;
-        toggles.forEach(toggle => { toggle.checked = mode === 'mini'; });
+        document.querySelectorAll('[data-tr-mini-toggle]').forEach(toggle => { toggle.checked = mode === 'mini'; });
+        document.querySelectorAll('[data-tr-site-player-toggle]').forEach(toggle => { toggle.checked = site; });
         if (persist) { try { localStorage.setItem(key, mode); } catch (_) {} }
     }
     if (mini) {
@@ -72,7 +80,18 @@
         if ('ResizeObserver' in window) new ResizeObserver(measure).observe(mini);
         window.addEventListener('resize', measure);
     }
-    toggles.forEach(toggle => toggle.addEventListener('change', () => apply(toggle.checked ? 'mini' : 'deck', true)));
-    window.addEventListener('storage', event => { if (event.key === key || event.key === null) apply(read()); });
+    document.addEventListener('change',event=>{
+        if(event.target.matches('[data-tr-mini-toggle]'))apply(event.target.checked?'mini':'deck',true);
+        else if(event.target.matches('[data-tr-site-player-toggle]')){
+            site=event.target.checked;
+            try{localStorage.setItem(siteKey,site?'1':'0');}catch(_){}
+            cookie();apply(site?'mini':mode,true);
+        }else return;
+        document.dispatchEvent(new CustomEvent('tape-room:player-view',{detail:{mode,site,enabled:enabled()}}));
+    });
+    window.addEventListener('storage', event => { if ([key,siteKey,null].includes(event.key)){site=readSite();cookie();apply(read());document.dispatchEvent(new CustomEvent('tape-room:player-view',{detail:{mode,site,enabled:enabled()}}));} });
+    document.addEventListener('tape-room:page',()=>apply(mode));
+    window.TapeRoomPlayerView={enabled,refresh:()=>apply(mode)};
+    cookie();
     apply(mode);
 })();

@@ -7,7 +7,7 @@
                 const controller=new AbortController(), timer=setTimeout(()=>controller.abort(),10000);
                 try {
                     const response=await fetch(url,{method:body?'POST':'GET',credentials:'same-origin',cache:'no-store',keepalive:Boolean(body),signal:controller.signal,
-                        headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest',...(body?{'Content-Type':'application/json','X-CSRF-Token':csrf}:{})},
+                        headers:{Accept:'application/json','X-Requested-With':'XMLHttpRequest',...(body?{'Content-Type':'application/json','X-CSRF-Token':this.csrf}:{})},
                         ...(body?{body:JSON.stringify(body)}:{})});
                     if(!response.ok)throw new Error('Playback sync unavailable');
                     const result=await response.json();if(!result.status)throw new Error('Playback sync unavailable');return result;

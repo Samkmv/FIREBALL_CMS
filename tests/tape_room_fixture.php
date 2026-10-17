@@ -39,6 +39,9 @@ final class TapeRoomTestDatabase extends \FBL\Database
     public function query(string $query, array $params = []): static
     {
         try {
+            if(preg_match("/^SHOW TABLES LIKE '([^']+)'$/",$query,$match)){
+                $query="SELECT name FROM sqlite_master WHERE type='table' AND name=?";$params=[$match[1]];
+            }
             $query = str_replace(' FOR UPDATE', '', $query);
             $query=str_replace('ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id)','ON CONFLICT(owner_id,source,source_id) DO UPDATE SET id=id RETURNING id',$query);
             $query = str_replace('INSERT IGNORE INTO','INSERT OR IGNORE INTO',$query);
@@ -66,7 +69,7 @@ const MIDDLEWARE = ['auth' => \FBL\Middleware\Auth::class, 'admin' => \FBL\Middl
 require ROOT . '/plugins/reel-player/Plugin.php';
 (new FireballPluginReelPlayer())->boot();
 add_filter('cms_rendered_html', static fn(string $html): string => (($_GET['safe_area_test']??'')==='1') ? str_replace('</head>','<style>:root{--tr-safe-top:54px;--tr-safe-bottom:34px}</style></head>',$html) : $html);
-add_filter('cms_rendered_html', static fn(string $html): string => preg_replace_callback('~<main[^>]*data-player[^>]*>~',static fn($match)=>substr($match[0],0,-1).' data-test-document="'.bin2hex(random_bytes(12)).'">',$html,1));
+add_filter('cms_rendered_html', static fn(string $html): string => preg_replace_callback('~<(?:main|div)[^>]*data-player[^>]*>~',static fn($match)=>substr($match[0],0,-1).' data-test-document="'.bin2hex(random_bytes(12)).'">',$html,1));
 add_filter('cms_rendered_html', static function(string $html): string {
     if(in_array($_GET['sync_device_test']??'', ['a','b'],true))$html=preg_replace_callback('~(<script type="application/json" data-player-config>)(.*?)(</script>)~s',static function($match){$config=json_decode($match[2],true,512,JSON_THROW_ON_ERROR);$config['storageKey'].=':sync-device-'.$_GET['sync_device_test'];return $match[1].json_encode($config,JSON_HEX_TAG|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE).$match[3];},$html,1);
     if (($_GET['torrent_buffer_test']??'')!=='1') return $html;
@@ -145,6 +148,8 @@ $router->get('/test/guest',static function():never{session()->remove('user');res
 $router->get('/test/login-recovery', static fn() => theme()->render('auth/login', ['title'=>'Вход', 'password_recovery_available'=>true]));
 $router->get('/two-factor-challenge', [\App\Controllers\AuthController::class, 'twoFactorChallenge'])->middleware(['guest']);
 $router->get('/profile', static fn() => theme()->render('auth/profile', ['user' => get_user()]))->middleware(['auth']);
+$router->get('/test/site-page', static fn() => theme()->render('page', ['title'=>'О музыкальной комнате','page'=>['title'=>'О музыкальной комнате','content'=>'<p>Обычная информационная страница сайта.</p><p><a href="'.htmlSC(base_href('/profile')).'">Перейти в профиль</a></p><p><a href="'.htmlSC(base_href('/test/site-unavailable')).'">Недоступная страница</a></p>']]));
+$router->get('/test/site-unavailable',static function():string{http_response_code(503);return 'Synthetic unavailable page';});
 $router->get('/profile/settings', static fn() => theme()->render('auth/settings', ['user' => get_user()]))->middleware(['auth']);
 $router->post('/profile/settings', [\App\Controllers\AuthController::class,'settings'])->middleware(['auth']);
 $router->post('/logout', [\App\Controllers\AuthController::class, 'logout'])->middleware(['auth']);

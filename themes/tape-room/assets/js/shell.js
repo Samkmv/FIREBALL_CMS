@@ -1,6 +1,5 @@
 (() => {
     'use strict';
-    const roots=[...document.querySelectorAll('[data-tr-shell]')];
     let modalLayout=null;
     const isTyping=element=>element?.matches('textarea,input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=file]):not([type=hidden]):not([type=button]):not([type=submit])');
     const syncViewport=()=>{
@@ -49,7 +48,7 @@
     const syncTheme=()=>{
         const theme=document.documentElement.dataset.theme==='dark'?'dark':'light';
         document.documentElement.dataset.bsTheme=theme;
-        roots.forEach(root=>root.dataset.bsTheme=theme);
+        document.querySelectorAll('[data-tr-shell]').forEach(root=>root.dataset.bsTheme=theme);
         document.querySelectorAll('[data-tr-theme-icons]').forEach(button=>{
             const label=theme==='dark'?'Включить светлую тему':'Включить тёмную тему';button.setAttribute('aria-label',label);button.title=label;button.setAttribute('aria-pressed',String(theme==='dark'));
             button.querySelector('[data-tr-theme-light]').hidden=theme==='dark';button.querySelector('[data-tr-theme-dark]').hidden=theme!=='dark';
@@ -58,10 +57,6 @@
         try{localStorage.setItem('tape-room:theme',theme);}catch(_){}
     };
     syncTheme();new MutationObserver(syncTheme).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
-    document.querySelectorAll('[data-tr-demo-genres]').forEach(root=>{const genres=JSON.parse(root.dataset.genres),picker=new window.TapeRoomGenrePicker(genres);root.innerHTML=picker.markup(genres.slice(0,2).map(item=>item.id));picker.mount(root);});
-    const demoSteps=document.querySelector('[data-tr-demo-drive-steps]');
-    if(demoSteps){let step=1;const descriptions=['Выбор папки Google Drive или ссылки.','Песни показываются по порядку, по одной в строке.','Название альбома, исполнитель и несколько жанров перед сохранением.'];const render=()=>{demoSteps.innerHTML=window.TapeRoomDriveUi.steps(step);document.querySelector('[data-tr-demo-drive-description]').textContent=descriptions[step-1];document.querySelector('[data-tr-demo-drive-back]').disabled=step===1;document.querySelector('[data-tr-demo-drive-next]').textContent=step===3?'Сначала':'Далее';};document.querySelector('[data-tr-demo-drive-back]').onclick=()=>{step=Math.max(1,step-1);render();};document.querySelector('[data-tr-demo-drive-next]').onclick=()=>{step=step%3+1;render();};render();}
-    document.querySelectorAll('[data-tr-demo-seek]').forEach(range=>range.addEventListener('input',()=>{const progress=Number(range.value)/10,seconds=Math.round(222*progress/100);range.style.setProperty('--fill',`${progress}%`);range.style.setProperty('--buffered',`${Math.max(68,progress)}%`);document.querySelector('[data-tr-demo-elapsed]').textContent=`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;}));
     document.addEventListener('click',event=>{
         const filePicker=event.target.closest('[data-tr-file-pick]');
         if(filePicker){filePicker.closest('[data-tr-file-picker]').querySelector('input[type=file]').click();return;}
@@ -90,11 +85,21 @@
         if(event.target.matches('[data-tr-file-picker] input[type=file]'))event.target.closest('[data-tr-file-picker]').querySelector('[data-tr-file-name]').textContent=event.target.files[0]?.name||'Файл не выбран';
         if(event.target.matches('[data-tr-demo-buffering]')){const demo=document.querySelector('.tr-mini-player--demo');demo.classList.toggle('is-buffering',event.target.checked);demo.querySelector('.rp-play').setAttribute('aria-busy',String(event.target.checked));}
     });
-    document.querySelectorAll('[data-tr-demo-form]').forEach(form=>form.addEventListener('submit',event=>{
-        event.preventDefault();form.classList.add('was-validated');if(form.checkValidity())bootstrap.Toast.getOrCreateInstance(document.getElementById('tr-demo-toast')).show();
-    }));
-    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(element=>new bootstrap.Tooltip(element,{container:element.closest('.tr-bootstrap')}));
-    document.querySelectorAll('[data-bs-toggle="popover"]').forEach(element=>new bootstrap.Popover(element,{container:element.closest('.tr-bootstrap'),trigger:'focus'}));
+    function mountPage(){
+        syncTheme();
+        const page=document.querySelector('[data-tr-page]');if(!page || page.hidden || page.dataset.trMounted)return;
+        page.dataset.trMounted='1';
+        document.querySelectorAll('[data-tr-demo-genres]').forEach(root=>{const genres=JSON.parse(root.dataset.genres),picker=new window.TapeRoomGenrePicker(genres);root.innerHTML=picker.markup(genres.slice(0,2).map(item=>item.id));picker.mount(root);});
+        const demoSteps=document.querySelector('[data-tr-demo-drive-steps]');
+        if(demoSteps){let step=1;const descriptions=['Выбор папки Google Drive или ссылки.','Песни показываются по порядку, по одной в строке.','Название альбома, исполнитель и несколько жанров перед сохранением.'];const render=()=>{demoSteps.innerHTML=window.TapeRoomDriveUi.steps(step);document.querySelector('[data-tr-demo-drive-description]').textContent=descriptions[step-1];document.querySelector('[data-tr-demo-drive-back]').disabled=step===1;document.querySelector('[data-tr-demo-drive-next]').textContent=step===3?'Сначала':'Далее';};document.querySelector('[data-tr-demo-drive-back]').onclick=()=>{step=Math.max(1,step-1);render();};document.querySelector('[data-tr-demo-drive-next]').onclick=()=>{step=step%3+1;render();};render();}
+        document.querySelectorAll('[data-tr-demo-seek]').forEach(range=>range.addEventListener('input',()=>{const progress=Number(range.value)/10,seconds=Math.round(222*progress/100);range.style.setProperty('--fill',`${progress}%`);range.style.setProperty('--buffered',`${Math.max(68,progress)}%`);document.querySelector('[data-tr-demo-elapsed]').textContent=`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;}));
+        document.querySelectorAll('[data-tr-demo-form]').forEach(form=>form.addEventListener('submit',event=>{
+            event.preventDefault();form.classList.add('was-validated');if(form.checkValidity())bootstrap.Toast.getOrCreateInstance(document.getElementById('tr-demo-toast')).show();
+        }));
+        document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(element=>new bootstrap.Tooltip(element,{container:element.closest('.tr-bootstrap')}));
+        document.querySelectorAll('[data-bs-toggle="popover"]').forEach(element=>new bootstrap.Popover(element,{container:element.closest('.tr-bootstrap'),trigger:'focus'}));
+    }
+    mountPage();document.addEventListener('tape-room:page',mountPage);
     if(player){
         const menu=document.getElementById('tr-site-menu');
         menu.addEventListener('click',event=>{

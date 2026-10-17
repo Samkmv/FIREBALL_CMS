@@ -15,7 +15,4 @@
 <div class="tr-bootstrap tr-page-shell" data-tr-shell data-bs-theme="light">
     <div class="container-fluid tr-site-container">
         <?= $this->partial('navbar') ?>
-        <main class="tr-main <?= !empty($tr_wide_page)?'tr-main--wide':'' ?>" id="tr-main">
-            <?php foreach (['error','success','warning','info'] as $tone): ?>
-                <?php if ($message=session()->getFlash($tone)): ?><div class="alert alert-<?= $tone==='error'?'danger':$tone ?> tr-notice" role="status"><?= htmlSC((string)$message) ?></div><?php endif; ?>
-            <?php endforeach; ?>
+        <?= $this->partial('site-page-open',get_defined_vars()) ?>

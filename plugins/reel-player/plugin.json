@@ -2,7 +2,7 @@
   "name": "Tape Room",
   "slug": "reel-player",
   "class": "FireballPluginReelPlayer",
-  "version": "1.7.8",
+  "version": "1.7.9",
   "type": "system",
   "description": "Reel-to-reel player with a shared album catalogue, artists, personal collections, playlists and audio chapters.",
   "name_i18n": {
@@ -16,20 +16,14 @@
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
-    "Synchronize the current track, queue and resume position across authenticated devices with revision checks and explicit playback takeover.",
-    "Add themed account navigation and avatar upload with preview; show audio quality in the mini player and remove its duplicate header divider.",
-    "Align album actions in an equal-size responsive grid, move editing between publishing and deletion, and remove duplicate account settings navigation."
+    "Keep the same mini player running across supported Tape Room pages, with an opt-in sidebar setting and session-safe navigation."
   ],
   "release_notes_i18n": {
     "en": [
-      "Synchronize the current track, queue and resume position across authenticated devices with revision checks and explicit playback takeover.",
-      "Add themed account navigation and avatar upload with preview; show audio quality in the mini player and remove its duplicate header divider.",
-      "Align album actions in an equal-size responsive grid, move editing between publishing and deletion, and remove duplicate account settings navigation."
+      "Keep the same mini player running across supported Tape Room pages, with an opt-in sidebar setting and session-safe navigation."
     ],
     "ru": [
-      "Песня, очередь и позиция синхронизируются между устройствами аккаунта; старая вкладка не перезаписывает новое состояние, запуск на другом устройстве переключает воспроизведение.",
-      "Оформлены профиль и ссылки настроек, добавлен выбор аватара с предпросмотром; мини-плеер показывает качество звука, лишняя линия под навигацией убрана.",
-      "Кнопки альбома выровнены в общую сетку одинакового размера; редактирование перенесено между публикацией и удалением, повторный переход в настройки профиля убран."
+      "Мини-плеер продолжает играть при переходах между страницами Tape Room; в боковом меню добавлена настройка «На всех страницах», сохранены защита сессии и штатные проверки форм."
     ]
   },
   "update": {

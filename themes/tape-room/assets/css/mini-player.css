@@ -1,4 +1,11 @@
 /* The same transport lives either in the deck or in this bottom bar. */
+.tr-bootstrap .tr-player-mode+.tr-player-mode{margin-top:12px}
+[data-player][data-site-page="1"]>:is(.rp-machine,.rp-chapter-panel,.rp-library,.rp-footer){display:none!important}
+.tr-page-content{display:flex;flex-direction:column;flex:1;min-width:0}
+[data-player][data-site-page="1"]{display:flex;flex-direction:column;min-height:100dvh}
+[data-player][data-site-page="1"]>[data-tr-page]{display:flex}
+[data-player]>.tr-navigation-error{margin:20px 0;font-size:13px}
+.tr-navigation-error a{text-decoration:underline;margin-left:6px}
 .tr-bootstrap .tr-menu-preferences{padding:24px 12px 0}
 .tr-site-navigation:has(.tr-side-menu:is(.show,.showing,.hiding)){z-index:1045}
 .tr-bootstrap .tr-side-menu .offcanvas-body{padding-bottom:calc(24px + var(--tr-safe-bottom,0px))}

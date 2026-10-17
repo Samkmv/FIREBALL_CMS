@@ -32,7 +32,7 @@ $button = static function (string $action, string $label, string $name, string $
 </head>
 <body class="rp-body">
 
-<main class="rp-app tr-bootstrap" data-player data-tr-shell data-bs-theme="light">
+<div class="rp-app tr-bootstrap" role="main" data-player data-tr-shell data-bs-theme="light">
     <header class="rp-header">
         <a class="rp-back" href="<?= htmlSC($back_url) ?>" aria-label="Вернуться в CMS" title="Вернуться в CMS"><span class="rp-icon-button rp-back-control"><?= $icon('back') ?></span><span class="rp-back-label">FIREBALL</span></a>
         <div class="rp-brand"><b class="rp-brand-name">TAPE ROOM<small class="rp-beta">БЕТА</small></b><span>ЛИЧНАЯ МУЗЫКАЛЬНАЯ КОМНАТА</span></div>
@@ -204,7 +204,7 @@ $button = static function (string $action, string $label, string $name, string $
             <div class="modal-footer rp-dialog-buttons"><button class="btn btn-outline-secondary rp-button" type="button" data-action="close-dialog">Отмена</button><button class="btn btn-primary rp-button rp-button--primary" type="submit" data-dialog-submit>Сохранить</button></div>
         </form>
     </div></div></div>
-</main>
+</div>
 <script type="application/json" data-player-config><?= json_encode($config, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_THROW_ON_ERROR) ?></script>
 <script src="<?= htmlSC($preload_url) ?>" defer></script>
 <script src="<?= htmlSC($meters_url) ?>" defer></script>
