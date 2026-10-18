@@ -2,7 +2,6 @@
 $isPlayer=!empty($is_player);
 $authenticated=check_auth();
 $siteIcon=fn(string $name): string=>$this->partial('site-icon',['name'=>$name]);
-$path=(string)parse_url($_SERVER['REQUEST_URI']??'/',PHP_URL_PATH);
 $roomLinks=[['overview','Обзор','grid'],['albums','Альбомы','disc'],['artists','Артисты','artist'],['genres','Жанры','genres'],['new','Новинки','new'],['popular','Популярное','popular'],['mine','Моя музыка','collection']];
 ?>
 <div class="tr-bootstrap tr-site-navigation <?= $isPlayer?'tr-site-navigation--player':'' ?>" data-tr-shell data-player-shell="<?= $isPlayer?'1':'0' ?>" data-bs-theme="light">
@@ -39,13 +38,15 @@ $roomLinks=[['overview','Обзор','grid'],['albums','Альбомы','disc'],
                     <?php if ($isPlayer): ?><button class="nav-link text-start" type="button" data-action="catalog-view" data-view="<?= $view ?>" data-bs-dismiss="offcanvas"><?= $siteIcon($symbol) ?><span><?= $label ?></span></button>
                     <?php else: ?><a class="nav-link" href="<?= htmlSC(base_href('/').'#room='.$view) ?>"><?= $siteIcon($symbol) ?><span><?= $label ?></span></a><?php endif; ?>
                 <?php endforeach; else: ?>
-                    <a class="nav-link <?= str_ends_with($path,'/login')?'active':'' ?>" href="<?= htmlSC(base_href('/login')) ?>"><?= $siteIcon('login') ?><span>Войти</span></a>
-                    <a class="nav-link <?= str_ends_with($path,'/register')?'active':'' ?>" href="<?= htmlSC(base_href('/register')) ?>"><?= $siteIcon('register') ?><span>Создать аккаунт</span></a>
+                    <?= $this->partial('navigation-link',['path'=>'/login','icon'=>'login','label'=>'Войти']) ?>
+                    <?= $this->partial('navigation-link',['path'=>'/register','icon'=>'register','label'=>'Создать аккаунт']) ?>
                 <?php endif; ?>
+                <?= $this->partial('navigation-link',['path'=>'/tape-room/people','icon'=>'people','label'=>'Пользователи']) ?>
             </nav>
             <?php endif; ?>
-            <?php if ($authenticated): ?><div class="tr-menu-divider"></div><nav class="nav flex-column tr-side-links" aria-label="Аккаунт и настройки"><a class="nav-link <?= str_contains($path,'/profile')?'active':'' ?>" href="<?= htmlSC(base_href('/profile')) ?>"><?= $siteIcon('user') ?><span>Аккаунт</span></a>
-                <?php if (check_admin()): ?><a class="nav-link <?= str_contains($path,'/tape-room/ui-kit')?'active':'' ?>" href="<?= htmlSC(base_href('/tape-room/ui-kit')) ?>"><?= $siteIcon('grid') ?><span>UI-компоненты</span></a><a class="nav-link <?= str_contains($path,'/tape-room/changelog')?'active':'' ?>" href="<?= htmlSC(base_href('/tape-room/changelog')) ?>"><?= $siteIcon('changelog') ?><span>Change Log</span></a><a class="nav-link" href="<?= htmlSC(base_href('/admin')) ?>"><?= $siteIcon('settings') ?><span>Панель управления</span></a><?php endif; ?>
+            <?php if ($authenticated): ?><div class="tr-menu-divider"></div><nav class="nav flex-column tr-side-links" aria-label="Аккаунт и настройки">
+                <?= $this->partial('navigation-link',['path'=>'/profile','icon'=>'user','label'=>'Аккаунт']) ?>
+                <?php if (check_admin()): ?><?= $this->partial('navigation-link',['path'=>'/tape-room/ui-kit','icon'=>'grid','label'=>'UI-компоненты']) ?><?= $this->partial('navigation-link',['path'=>'/tape-room/changelog','icon'=>'changelog','label'=>'Change Log']) ?><a class="nav-link" href="<?= htmlSC(base_href('/admin')) ?>"><?= $siteIcon('settings') ?><span>Панель управления</span></a><?php endif; ?>
             </nav><?php endif; ?>
             <div class="tr-menu-preferences mt-auto"><?= $this->partial('player-mode-toggle') ?></div>
             <div class="tr-menu-bottom"><span class="tr-status-dot"></span> СОЗДАНО ДЛЯ ПРОСЛУШИВАНИЯ<p>Ваша музыка. Ваше пространство.</p></div>

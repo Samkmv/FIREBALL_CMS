@@ -2,7 +2,7 @@
   "name": "Tape Room",
   "slug": "reel-player",
   "class": "FireballPluginReelPlayer",
-  "version": "1.7.11",
+  "version": "1.8.2",
   "type": "system",
   "description": "Reel-to-reel player with a shared album catalogue, artists, personal collections, playlists and audio chapters.",
   "name_i18n": {
@@ -10,7 +10,7 @@
     "en": "Tape Room"
   },
   "description_i18n": {
-    "ru": "Катушечный плеер с общим каталогом альбомов, артистами, личной коллекцией, плейлистами и таймкодами.",
+    "ru": "Катушечный и мини-плеер с общим каталогом, музыкальными профилями, подписками, коллекциями и плейлистами.",
     "en": "Reel-to-reel player with a shared album catalogue, artists, personal collections, playlists and audio chapters."
   },
   "author": "FIREBALL CMS",
@@ -19,14 +19,23 @@
     "cms": ">=1.8.19"
   },
   "release_notes": [
-    "Add a Change Log page alongside the UI library, with the full saved release history and an audit of current capabilities and limitations."
+    "Highlight the current sidebar section on people pages and music profiles, including direct loading and persistent mini-player navigation.",
+    "Keep sidebar state correct after searches and browser history; deselect the hidden music catalogue and restore its selection on return.",
+    "Update the shared navigation component, UI example, Change Log and current capabilities.",
+    "Keep player decoration out of site-page Bootstrap controls; align search and sorting and polish gallery lists, carousel, navigation, feedback and content in both themes."
   ],
   "release_notes_i18n": {
     "en": [
-      "Add a Change Log page alongside the UI library, with the full saved release history and an audit of current capabilities and limitations."
+      "Highlight the current sidebar section on people pages and music profiles, including direct loading and persistent mini-player navigation.",
+      "Keep sidebar state correct after searches and browser history; deselect the hidden music catalogue and restore its selection on return.",
+      "Update the shared navigation component, UI example, Change Log and current capabilities.",
+      "Keep player decoration out of site-page Bootstrap controls; align search and sorting and polish gallery lists, carousel, navigation, feedback and content in both themes."
     ],
     "ru": [
-      "Добавлена страница Change Log рядом с UI-компонентами: история сохранённых выпусков и сверка текущих возможностей и ограничений."
+      "Исправлено выделение «Пользователи» в списке людей и музыкальных профилях при прямом открытии и переходах с мини-плеером.",
+      "Меню учитывает поиск и историю браузера; скрытый музыкальный каталог не остаётся выделенным, при возвращении выделение восстанавливается.",
+      "Обновлены общий компонент навигации, UI-пример, Change Log и текущие возможности.",
+      "Оформление плеера не искажает компоненты страниц; выровнены поиск с сортировкой и UI-примеры списков, карусели, навигации, сообщений и контента в обеих темах."
     ]
   },
   "update": {

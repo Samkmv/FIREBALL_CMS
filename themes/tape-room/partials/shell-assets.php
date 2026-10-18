@@ -1,3 +1,4 @@
+<?php if(!empty($ui_components)&&empty($player_shell)): ?><link rel="stylesheet" href="<?= htmlSC(theme_asset_versioned('css/player.css')) ?>"><?php endif; ?>
 <script>window.TapeRoomIconMap=<?= json_encode(require dirname(__DIR__).'/includes/icon-map.php',JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT) ?>;</script>
 <meta name="tr-site-navigation" content="<?= htmlSC(json_encode(['home'=>base_href('/'),'account'=>(int)(get_user()['id']??0),'csrf'=>(string)session()->get('needCSRFToken',''),'player'=>class_exists(\Fireball\ReelPlayer\Controllers\PlayerController::class)],JSON_THROW_ON_ERROR)) ?>">
 <link rel="stylesheet" href="<?= htmlSC(theme_asset_versioned('bootstrap/bootstrap.scoped.css')) ?>">

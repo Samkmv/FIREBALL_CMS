@@ -39,6 +39,15 @@
         page.hidden=!isPage;document.body.classList.toggle('tr-body',isPage);
         window.TapeRoomPlayerView.refresh();
     }
+    function syncNavigation(url){
+        const path=url.pathname.replace(/\/$/,'');
+        for(const link of app.querySelectorAll('#tr-site-menu [data-tr-nav-page]')){
+            const section=new URL(link.href,home).pathname.replace(/\/$/,'');
+            const selected=path===section||path.startsWith(section+'/');
+            link.classList.toggle('active',selected);
+            if(selected)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');
+        }
+    }
     function announce(){document.dispatchEvent(new CustomEvent('tape-room:page'));}
     function historyTo(url,replace){
         if(replace)history.replaceState(history.state,'',url.href);else history.pushState({},'',url.href);
@@ -51,6 +60,7 @@
         pending?.abort();pending=null;generation++;app.removeAttribute('aria-busy');hideOverlays();state(false);document.title=homeTitle;
         document.querySelector('[data-tr-navigation-error]')?.remove();
         if(historyMode!=='pop')historyTo(url,historyMode==='replace');
+        syncNavigation(url);
         app.dispatchEvent(new CustomEvent('tape-room:navigate',{detail:{url:url.href}}));
         announce();window.scrollTo(0,0);currentUrl=location.href;
     }
@@ -63,6 +73,7 @@
             const response=await fetch(url,{method:body?'POST':'GET',body,credentials:'same-origin',cache:'no-store',headers:{Accept:'text/html'},signal:controller.signal});
             if(job!==generation)return;
             const destination=new URL(response.url);
+            if(destination.origin===url.origin&&destination.pathname===url.pathname&&destination.search===url.search)destination.hash=url.hash;
             if(!eligible(destination)||!response.headers.get('Content-Type')?.includes('text/html')){native(destination);return;}
             if(!response.ok)throw new Error('Page unavailable');
             const parsed=new DOMParser().parseFromString(await response.text(),'text/html');
@@ -85,8 +96,13 @@
             const account=parsed.querySelector('.tr-account-dropdown'),oldAccount=app.querySelector('.tr-account-dropdown');
             if(account){bootstrap.Dropdown.getInstance(oldAccount.querySelector('[data-bs-toggle="dropdown"]'))?.dispose();oldAccount.replaceChildren(...[...account.childNodes].map(node=>document.importNode(node,true)));}
             state(true);if(!pop)historyTo(destination,Boolean(body));
-            announce();window.scrollTo(0,0);
-            const heading=page.querySelector('h1');if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}
+            syncNavigation(destination);
+            announce();
+            let anchor=null;
+            try{if(destination.hash)anchor=document.getElementById(decodeURIComponent(destination.hash.slice(1)));}catch{}
+            const target=anchor&&page.contains(anchor)?anchor:null;
+            if(target)target.scrollIntoView({block:'start'});else window.scrollTo(0,0);
+            const heading=target||page.querySelector('h1');if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}
         }catch(error){
             if(job!==generation)return;
             const notice=document.createElement('div');notice.className='alert alert-warning tr-navigation-error';notice.dataset.trNavigationError='';notice.setAttribute('role','alert');
@@ -114,6 +130,9 @@
         const form=event.target;
         if(!active()||event.defaultPrevented||!form.closest('[data-tr-page]')||form.matches('[data-tr-demo-form]')||form.target)return;
         const url=new URL(form.action,location.href),action=form.querySelector('[name="profile_action"]')?.value;
+        if(form.method.toLowerCase()==='get'&&form.matches('[data-tr-social-search]')&&eligible(url)){
+            event.preventDefault();url.search=new URLSearchParams(new FormData(form)).toString();navigate(url);return;
+        }
         // Authentication and security actions keep their native document lifecycle.
         if(form.method.toLowerCase()!=='post'||url.pathname!==home.pathname+'profile/settings'||!['details','avatar'].includes(action))return;
         event.preventDefault();if(form.dataset.trSaving)return;
@@ -132,5 +151,5 @@
         if(!away()||event.detail.enabled)return;
         if(event.detail.mode==='deck')restore(home);else audio.pause();
     });
-    state(away());
+    state(away());syncNavigation(new URL(location.href));
 })();

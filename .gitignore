@@ -68,6 +68,9 @@ dist/fireball-cms-*.zip*
 !/tests/tape_room_sync.cjs
 !/tests/tape_room_sync_check.py
 !/tests/tape_room_site_player_check.py
+!/tests/tape_room_social_mysql.php
+!/tests/tape_room_social.php
+!/tests/tape_room_social.cjs
 !/tests/tape_room_changelog.php
 !/tests/tape_room_fixture.php
 !/tests/tape_room_fixture_setup.py

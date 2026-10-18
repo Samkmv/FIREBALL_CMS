@@ -2,7 +2,9 @@
     'use strict';
     const app=document.querySelector('[data-player]');if(!app)return;
     function decorate(root){
-        const nodes=selector=>[...(root.matches?.(selector)?[root]:[]),...root.querySelectorAll(selector)];
+        // Site pages already declare their own Bootstrap components. Decorating
+        // them as player controls changes carousel dots, lists and pagination.
+        const nodes=selector=>[...(root.matches?.(selector)?[root]:[]),...root.querySelectorAll(selector)].filter(node=>!node.closest('[data-tr-page]'));
         for(const button of nodes('button')){
             if(button.closest('[data-player-shell]') || button.matches('.btn-close,.dropdown-item'))continue;
             button.classList.add('btn');

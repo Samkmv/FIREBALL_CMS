@@ -29,6 +29,16 @@
             this.canPublish = Boolean(canPublish);
             this.content = app.querySelector('[data-catalog-content]');
             this.latest = null;
+            document.addEventListener('tape-room:page',()=>this.syncNavigation());
+        }
+
+        syncNavigation() {
+            const section=this.app.dataset.sitePage==='1'?'':this.latest?.view.type;
+            this.app.querySelectorAll('[data-catalog-nav] [data-view]').forEach(button => {
+                const active=button.dataset.view===section;
+                button.classList.toggle('is-selected',active);
+                button.setAttribute('aria-current',active?'page':'false');
+            });
         }
 
         html(value) {
@@ -72,12 +82,7 @@
             const personalAlbums = albums.filter(album => album.saved || album.editable);
             const search = normalized(query ?? this.app.querySelector('[data-search]')?.value);
             this.latest = {data, view, current:Number(current), playing:Boolean(playing), albums, publicAlbums, ownTracks, publicTracks, trackMap, search, canPublish:Boolean(canPublish)};
-            const activeSection = view.type === 'album' || view.type === 'artist' ? '' : view.type;
-            this.app.querySelectorAll('[data-catalog-nav] [data-view]').forEach(button => {
-                const active = button.dataset.view === activeSection;
-                button.classList.toggle('is-selected', active);
-                button.setAttribute('aria-current', active ? 'page' : 'false');
-            });
+            this.syncNavigation();
             const albumCount = this.app.querySelector('[data-catalog-album-count]');
             const savedCount = this.app.querySelector('[data-catalog-saved-count]');
             if (albumCount) albumCount.textContent = publicAlbums.length || '';
@@ -167,6 +172,11 @@
             return album.cover || this.tracksFor(album).find(track => track.cover)?.cover || '';
         }
 
+        uploader(person) {
+            if (!person?.url || !person.name) return '';
+            return `<a class="rp-catalog-uploader" href="${this.escape(person.url)}">Добавил: ${this.escape(person.name)}</a>`;
+        }
+
         albumCard(album) {
             const esc = this.escape, tracks = this.tracksFor(album);
             const date = timestamp(album.release_date), year = date ? new Date(date).getFullYear() : '';
@@ -181,7 +191,7 @@
                 </div>
                 <button type="button" class="rp-album-title" data-action="catalog-album" data-id="${Number(album.id)}">${esc(album.title)}</button>
                 ${album.artist ? `<button type="button" class="rp-album-artist" data-action="catalog-artist" data-artist="${esc(album.artist)}">${esc(album.artist)}</button>` : '<span class="rp-album-artist">Исполнитель не указан</span>'}
-                ${album.genres?.length ? album.genres.map(genre=>`<button class="rp-catalog-text-button" type="button" data-action="catalog-genre" data-id="${Number(genre.id)}">${esc(genre.name)}</button>`).join('') : album.genre && !album.genreId ? `<span class="rp-album-meta">${esc(album.genre)}</span>` : album.genre ? `<button class="rp-catalog-text-button" type="button" data-action="catalog-genre" data-id="${Number(album.genreId)}">${esc(album.genre)}</button>` : ''}<span class="rp-album-meta">${esc(meta)}</span>
+                ${album.genres?.length ? album.genres.map(genre=>`<button class="rp-catalog-text-button" type="button" data-action="catalog-genre" data-id="${Number(genre.id)}">${esc(genre.name)}</button>`).join('') : album.genre && !album.genreId ? `<span class="rp-album-meta">${esc(album.genre)}</span>` : album.genre ? `<button class="rp-catalog-text-button" type="button" data-action="catalog-genre" data-id="${Number(album.genreId)}">${esc(album.genre)}</button>` : ''}<span class="rp-album-meta">${esc(meta)}</span>${this.uploader(album.uploader)}
             </article>`;
         }
 
@@ -275,7 +285,7 @@
             this.html(`<div class="rp-catalog-detail-back">${this.viewLink(album.published ? 'albums' : 'mine','К альбомам')}</div>
                 <section class="rp-album-detail"><div class="rp-album-detail-cover">${this.image(this.albumCover(album),'','cover',true)}</div><div class="rp-album-detail-info">
                 <span class="rp-catalog-eyebrow">${album.published ? 'Альбом · каталог сайта' : 'Личный альбом'}</span><h3>${esc(album.title)}</h3>
-                ${album.browserLocal && album.artist ? `<span class="rp-catalog-artist-link">${esc(album.artist)}</span>` : album.artist ? `<button class="rp-catalog-artist-link" type="button" data-action="catalog-artist" data-artist="${esc(album.artist)}">${esc(album.artist)}</button>` : ''}<p class="rp-album-detail-meta">${esc(meta)}</p>${window.TapeRoomQuality.albumBadge(tracks)}
+                ${album.browserLocal && album.artist ? `<span class="rp-catalog-artist-link">${esc(album.artist)}</span>` : album.artist ? `<button class="rp-catalog-artist-link" type="button" data-action="catalog-artist" data-artist="${esc(album.artist)}">${esc(album.artist)}</button>` : ''}<p class="rp-album-detail-meta">${esc(meta)}</p>${window.TapeRoomQuality.albumBadge(tracks)}${this.uploader(album.uploader)}
                 ${album.editable && album.moderation !== 'draft' ? `<p class="rp-catalog-note">${esc(album.moderation === 'pending' ? 'Альбом ожидает проверки. В общем каталоге он появится после одобрения.' : album.moderation === 'rejected' ? 'Публикация отклонена. Исправьте альбом и отправьте его повторно.' : 'Публикация одобрена.')} ${esc(album.moderationNote || '')}</p>` : ''}${album.description ? `<p class="rp-album-description">${esc(album.description)}</p>` : ''}
                 <div class="rp-album-controls"><div class="rp-album-detail-actions"><button type="button" class="rp-button rp-button--primary rp-catalog-play" data-action="catalog-play-album" data-id="${Number(album.id)}" ${tracks.length ? '' : 'disabled'}>${this.icon('play')}<span>Слушать альбом</span></button>${album.browserLocal ? `<button class="rp-button" type="button" data-torrent-edit="${esc(album.torrentHash)}">${this.icon('edit')}Изменить torrent</button>` : `<button type="button" class="rp-button rp-catalog-save${album.saved ? ' is-saved' : ''}" data-action="catalog-save" data-id="${Number(album.id)}" aria-pressed="${Boolean(album.saved)}">${this.icon('bookmark')}<span>${album.saved ? 'В коллекции' : 'В коллекцию'}</span></button>`}<button class="rp-button" type="button" data-action="share-album" data-id="${Number(album.id)}">${this.icon('share')}Поделиться</button></div>
                 ${album.editable ? `<div class="rp-album-detail-management">${canPublish ? `<button type="button" class="rp-catalog-publish" data-action="catalog-publish" data-id="${Number(album.id)}" data-published="${album.submitted ? 0 : 1}">${album.submitted ? 'Снять с публикации' : album.requiresModeration===false ? 'Опубликовать альбом' : 'Отправить на модерацию'}</button>` : ''}<button class="rp-button rp-album-edit" type="button" data-action="catalog-edit" data-id="${Number(album.id)}" aria-label="Изменить альбом">${this.icon('edit')}<span>Изменить</span></button><button type="button" class="rp-catalog-delete" data-action="catalog-delete" data-id="${Number(album.id)}">${this.icon('trash')}Удалить альбом</button></div>` : ''}</div>

@@ -48,6 +48,7 @@
     const syncTheme=()=>{
         const theme=document.documentElement.dataset.theme==='dark'?'dark':'light';
         document.documentElement.dataset.bsTheme=theme;
+        document.querySelectorAll('[data-tr-ui-cover]').forEach(image=>{const src=image.dataset[theme==='dark'?'trUiCoverDark':'trUiCoverLight'];if(src&&image.getAttribute('src')!==src)image.src=src;});
         document.querySelectorAll('[data-tr-shell]').forEach(root=>root.dataset.bsTheme=theme);
         document.querySelectorAll('[data-tr-theme-icons]').forEach(button=>{
             const label=theme==='dark'?'Включить светлую тему':'Включить тёмную тему';button.setAttribute('aria-label',label);button.title=label;button.setAttribute('aria-pressed',String(theme==='dark'));
@@ -69,7 +70,7 @@
                 button.classList.toggle('is-current',button===demoPlay);
                 if(button!==demoPlay){button.setAttribute('aria-pressed','false');button.setAttribute('aria-label',`Воспроизвести ${button.querySelector('.tr-queue-info strong').textContent} — пример`);button.querySelector('.tr-icon').className='ci-play-filled tr-icon';}
             });
-            demoPlay.setAttribute('aria-pressed',String(active));demoPlay.setAttribute('aria-label',active?'Пауза — пример':'Воспроизвести — пример');demoPlay.querySelector('.tr-icon').className=`ci-${active?'pause':'play-filled'} tr-icon`;return;
+            demoPlay.setAttribute('aria-pressed',String(active));demoPlay.setAttribute('aria-label',active?'Пауза — пример':'Воспроизвести — пример');const glyph=demoPlay.querySelector('.tr-icon');glyph.classList.toggle('ci-pause',active);glyph.classList.toggle('ci-play-filled',!active);if(glyph.hasAttribute('data-icon'))glyph.dataset.icon=active?'pause':'play';return;
         }
         const demoFavorite=event.target.closest('[data-tr-demo-favorite]');
         if(demoFavorite){const active=demoFavorite.getAttribute('aria-pressed')!=='true';demoFavorite.setAttribute('aria-pressed',String(active));demoFavorite.setAttribute('aria-label',active?'Убрать из избранного — пример':'Добавить в избранное — пример');demoFavorite.querySelector('.tr-icon').className='ci-bookmark tr-icon';return;}

@@ -25,13 +25,14 @@ final class Catalog
         $trackChapters = [];
         foreach ($chapters as $chapter) $trackChapters[(int)$chapter['track_id']][] = ['id'=>(int)$chapter['id'],'track_id'=>(int)$chapter['track_id'],'title'=>$chapter['title'],'artist'=>$chapter['artist'],'start'=>(float)$chapter['start_time']];
         $genres=(new Genres())->all(); $genreNames=array_column($genres,'name','id');
+        $uploaders=(new Social($this->owner))->summaries(array_column([...$albums,...$tracks],'owner_id'));
         $publicTracks = []; $coverByTrack = [];
         foreach ($tracks as $track) {
             $id = (int)$track['id']; $shared = (int)$track['owner_id'] !== $this->owner;
             $coverByTrack[$id] = $track['cover_path'];
             $prefix = $shared ? '/tape-room/catalog/' : '/tape-room/';
             $publicTracks[] = [
-                'id'=>$id,'title'=>$track['title'],'artist'=>$track['artist'],'filename'=>$track['filename'],
+                'id'=>$id,'title'=>$track['title'],'artist'=>$track['artist'],'filename'=>$track['filename'],'uploader'=>$uploaders[(int)$track['owner_id']] ?? null,
                 'mime'=>$track['mime'],'duration'=>(float)$track['duration'],'file_size'=>(int)$track['file_size'],
                 'genreId'=>(int)($track['genre_id'] ?? 0),'genre'=>$genreNames[(int)($track['genre_id'] ?? 0)] ?? '',
                 'source'=>$track['source'],'album_title'=>$track['album_title'],'album_artist'=>$track['album_artist'],'genre_tag'=>$track['genre_tag'],'metadata_loaded'=>(bool)$track['metadata_loaded'],'cover_mime'=>$track['cover_mime'],'favorite'=>(bool)$track['viewer_favorite'],
@@ -50,7 +51,7 @@ final class Catalog
             if (!$coverPath) foreach ($ids as $trackId) if (!empty($coverByTrack[$trackId])) { $coverPath = $coverByTrack[$trackId]; break; }
             $editable = $this->owner>0 && (int)$album['owner_id'] === $this->owner;
             $publicAlbums[] = [
-                'id'=>$id,'title'=>$album['title'],'artist'=>$album['artist'],'release_date'=>$album['release_date'],
+                'id'=>$id,'title'=>$album['title'],'artist'=>$album['artist'],'release_date'=>$album['release_date'],'uploader'=>$uploaders[(int)$album['owner_id']] ?? null,
                 'description'=>$album['description'],'cover'=>$coverPath ? base_href('/tape-room/catalog/album-cover/'.$id).'?v='.basename($coverPath) : '',
                 'tracks'=>$ids,'published'=>(bool)$album['published'] && $album['moderation_status']==='approved','submitted'=>(bool)$album['published'],'moderation'=>$album['moderation_status'],'moderationNote'=>$editable ? $album['moderation_note'] : '',
                 'genreId'=>(int)($album['genre_id'] ?? 0),'genre'=>($genreNames[(int)($album['genre_id'] ?? 0)] ?? ''),'saved'=>$album['saved_id'] !== null,

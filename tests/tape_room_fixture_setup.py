@@ -38,6 +38,8 @@ seed=(root/'plugins/reel-player/migrations/009_genre_library.sql').read_text()
 conn.executemany('INSERT INTO reel_genres(name,name_key,slug,created_at,updated_at) VALUES(?,?,?,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)',re.findall(r"\('([^']+)','([a-f0-9]{64})','([^']+)',NOW\(\),NOW\(\)\)",seed))
 conn.execute('CREATE UNIQUE INDEX fixture_track_stats ON reel_track_stats(track_id)')
 conn.execute('CREATE UNIQUE INDEX fixture_playback_owner ON reel_playback_state(owner_id)')
+conn.execute('CREATE UNIQUE INDEX fixture_social_owner ON reel_social_profiles(owner_id)')
+conn.execute('CREATE UNIQUE INDEX fixture_follow_pair ON reel_user_follows(follower_id,followed_id)')
 settings={'active_theme':'tape-room','homepage_type':'posts','site_title':'Tape Room','site_locale':'ru','pwa_enabled':'0','cookie_enabled':'0','session_lifetime':'43200'}
 conn.executemany('INSERT INTO site_settings VALUES (?, ?, CURRENT_TIMESTAMP)',settings.items())
 hashed=subprocess.check_output(['/Applications/MAMP/bin/php/php8.2.0/bin/php','-r','echo password_hash("TapeRoomFixture42!",PASSWORD_DEFAULT);']).decode()

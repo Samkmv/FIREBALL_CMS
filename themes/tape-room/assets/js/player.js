@@ -205,6 +205,10 @@
         info.append(element('span', 'rp-track-title', t.title), element('span', 'rp-track-artist', `${t.artist || 'Неизвестный исполнитель'}${t.source === 'drive' ? ' · Google Drive' : t.browserLocal ? ' · Torrent' : ''}`));
         const labelGenre=t.genre || genre;
         if(labelGenre){const label=element('span','rp-track-genre',labelGenre);label.title=`Жанр: ${labelGenre}`;info.append(label);}
+        if(t.shared && t.uploader?.url && t.uploader.name){
+            const uploader=element('a','rp-track-uploader',`Добавил: ${t.uploader.name}`);
+            uploader.href=t.uploader.url;info.append(uploader);
+        }
         const actions = element('div', 'rp-track-actions');
         if (canReorder) {
             const reorder = element('div', 'rp-track-reorder');
@@ -224,6 +228,15 @@
         row.append(play, cover, info, element('span', 'rp-track-duration', t.duration ? formatTime(t.duration) : '—'), actions);
         return row;
     }
+    function syncPlaylistNavigation() {
+        const visible=app.dataset.sitePage!=='1'&&['songs','favorites','playlist'].includes(libraryView.type);
+        for(const button of app.querySelectorAll('[data-playlists] [data-action="select-playlist"]')){
+            const active=visible&&Number(button.dataset.id)===selected;
+            button.classList.toggle('is-selected',active);
+            button.setAttribute('aria-current',active?'page':'false');
+        }
+    }
+    document.addEventListener('tape-room:page',syncPlaylistNavigation);
     function render() {
         for(const item of trackPool)if(qualityCache.has(item.id))item.quality=qualityCache.get(item.id);
         if (selected > 0 && !playlist(selected)) selected = 0;
@@ -235,7 +248,7 @@
         if (current && !activeTrack()) { window.TapeRoomTorrents?.release();audio.pause(); audio.removeAttribute('src'); audio.load(); current = 0; updateNow(); }
         const nav = $('[data-playlists]'); nav.replaceChildren();
         for (const item of [{id:0, name:'Все мои песни', tracks:collections.myTracks(data)}, {id:-1, name:'Избранное', tracks:collectionTracks(-1)}, ...data.playlists]) {
-            const active = ['songs','favorites','playlist'].includes(libraryView.type) && item.id === selected;
+            const active = app.dataset.sitePage!=='1' && ['songs','favorites','playlist'].includes(libraryView.type) && item.id === selected;
             const node = element('button', `rp-playlist nav-link${active ? ' is-selected' : ''}`);
             node.type = 'button'; node.dataset.action = 'select-playlist'; node.dataset.id = item.id;
             node.setAttribute('aria-current', active ? 'page' : 'false');

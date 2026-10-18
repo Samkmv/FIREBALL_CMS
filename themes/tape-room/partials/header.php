@@ -9,7 +9,7 @@
     <?= get_csrf_meta() ?>
     <title><?= htmlSC($title ?? 'Tape Room') ?> · Tape Room · Бета</title>
     <?= $this->partial('pwa-head') ?>
-    <?= $this->partial('shell-assets') ?>
+    <?= $this->partial('shell-assets',['ui_components'=>!empty($tr_ui_components)]) ?>
 </head>
 <body class="tr-body">
 <div class="tr-bootstrap tr-page-shell" data-tr-shell data-bs-theme="light">

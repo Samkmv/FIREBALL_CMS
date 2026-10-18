@@ -63,18 +63,28 @@ if(($argv[1]??'')==='--worker'){
         $verify($role.': all capability cards rendered',$xpath->query('//article[starts-with(@id,"roadmap-")]')->length===count($data['capabilities']));
         $verify($role.': archived experiment clearly labelled',str_contains($html,'Архив · убрано из main')&&str_contains($html,'не считаются реализованными'));
         $verify($role.': UI library is linked',$xpath->query('//a[@href="'.base_href('/tape-room/ui-kit').'"]')->length>0);
-        $verify($role.': active journal navigation',$xpath->query('//a[@href="'.base_href('/tape-room/changelog').'" and @aria-current="page"]')->length===1);
+        $verify($role.': active journal navigation',$xpath->query('//nav[@aria-label="Документация Tape Room"]/a[@href="'.base_href('/tape-room/changelog').'" and @aria-current="page"]')->length===1);
         $verify($role.': sections use unique IDs',$xpath->query('//*[@id]')->length===count(array_unique(array_map(static fn($node)=>$node->nodeValue,iterator_to_array($xpath->query('//@id'))))));
         $assetsExist=true;foreach($xpath->query('//link[@rel="stylesheet"]/@href | //script[@src]/@src')as$asset){$path=(string)parse_url($asset->nodeValue,PHP_URL_PATH);$file=str_starts_with($path,'/themes/')?$project.$path:$project.'/public'.$path;if(!is_file($file))$assetsExist=false;}
         $verify($role.': all stylesheet and script references resolve to local files',$assetsExist);
         if($data['roadmap_source']==='awaiting-original')$verify($role.': original roadmap limitation is disclosed',str_contains($html,'Сверка исходного плана ожидается'));
         $ui=$render('/tape-room/ui-kit');$verify($role.': UI library links back to journal',str_contains($ui,'href="'.base_href('/tape-room/changelog').'"'));
+        $uiDom=$document($ui);
+        $verify($role.': standalone UI loads the real player stylesheet once',$uiDom->query('//head/link[contains(@href,"/css/player.css")]')->length===1);
+        $verify($role.': UI demo toggles do not change real playback preferences',$uiDom->query('//*[@id="mini-player-ui"]//*[@data-tr-mini-toggle or @data-tr-site-player-toggle]')->length===0&&$uiDom->query('//*[@id="mini-player-ui"]//*[@data-tr-demo-mode]')->length===2);
+        $verify($role.': UI examples have unique IDs',$uiDom->query('//*[@id]')->length===count(array_unique(array_map(static fn($node)=>$node->nodeValue,iterator_to_array($uiDom->query('//@id'))))));
+        $iconMap=array_unique(require $project.'/themes/tape-room/includes/icon-map.php');
+        $verify($role.': UI icon catalogue follows the actual site map',$uiDom->query('//*[@id="icons"]//code')->length===count($iconMap));
+        $verify($role.': UI sidebar example shows the active section',$uiDom->query('//nav[@aria-label="Пример текущего раздела"]/a[@aria-current="page"]')->length===1);
+
         file_put_contents(getenv('TAPE_ROOM_TEST_ROOT').'/'.$role.'-changelog.html',$html);
     }
     $_COOKIE['tr_site_player']='1';$embedded=$document($render('/tape-room/changelog'));
     $verify('Global mini-player document includes exactly one audio element',$embedded->query('//audio')->length===1);
     $verify('Journal stays in the replaceable page slot',$embedded->query('//*[@data-tr-page]//h1[text()="Change Log"]')->length===1);
     $verify('Global player and journal have no duplicate navigation',$embedded->query('//nav[@aria-label="Навигация Tape Room"]')->length===1);
+    $globalUi=$document($render('/tape-room/ui-kit'));
+    $verify('Global UI has one player stylesheet and one real audio element',$globalUi->query('//head/link[contains(@href,"/css/player.css")]')->length===1&&$globalUi->query('//audio')->length===1);
     echo json_encode(['passed'=>count($checks),'checks'=>$checks,'browser_verified'=>false],JSON_PRETTY_PRINT|JSON_UNESCAPED_UNICODE),"\n";exit;
 }
 $scratch=__DIR__.'/.tmp/tape-room-changelog-offline-'.bin2hex(random_bytes(8));mkdir($scratch,0700,true);

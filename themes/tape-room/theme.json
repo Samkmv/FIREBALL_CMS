@@ -1,7 +1,7 @@
 {
     "name": "Tape Room",
     "slug": "tape-room",
-    "version": "1.3.3",
+    "version": "1.4.2",
     "author": "FIREBALL CMS",
     "description": "Музыкальная комната Tape Room с каталогом и непрерывным мини-плеером на страницах сайта.",
     "preview": "preview.png",

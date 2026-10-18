@@ -11,6 +11,7 @@
         <?= $this->partial('field', ['id'=>'tr-details-current-password','name'=>'current_password','label'=>'Текущий пароль','type'=>'password','autocomplete'=>'current-password','optional'=>true]) ?><p class="small text-body-secondary mb-0">Нужен только при изменении логина или электронной почты.</p>
         <div class="tr-settings-actions"><button class="btn btn-primary" type="submit">Сохранить изменения</button></div>
     </form>
+    <?= $this->partial('social-settings',['user'=>$user]) ?>
     <?php $securityOpen=(string)request()->get('section','')==='security'; ?>
     <div class="accordion tr-settings-accordion" id="tr-security-accordion"><div class="accordion-item">
         <h2 class="accordion-header"><button class="accordion-button <?= $securityOpen?'':'collapsed' ?>" type="button" data-bs-toggle="collapse" data-bs-target="#tr-password-change" aria-expanded="<?= $securityOpen?'true':'false' ?>" aria-controls="tr-password-change"><?= $this->partial('site-icon',['name'=>'shield']) ?><span><strong>Изменить пароль</strong><small>Защитите доступ к своему аккаунту</small></span><?= $this->partial('site-icon',['name'=>'chevron-down']) ?></button></h2>

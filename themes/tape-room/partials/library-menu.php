@@ -3,6 +3,7 @@
     <h2 class="tr-menu-label">Библиотека</h2>
     <nav class="nav flex-column tr-side-links" data-catalog-nav aria-label="Музыкальный каталог">
         <?php foreach($room_links as [$view,$label,$symbol]): if($view==='mine' && !check_auth())continue; ?><button class="nav-link text-start" type="button" data-action="catalog-view" data-view="<?= $view ?>"><?= $siteIcon($symbol) ?><span><?= $label ?></span><?php if($view==='albums'): ?><span class="tr-library-count" data-catalog-album-count></span><?php elseif($view==='mine'): ?><span class="tr-library-count" data-catalog-saved-count></span><?php endif; ?></button><?php endforeach; ?>
+        <?= $this->partial('navigation-link',['path'=>'/tape-room/people','icon'=>'people','label'=>'Пользователи']) ?>
     </nav>
     <?php if(check_auth()): ?>
     <div class="tr-menu-divider"></div>

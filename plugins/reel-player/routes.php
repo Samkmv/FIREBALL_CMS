@@ -1,5 +1,6 @@
 <?php
 use Fireball\ReelPlayer\Controllers\PlayerController;
+use Fireball\ReelPlayer\Controllers\SocialController;
 
 /** @var \FBL\Router $router */
 $router->get('/plugins/reel-player/assets/(?P<file>player\.(?:css|js)|preload\.js|meters\.js|chapters\.js|transport\.js|quality\.js|collections\.js|catalog\.js|images\.js|(?:cover|artist)-(?:light|dark)(?:\.png|-(?:96|320|640)\.webp))', static function (): never {
@@ -47,10 +48,14 @@ $router->get('/tape-room/(?P<surface>share|embed)/(?P<kind>album|track)/(?P<id>\
 $router->get('/admin/reel-player/settings', [\Fireball\ReelPlayer\Controllers\AdminCatalogController::class, 'settings'])->middleware(['auth','admin']);
 $router->post('/admin/reel-player/settings', [\Fireball\ReelPlayer\Controllers\AdminCatalogController::class, 'saveSettings'])->middleware(['auth','admin']);
 $router->get('/tape-room/torrent-worker.js', [\Fireball\ReelPlayer\Services\TorrentWorker::class, 'script']);
+$router->get('/tape-room/people',[SocialController::class,'index']);
+$router->get('/tape-room/people/(?P<id>\d+)',[SocialController::class,'profile']);
+$router->post('/tape-room/people/(?P<id>\d+)/follow',[SocialController::class,'follow'])->middleware(['auth']);
+$router->post('/tape-room/social/settings',[SocialController::class,'saveSettings'])->middleware(['auth']);
 $router->get('/tape-room/ui-kit', static function (): string {
     if (theme()->getActiveTheme()['slug'] !== 'tape-room') abort('Страница недоступна.',404);
     $preview = db()->query("SELECT id FROM reel_albums WHERE published=1 AND moderation_status='approved' ORDER BY id DESC LIMIT 1")->getOne();
-    return theme()->render('ui-kit',['title'=>'UI-компоненты Tape Room','tr_wide_page'=>true,'tr_ui_embed_album_id'=>(int)($preview['id'] ?? 0)]);
+    return theme()->render('ui-kit',['title'=>'UI-компоненты Tape Room','tr_wide_page'=>true,'tr_ui_components'=>true,'tr_ui_embed_album_id'=>(int)($preview['id'] ?? 0)]);
 })->middleware(['auth','admin']);
 $router->get('/tape-room/changelog', static function (): string {
     if (theme()->getActiveTheme()['slug'] !== 'tape-room') abort('Страница недоступна.',404);
