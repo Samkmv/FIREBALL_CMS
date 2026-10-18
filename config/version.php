@@ -2,7 +2,7 @@
 
 return [
     'name' => 'FIREBALL_CMS',
-    'version' => '1.8.20',
+    'version' => '1.8.21',
     'released_at' => '2026-10-17',
     'summary' => 'История изменений Tape Room и проверка дорожной карты.',
     'changes' => [
