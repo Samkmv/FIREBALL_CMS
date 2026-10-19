@@ -5591,7 +5591,7 @@ body.is-site-fullscreen .plyr * {
 }
 
 .admin-security-log-table.admin-table-component__table {
-    min-width: 76rem;
+    min-width: 88rem;
     table-layout: fixed;
 }
 
@@ -5600,7 +5600,7 @@ body.is-site-fullscreen .plyr * {
 }
 
 .admin-security-log-table__col-event {
-    width: 9.5rem;
+    width: 12rem;
 }
 
 .admin-security-log-table__col-actor,
@@ -5609,11 +5609,11 @@ body.is-site-fullscreen .plyr * {
 }
 
 .admin-security-log-table__col-result {
-    width: 6.75rem;
+    width: 9rem;
 }
 
 .admin-security-log-table__col-reason {
-    width: 8.5rem;
+    width: 20rem;
 }
 
 .admin-security-log-table__col-ip {
@@ -5621,7 +5621,7 @@ body.is-site-fullscreen .plyr * {
 }
 
 .admin-security-log-table__col-user-agent {
-    width: 14rem;
+    width: 12rem;
 }
 
 .admin-security-log-table__col-date {

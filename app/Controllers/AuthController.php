@@ -149,7 +149,7 @@ class AuthController extends BaseController
         $verified = $this->users->verifyTwoFactorCode($user, $code)
             || $this->users->consumeRecoveryCode((int)$user['id'], $code);
         if (!$verified) {
-            $this->securityLogs->record('login_2fa', 'failed', (int)$user['id'], (int)$user['id']);
+            $this->securityLogs->record('login_2fa', 'failed', (int)$user['id'], (int)$user['id'], '2fa_failed');
             $this->setFormState([], [
                 'code' => [return_translation('auth_two_factor_invalid_code')],
             ]);
@@ -291,8 +291,15 @@ class AuthController extends BaseController
         if (!RateLimiter::attempt('auth.password-reset.burst.' . client_ip(), 10, 60)
             || !RateLimiter::attempt($this->passwordResetThrottleKey(), 3, 3600)
             || !RateLimiter::attempt($emailThrottle, 1, 60)) {
-            $this->clearFormState();
-            session()->setFlash('success', return_translation('auth_reset_request_success'));
+            $this->setFormState($data, []);
+            session()->setFlash('error', return_translation('auth_reset_request_limited'));
+            response()->redirect(base_href('/login'));
+        }
+
+        if (!$this->users->findByEmail($data['reset_email'])) {
+            $message = return_translation('auth_reset_email_not_found');
+            $this->setFormState($data, ['reset_email' => [$message]]);
+            session()->setFlash('error', $message);
             response()->redirect(base_href('/login'));
         }
 
@@ -308,13 +315,13 @@ class AuthController extends BaseController
         if ($token !== null) {
             try {
                 $mailSent = $mailService->sendTemplate(
-                [$data['reset_email']],
-                return_translation('auth_reset_email_subject'),
-                'auth/password_reset_email',
-                [
-                    'reset_url' => base_href('/reset-password?token=' . urlencode($token)),
-                    'expires_in_minutes' => 60,
-                ]
+                    [$data['reset_email']],
+                    return_translation('auth_reset_email_subject'),
+                    'auth/password_reset_email',
+                    [
+                        'reset_url' => base_href('/reset-password?token=' . urlencode($token)),
+                        'expires_in_minutes' => 60,
+                    ]
                 );
             } catch (\Throwable) { $mailSent = false; }
 
@@ -324,9 +331,15 @@ class AuthController extends BaseController
                 RateLimiter::clear($emailThrottle);
                 $this->securityLogs->record('password_reset_request', 'failed', null, null, 'mail_failed');
                 $this->setFormState($data, []);
-                session()->setFlash('success', return_translation('auth_reset_request_success'));
+                session()->setFlash('error', return_translation('auth_reset_request_error'));
                 response()->redirect(base_href('/login'));
             }
+        } else {
+            // The account may have changed between lookup and token creation.
+            $message = return_translation('auth_reset_email_not_found');
+            $this->setFormState($data, ['reset_email' => [$message]]);
+            session()->setFlash('error', $message);
+            response()->redirect(base_href('/login'));
         }
 
         $this->securityLogs->record('password_reset_request', 'success', null, null);
@@ -386,8 +399,8 @@ class AuthController extends BaseController
 
         if (!$this->users->resetPasswordByToken($token, $data['password'])) {
             $reason = $this->users->passwordResetFailureReason();
-            $this->securityLogs->record('password_reset_complete', 'failed', null, (int)$resetRequest['user_id'], $reason);
-            session()->setFlash('error', return_translation($reason === 'storage_failure' ? 'auth_reset_save_error' : 'auth_reset_invalid_token'));
+            $this->securityLogs->record('password_reset_complete', 'failed', null, (int)$resetRequest['user_id'], $reason, $this->users->passwordResetFailureDetails());
+            session()->setFlash('error', return_translation(in_array($reason, ['storage_failure', 'token_claim_failed'], true) ? 'auth_reset_save_error' : 'auth_reset_invalid_token'));
             response()->redirect(base_href('/login'));
         }
 

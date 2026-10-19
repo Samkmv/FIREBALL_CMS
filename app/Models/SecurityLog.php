@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use FBL\Pagination;
+use App\Services\SecurityLogPresenter;
 
 class SecurityLog
 {
@@ -42,9 +43,10 @@ class SecurityLog
         self::$schemaReady = true;
     }
 
-    public function record(string $event, string $result = 'success', ?int $actorUserId = null, ?int $targetUserId = null, string $reason = ''): void
+    public function record(string $event, string $result = 'success', ?int $actorUserId = null, ?int $targetUserId = null, string $reason = '', array $details = []): void
     {
         $this->ensureTableExists();
+        $reason = SecurityLogPresenter::encodeReason(trim($reason), $details);
 
         db()->query(
             "INSERT INTO {$this->table}
@@ -86,6 +88,18 @@ class SecurityLog
             $where = 'WHERE sl.event LIKE ? OR sl.result LIKE ? OR sl.reason LIKE ? OR sl.ip_address LIKE ? OR actor.login LIKE ? OR target.login LIKE ?';
             $like = '%' . $search . '%';
             $params = [$like, $like, $like, $like, $like, $like];
+            foreach (SecurityLogPresenter::matchingCodes($search) as $kind => $codes) {
+                foreach ($codes as $code) {
+                    if ($kind === 'reason') {
+                        $where .= ' OR sl.reason = ? OR sl.reason LIKE ?';
+                        $params[] = $code;
+                        $params[] = '%"code":"' . $code . '"%';
+                    } else {
+                        $where .= ' OR sl.' . $kind . ' = ?';
+                        $params[] = $code;
+                    }
+                }
+            }
         }
 
         $total = (int)db()->query("SELECT COUNT(*) FROM {$this->table} sl {$joins} {$where}", $params)->getColumn();

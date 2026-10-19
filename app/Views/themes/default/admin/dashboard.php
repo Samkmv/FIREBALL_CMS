@@ -614,14 +614,14 @@ echo view()->renderPartial('admin/shell_open', [
                         if (!is_array($activityItem) || empty($activityItem['event'])) {
                             continue;
                         }
-                        $event = trim(str_replace(['.', '_', '-'], ' ', (string)$activityItem['event']));
+                        $event = \App\Services\SecurityLogPresenter::event((string)$activityItem['event']);
                         $actor = trim((string)($activityItem['actor_login'] ?? ''));
                         $createdAt = strtotime((string)($activityItem['created_at'] ?? '')) ?: time();
                         ?>
                         <li class="fb-activity-item">
                             <span class="fb-activity-icon"><i class="ci-activity" aria-hidden="true"></i></span>
                             <div class="fb-activity-copy">
-                                <div class="fb-activity-title"><?= htmlSC(ucfirst($event)) ?></div>
+                                <div class="fb-activity-title"><?= htmlSC($event) ?></div>
                                 <div class="fb-activity-meta">
                                     <?= $actor !== '' ? '@' . htmlSC($actor) . ' · ' : '' ?><?= htmlSC(date('d.m.Y H:i', $createdAt)) ?>
                                 </div>

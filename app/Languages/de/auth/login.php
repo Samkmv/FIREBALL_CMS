@@ -18,7 +18,7 @@ return [
     'auth_password_toggle' => 'Passwort anzeigen oder ausblenden',
     'auth_login_rate_limited' => 'Zu viele Anmeldeversuche. Versuchen Sie es in 10 Minuten erneut.',
     'auth_login_success' => 'Sie haben sich erfolgreich angemeldet.',
-    'auth_reset_request_success' => 'Falls ein Konto mit dieser E-Mail-Adresse existiert, haben wir einen Link zum Zuruecksetzen des Passworts gesendet.',
+    'auth_reset_request_success' => 'Ein Link zum Zurücksetzen des Passworts wurde an Ihre E-Mail gesendet. Er gilt 60 Minuten.',
     'auth_reset_request_error' => 'Die E-Mail zur Passwortwiederherstellung konnte nicht gesendet werden. Pruefen Sie die SMTP-Einstellungen.',
     'auth_reset_invalid_token' => 'Der Link zum Zuruecksetzen des Passworts ist ungueltig oder abgelaufen.',
     'auth_reset_success' => 'Das Passwort wurde erfolgreich aktualisiert. Sie koennen sich jetzt anmelden.',

@@ -1,5 +1,7 @@
 <?php
-$identifierLabel = (new \App\Services\AuthSettings())->loginLabel($auth_policy ?? null);
+$authPolicy = $auth_policy ?? (new \App\Services\AuthSettings())->all();
+$identifierLabel = (new \App\Services\AuthSettings())->loginLabel($authPolicy);
+$phoneLoginEnabled = $authPolicy['auth_phone_mode'] !== 'off' && $authPolicy['auth_login_phone'] === '1';
 $formErrors = session()->get('form_errors') ?: [];
 $errorText = static function (string $field, string $fallback) use ($formErrors): string {
     return htmlSC((string)($formErrors[$field][0] ?? return_translation($fallback)));
@@ -25,10 +27,16 @@ $errorText = static function (string $field, string $fallback) use ($formErrors)
                             class="form-control form-control-lg <?= get_validation_class('login') ?>"
                             placeholder="<?= htmlSC($identifierLabel) ?>"
                             autocomplete="username"
+                            autocapitalize="none"
+                            spellcheck="false"
+                            <?= $phoneLoginEnabled ? 'data-auth-identifier-phone' : '' ?>
                             required
                         >
                         <div class="invalid-feedback"><?= $errorText('login', 'auth_identifier_required') ?></div>
                     </div>
+                    <?php if ($phoneLoginEnabled): ?>
+                        <script src="<?= asset_versioned_url(base_url('/assets/default/js/auth-phone.js'), WWW . '/assets/default/js/auth-phone.js') ?>" defer></script>
+                    <?php endif; ?>
 
                     <?= $this->partial('password_field', [
                         'id' => 'login-password',

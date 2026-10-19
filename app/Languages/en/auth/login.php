@@ -18,7 +18,7 @@ return [
     'auth_password_toggle' => 'Show or hide password',
     'auth_login_rate_limited' => 'Too many sign-in attempts. Try again in 10 minutes.',
     'auth_login_success' => 'You have successfully signed in.',
-    'auth_reset_request_success' => 'If an account with that email exists, we have sent a password reset link.',
+    'auth_reset_request_success' => 'A password reset link has been sent to your email. It is valid for 60 minutes.',
     'auth_reset_request_error' => 'Could not send the password recovery email. Check your SMTP settings.',
     'auth_reset_invalid_token' => 'The password reset link is invalid or has expired.',
     'auth_reset_success' => 'Password updated successfully. You can now sign in.',

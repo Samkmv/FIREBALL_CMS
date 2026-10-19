@@ -84,7 +84,8 @@ ob_start();
                     $actor = trim((string)($log['actor_login'] ?? '')) ?: '—';
                     $target = trim((string)($log['target_login'] ?? '')) ?: '—';
                     $result = strtolower(trim((string)($log['result'] ?? ''))) ?: 'unknown';
-                    $reason = trim((string)($log['reason'] ?? '')) ?: '—';
+                    $eventLabel = \App\Services\SecurityLogPresenter::event($event);
+                    $resultLabel = \App\Services\SecurityLogPresenter::result($result);
                     $ipAddress = trim((string)($log['ip_address'] ?? '')) ?: '—';
                     $userAgent = trim((string)($log['user_agent'] ?? '')) ?: '—';
                     $createdAtTimestamp = strtotime((string)($log['created_at'] ?? ''));
@@ -95,11 +96,10 @@ ob_start();
                         'denied', 'warning' => 'text-warning bg-warning-subtle',
                         default => 'text-secondary bg-secondary-subtle',
                     };
-                    $eventHtml = str_replace('_', '_<wbr>', htmlSC($event));
-                    $reasonHtml = str_replace('_', '_<wbr>', htmlSC($reason));
+                    $reasonHtml = view()->renderPartial('admin/partials/security_log_reason', ['log' => $log]);
                     $mobileCards[] = [
                         'id' => (int)($log['id'] ?? 0),
-                        'title' => $event,
+                        'title' => $eventLabel,
                         'slug' => $actor,
                         'slug_label' => return_translation('admin_security_log_actor'),
                         'category' => $target,
@@ -107,7 +107,7 @@ ob_start();
                         'author' => $ipAddress,
                         'author_label' => 'IP',
                         'status' => [[
-                            'label' => $result,
+                            'label' => $resultLabel,
                             'class' => $resultClass,
                         ]],
                         'status_label' => return_translation('admin_security_log_result'),
@@ -116,7 +116,7 @@ ob_start();
                         'extra_fields' => [
                             [
                                 'label' => return_translation('admin_security_log_reason'),
-                                'value' => $reason,
+                                'html' => $reasonHtml,
                             ],
                             [
                                 'label' => 'User-Agent',
@@ -127,11 +127,11 @@ ob_start();
                     ?>
                     <tr>
                         <th class="text-body-secondary text-nowrap fw-normal" scope="row">#<?= (int)($log['id'] ?? 0) ?></th>
-                        <td class="fw-medium admin-security-log-table__event"><?= $eventHtml ?></td>
+                        <td class="fw-medium admin-security-log-table__event"><?= htmlSC($eventLabel) ?></td>
                         <td><?= htmlSC($actor) ?></td>
                         <td><?= htmlSC($target) ?></td>
-                        <td><span class="badge fs-xs rounded-pill <?= htmlSC($resultClass) ?>"><?= htmlSC($result) ?></span></td>
-                        <td><span class="admin-security-log-table__clamp" title="<?= htmlSC($reason) ?>"><?= $reasonHtml ?></span></td>
+                        <td><span class="badge fs-xs rounded-pill <?= htmlSC($resultClass) ?>"><?= htmlSC($resultLabel) ?></span></td>
+                        <td><?= $reasonHtml ?></td>
                         <td class="text-nowrap"><?= htmlSC($ipAddress) ?></td>
                         <td class="small text-body-secondary"><span class="admin-security-log-table__clamp admin-security-log-table__user-agent" title="<?= htmlSC($userAgent) ?>"><?= htmlSC($userAgent) ?></span></td>
                         <td class="text-nowrap"><?= htmlSC($createdAt) ?></td>

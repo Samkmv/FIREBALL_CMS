@@ -18,7 +18,7 @@ return [
     'auth_password_toggle' => '显示或隐藏密码',
     'auth_login_rate_limited' => '登录尝试过多。请 10 分钟后再试。',
     'auth_login_success' => '您已成功登录。',
-    'auth_reset_request_success' => '如果该邮箱存在对应账户，我们已发送密码重置链接。',
+    'auth_reset_request_success' => '密码重置链接已发送至您的邮箱，有效期为 60 分钟。',
     'auth_reset_request_error' => '无法发送找回密码邮件。请检查 SMTP 设置。',
     'auth_reset_invalid_token' => '密码重置链接无效或已过期。',
     'auth_reset_success' => '密码已成功更新。现在可以登录。',

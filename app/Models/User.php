@@ -27,6 +27,7 @@ class User
     protected array $roles = [self::ROLE_CREATOR, self::ROLE_ADMIN, self::ROLE_MODERATOR, self::ROLE_USER];
     protected static bool $schemaReady = false;
     private string $passwordResetFailure = '';
+    private array $passwordResetFailureDetails = [];
 
     /**
      * Создаёт таблицы пользователей, ролей и восстановления пароля, а также обновляет старую схему.
@@ -1265,14 +1266,17 @@ class User
     {
         $this->ensureUsersTableExists();
         $this->passwordResetFailure = '';
+        $this->passwordResetFailureDetails = [];
         if (preg_match('/^[a-f0-9]{64}$/D', $token) !== 1) {
             $this->passwordResetFailure = 'invalid_token_format';
             return false;
         }
         $database = db();
+        $stage = 'begin';
 
         try {
             if (!$database->beginTransaction()) throw new \RuntimeException('transaction_start_failed');
+            $stage = 'lookup';
             $tokenHash = hash('sha256', $token);
             $now = date('Y-m-d H:i:s');
             $reset = $database->query(
@@ -1290,23 +1294,30 @@ class User
 
             if (!$reset) {
                 $this->passwordResetFailure = $this->passwordResetTokenFailureReason($token);
+                $this->passwordResetFailureDetails = ['stage' => $stage];
                 $database->rollBack();
                 return false;
             }
 
+            $stage = 'claim';
+            // Use the unique token hash, not a PHP integer cast of a database
+            // BIGINT UNSIGNED identifier (which may exceed PHP_INT_MAX).
             $database->query(
                 "UPDATE {$this->passwordResetsTable}
                  SET used_at = ?
-                 WHERE id = ? AND used_at IS NULL",
-                [$now, (int)$reset['id']]
+                 WHERE token_hash = ? AND user_id = ? AND used_at IS NULL AND expires_at > ?",
+                [$now, $tokenHash, (int)$reset['user_id'], $now]
             );
 
-            if ($database->rowCount() !== 1) {
+            $affectedRows = $database->rowCount();
+            if ($affectedRows !== 1) {
+                $this->passwordResetFailureDetails = ['stage' => $stage, 'affected_rows' => $affectedRows];
                 $database->rollBack();
                 $this->passwordResetFailure = 'token_claim_failed';
                 return false;
             }
 
+            $stage = 'password';
             $database->query(
                 "UPDATE {$this->usersTable}
                  SET password = ?,
@@ -1315,14 +1326,17 @@ class User
                 [password_hash($password, PASSWORD_DEFAULT), (int)$reset['user_id']]
             );
             if ($database->rowCount() !== 1) throw new \RuntimeException('password_save_failed');
+            $stage = 'sessions';
             if (\App\Services\UserSessionService::available()) {
                 $database->query('UPDATE user_sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL', [$now, (int)$reset['user_id']]);
             }
+            $stage = 'consume';
             $database->query(
                 "UPDATE {$this->passwordResetsTable} SET used_at = ?
                  WHERE user_id = ? AND used_at IS NULL",
                 [$now, (int)$reset['user_id']]
             );
+            $stage = 'commit';
             if (!$database->commit()) throw new \RuntimeException('transaction_commit_failed');
 
             return true;
@@ -1334,6 +1348,12 @@ class User
             // Do not log PDO messages or values: diagnostics must never contain
             // a password, raw token or recovery URL.
             $this->passwordResetFailure = 'storage_failure';
+            $details = ['stage' => $stage];
+            if ($exception instanceof \PDOException) {
+                $details['sql_state'] = (string)($exception->errorInfo[0] ?? $exception->getCode());
+                $details['driver_code'] = (int)($exception->errorInfo[1] ?? 0);
+            }
+            $this->passwordResetFailureDetails = \App\Services\SecurityLogPresenter::safeDetails($details);
             return false;
         }
     }
@@ -1341,6 +1361,11 @@ class User
     public function passwordResetFailureReason(): string
     {
         return $this->passwordResetFailure;
+    }
+
+    public function passwordResetFailureDetails(): array
+    {
+        return $this->passwordResetFailureDetails;
     }
 
     /** Stable internal codes only: never include the secret token in logs. */
