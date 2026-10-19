@@ -3,7 +3,7 @@
 return [
     'auth_login_title' => 'Anmeldung',
     'auth_login_heading' => 'Anmelden',
-    'auth_login_subtitle' => 'Verwenden Sie Ihren Login und Ihr Passwort, um Ihr Profil zu oeffnen.',
+    'auth_login_subtitle' => 'Melden Sie sich mit einer erlaubten Kontokennung und Ihrem Passwort an.',
     'auth_login_email' => 'E-Mail',
     'auth_login_login' => 'Login',
     'auth_login_password' => 'Passwort',
@@ -14,7 +14,7 @@ return [
     'auth_login_forgot_submit' => 'Link senden',
     'auth_login_register_text' => 'Noch kein Konto?',
     'auth_login_register_link' => 'Jetzt erstellen',
-    'auth_login_invalid_credentials' => 'Ungueltiger Login oder falsches Passwort.',
+    'auth_login_invalid_credentials' => 'Ungueltige Anmeldedaten.',
     'auth_password_toggle' => 'Passwort anzeigen oder ausblenden',
     'auth_login_rate_limited' => 'Zu viele Anmeldeversuche. Versuchen Sie es in 10 Minuten erneut.',
     'auth_login_success' => 'Sie haben sich erfolgreich angemeldet.',

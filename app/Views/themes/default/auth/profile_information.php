@@ -1,3 +1,22 @@
+<?php
+$identityAvailable = \App\Services\AuthIdentity::available();
+$authPolicy = (new \App\Services\AuthSettings())->all();
+$showPhone = $identityAvailable && $authPolicy['auth_phone_mode'] !== 'off';
+?>
+<?php if ($showPhone && $authPolicy['auth_phone_mode'] === 'required' && empty($user['phone_normalized'])): ?>
+<div class="alert alert-info" role="status"><?= print_translation('auth_phone_legacy_notice') ?></div>
+<?php endif; ?>
+<?php if ($identityAvailable && !empty($user['pending_email'])): ?>
+<div class="alert alert-info" role="status">
+    <?= print_translation('auth_verify_pending') ?> <?= htmlSC($user['pending_email']) ?>
+    <a class="alert-link" href="<?= base_href('/verify-email') ?>"><?= print_translation('auth_verify_resend') ?></a>
+</div>
+<?php elseif ($identityAvailable && empty($user['email_verified_at'])): ?>
+<div class="alert alert-info" role="status">
+    <?= print_translation('auth_verify_profile_notice') ?>
+    <a class="alert-link" href="<?= base_href('/verify-email') ?>"><?= print_translation('auth_verify_resend') ?></a>
+</div>
+<?php endif; ?>
 <form class="border rounded-5 p-4 p-md-5 mb-4" action="<?= base_href('/profile/settings?section=information') ?>" method="post" novalidate>
     <?= get_csrf_field() ?>
     <input type="hidden" name="profile_action" value="details">
@@ -26,9 +45,16 @@
         </div>
         <div class="col-12">
             <label class="form-label" for="profile-email"><?= print_translation('auth_profile_email') ?></label>
-            <input id="profile-email" type="email" name="email" value="<?= old('email') ?: htmlSC($user['email']) ?>" class="form-control <?= get_validation_class('email') ?>">
+            <input id="profile-email" type="email" name="email" value="<?= old('email') ?: htmlSC($user['email']) ?>" class="form-control <?= get_validation_class('email') ?>" autocomplete="email" maxlength="190" required>
             <?= get_errors('email') ?>
         </div>
+        <?php if ($showPhone): ?>
+        <div class="col-12">
+            <label class="form-label" for="profile-phone"><?= print_translation('auth_identifier_phone') ?></label>
+            <input id="profile-phone" type="tel" name="phone" value="<?= htmlSC((string)(session()->get('form_data.phone') ?? $user['phone_normalized'] ?? '')) ?>" class="form-control <?= get_validation_class('phone') ?>" inputmode="tel" autocomplete="tel" maxlength="25" placeholder="+7 (999) 123-45-67" data-auth-phone>
+            <?= get_errors('phone') ?>
+        </div>
+        <?php endif; ?>
     </div>
 
     <div class="mt-3">
@@ -46,6 +72,9 @@
         </button>
     </div>
 </form>
+<?php if ($showPhone): ?>
+<script src="<?= asset_versioned_url(base_url('/assets/default/js/auth-phone.js'), WWW . '/assets/default/js/auth-phone.js') ?>" defer></script>
+<?php endif; ?>
 
     <form class="border rounded-5 p-4 p-md-5" action="<?= base_href('/profile/settings?section=information') ?>" method="post" enctype="multipart/form-data">
         <?= get_csrf_field() ?>

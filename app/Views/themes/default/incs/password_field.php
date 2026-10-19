@@ -25,7 +25,7 @@ if ($fieldHint !== '') {
 ?>
 <div class="<?= htmlSC($fieldWrapperClass) ?>">
     <?php if ($fieldLabel !== ''): ?>
-        <label class="form-label" for="<?= htmlSC($fieldId) ?>"><?= htmlSC($fieldLabel) ?></label>
+        <label class="form-label" for="<?= htmlSC($fieldId) ?>"><?= htmlSC($fieldLabel) ?><?php if (!empty($required_mark) && !empty($required)): ?> <span class="text-danger" data-required-mark aria-hidden="true">*</span><?php endif; ?></label>
     <?php endif; ?>
     <div class="password-toggle password-field__control" data-password-toggle>
         <input

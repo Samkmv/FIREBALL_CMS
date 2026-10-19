@@ -29,7 +29,7 @@ return [
     'auth_validation_email_exists' => 'Пользователь с таким email уже существует.',
     'auth_validation_password_required' => 'Введите пароль.',
     'auth_validation_password_length' => 'Пароль должен содержать минимум 8 символов.',
-    'auth_validation_password_strength' => 'Пароль должен содержать минимум одну заглавную букву и одну цифру.',
+    'auth_validation_password_strength' => 'Минимум 8 символов, хотя бы одна заглавная буква и одна цифра.',
     'auth_validation_password_confirmation_required' => 'Подтвердите пароль.',
     'auth_validation_password_confirmation_match' => 'Пароли не совпадают.',
     'auth_validation_privacy_required' => 'Необходимо принять Политику конфиденциальности.',

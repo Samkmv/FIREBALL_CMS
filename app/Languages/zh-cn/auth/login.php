@@ -3,7 +3,7 @@
 return [
     'auth_login_title' => '登录',
     'auth_login_heading' => '登录账户',
-    'auth_login_subtitle' => '使用您的登录名和密码进入个人资料。',
+    'auth_login_subtitle' => '使用已启用的账号标识和密码登录。',
     'auth_login_email' => '邮箱',
     'auth_login_login' => '登录名',
     'auth_login_password' => '密码',
@@ -14,7 +14,7 @@ return [
     'auth_login_forgot_submit' => '发送重置链接',
     'auth_login_register_text' => '还没有账户？',
     'auth_login_register_link' => '立即创建',
-    'auth_login_invalid_credentials' => '登录名或密码无效。',
+    'auth_login_invalid_credentials' => '登录信息无效。',
     'auth_password_toggle' => '显示或隐藏密码',
     'auth_login_rate_limited' => '登录尝试过多。请 10 分钟后再试。',
     'auth_login_success' => '您已成功登录。',

@@ -29,7 +29,7 @@ return [
     'auth_validation_email_exists' => 'Ein Benutzer mit dieser E-Mail-Adresse existiert bereits.',
     'auth_validation_password_required' => 'Geben Sie Ihr Passwort ein.',
     'auth_validation_password_length' => 'Das Passwort muss mindestens 8 Zeichen lang sein.',
-    'auth_validation_password_strength' => 'Das Passwort muss mindestens einen Grossbuchstaben und eine Zahl enthalten.',
+    'auth_validation_password_strength' => 'Mindestens 8 Zeichen, darunter ein Großbuchstabe und eine Zahl.',
     'auth_validation_password_confirmation_required' => 'Bestaetigen Sie Ihr Passwort.',
     'auth_validation_password_confirmation_match' => 'Die Passwoerter stimmen nicht ueberein.',
     'auth_validation_privacy_required' => 'Sie muessen die Datenschutzerklaerung akzeptieren.',

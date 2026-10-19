@@ -26,6 +26,7 @@ class User
     protected string $rolesTable = 'user_roles';
     protected array $roles = [self::ROLE_CREATOR, self::ROLE_ADMIN, self::ROLE_MODERATOR, self::ROLE_USER];
     protected static bool $schemaReady = false;
+    private string $passwordResetFailure = '';
 
     /**
      * Создаёт таблицы пользователей, ролей и восстановления пароля, а также обновляет старую схему.
@@ -85,7 +86,9 @@ class User
     public function findByEmail(string $email): array|false
     {
         $this->ensureUsersTableExists();
-        return db()->findOne($this->usersTable, $email, 'email');
+        $column = \App\Services\AuthIdentity::available() ? 'email_normalized' : 'LOWER(TRIM(email))';
+        $rows = db()->query("SELECT * FROM {$this->usersTable} WHERE {$column} = ? LIMIT 2", [\App\Services\AuthIdentity::email($email)])->get() ?: [];
+        return count($rows) === 1 ? $rows[0] : false;
     }
 
     /**
@@ -241,20 +244,31 @@ class User
     {
         $this->ensureUsersTableExists();
         $role = $this->resolveRoleForNewUser();
+        $policy = (new \App\Services\AuthSettings())->all();
+        if (!\App\Services\AuthIdentity::available()) throw new \RuntimeException('auth_schema_required');
+        if (!\App\Services\AuthIdentity::validEmail(\App\Services\AuthIdentity::email((string)($data['email'] ?? '')))) throw new \InvalidArgumentException('auth_validation_email_invalid');
+        $phone = $policy['auth_phone_mode'] === 'off' ? null : \App\Services\AuthIdentity::phone((string)($data['phone'] ?? ''));
+        if ($phone === null && $policy['auth_phone_mode'] === 'required') throw new \InvalidArgumentException('auth_phone_required');
+        $login = $policy['auth_login_mode'] === 'automatic'
+            ? 'user-' . bin2hex(random_bytes(12))
+            : $this->normalizeLogin((string)($data['login'] ?? ''));
+        $identitySql = \App\Services\AuthIdentity::available() ? ', phone, phone_normalized, email_verification_required' : '';
+        $identityValues = $identitySql !== '' ? ', :phone, :phone_normalized, 1' : '';
+        $identityParams = $identitySql !== '' ? ['phone' => $phone, 'phone_normalized' => $phone] : [];
 
         db()->query(
-            "INSERT INTO {$this->usersTable} (name, login, email, password, role, locale, admin_locale, created_at)
-             VALUES (:name, :login, :email, :password, :role, :locale, :admin_locale, :created_at)",
+            "INSERT INTO {$this->usersTable} (name, login, email, password, role, locale, admin_locale, created_at{$identitySql})
+             VALUES (:name, :login, :email, :password, :role, :locale, :admin_locale, :created_at{$identityValues})",
             [
                 'name' => trim($data['name']),
-                'login' => $this->ensureUniqueLogin($this->normalizeLogin((string)($data['login'] ?? '')), null),
+                'login' => $login,
                 'email' => mb_strtolower(trim($data['email'])),
                 'password' => password_hash($data['password'], PASSWORD_DEFAULT),
                 'role' => $role,
                 'locale' => Localization::currentLocale(),
                 'admin_locale' => Localization::siteLocale(),
                 'created_at' => date('Y-m-d H:i:s'),
-            ]
+            ] + $identityParams
         );
 
         return (int)db()->getInsertId();
@@ -475,6 +489,7 @@ class User
     public function updateProfile(int $id, array $data): void
     {
         $this->ensureUsersTableExists();
+        $existing = $this->findById($id);
 
         $params = [
             'id' => $id,
@@ -484,9 +499,20 @@ class User
         ];
 
         $localeSql = '';
+        if ($existing && \App\Services\AuthIdentity::available() && $params['email'] !== \App\Services\AuthIdentity::email((string)$existing['email'])) {
+            $localeSql .= ', pending_email = :pending_email';
+            $params['pending_email'] = $params['email'];
+            $params['email'] = (string)$existing['email'];
+        }
+        if (\App\Services\AuthIdentity::available() && array_key_exists('phone', $data)
+            && (new \App\Services\AuthSettings())->all()['auth_phone_mode'] !== 'off') {
+            $phone = \App\Services\AuthIdentity::phone((string)$data['phone']);
+            $localeSql .= ', phone = :phone, phone_normalized = :phone_normalized';
+            $params['phone'] = $params['phone_normalized'] = $phone;
+        }
         $locale = Localization::normalizeLocale((string)($data['locale'] ?? ''));
         if ($locale !== '') {
-            $localeSql = ', locale = :locale';
+            $localeSql .= ', locale = :locale';
             $params['locale'] = $locale;
         }
 
@@ -494,6 +520,7 @@ class User
         if (!empty($data['password'])) {
             $passwordSql = ', password = :password';
             $params['password'] = password_hash((string)$data['password'], PASSWORD_DEFAULT);
+            $passwordSql .= ', session_version = COALESCE(session_version, 1) + 1';
         }
 
         db()->query(
@@ -907,11 +934,13 @@ class User
             $errors['name'][] = $this->translate('auth_validation_name_length');
         }
 
-        $loginErrors = $this->validateLoginField($login);
+        $policy = (new \App\Services\AuthSettings())->all();
+        $loginErrors = $policy['auth_login_mode'] === 'automatic' ? [] : $this->validateLoginField($login);
         if (!empty($loginErrors)) {
             $errors['login'] = $loginErrors;
         } elseif (
-            $email !== ''
+            $policy['auth_login_mode'] !== 'automatic'
+            && $email !== ''
             && filter_var($email, FILTER_VALIDATE_EMAIL)
             && $login === $this->normalizeLogin($email)
         ) {
@@ -922,10 +951,17 @@ class User
 
         if ($email === '') {
             $errors['email'][] = $this->translate('auth_validation_email_required');
-        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        } elseif (!\App\Services\AuthIdentity::validEmail($email)) {
             $errors['email'][] = $this->translate('auth_validation_email_invalid');
         } elseif ($this->findByEmail($email)) {
             $errors['email'][] = $this->translate('auth_validation_email_exists');
+        }
+        if ($policy['auth_phone_mode'] !== 'off') {
+            try {
+                $phone = \App\Services\AuthIdentity::phone((string)($data['phone'] ?? ''));
+                if ($phone === null && $policy['auth_phone_mode'] === 'required') $errors['phone'][] = $this->translate('auth_phone_required');
+                if ($phone !== null && $this->phoneExists($phone)) $errors['phone'][] = $this->translate('auth_phone_exists');
+            } catch (\InvalidArgumentException) { $errors['phone'][] = $this->translate('auth_phone_invalid'); }
         }
 
         if ($password === '') {
@@ -953,13 +989,13 @@ class User
         $this->ensureUsersTableExists();
 
         $errors = [];
-        $login = $this->normalizeLogin((string)($data['login'] ?? ''));
+        $login = trim((string)($data['identifier'] ?? $data['login'] ?? ''));
         $password = (string)($data['password'] ?? '');
 
         if ($login === '') {
-            $errors['login'][] = $this->translate('auth_validation_login_required');
-        } elseif (!$this->isValidLogin($login)) {
-            $errors['login'][] = $this->translate('auth_validation_login_format');
+            $errors['login'][] = $this->translate('auth_identifier_required');
+        } elseif (strlen($login) > 254) {
+            $errors['login'][] = $this->translate('auth_login_invalid_credentials');
         }
 
         if ($password === '') {
@@ -1118,7 +1154,7 @@ class User
 
         if ($email === '') {
             $errors['email'][] = $this->translate('auth_validation_email_required');
-        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        } elseif (!\App\Services\AuthIdentity::validEmail($email)) {
             $errors['email'][] = $this->translate('auth_validation_email_invalid');
         } elseif ($this->emailExists($email, $userId)) {
             $errors['email'][] = $this->translate('auth_validation_email_exists');
@@ -1137,11 +1173,24 @@ class User
         }
 
         $currentUser = $this->findById($userId);
+        $phoneChanged = false;
+        if (\App\Services\AuthIdentity::available() && array_key_exists('phone', $data)
+            && (new \App\Services\AuthSettings())->all()['auth_phone_mode'] !== 'off') {
+            try {
+                $phone = \App\Services\AuthIdentity::phone((string)$data['phone']);
+                $phoneChanged = $phone !== ($currentUser['phone_normalized'] ?? null);
+                if ($phone !== null && $this->phoneExists($phone, $userId)) $errors['phone'][] = $this->translate('auth_phone_exists');
+                if ($phone === null && !empty($currentUser['phone_normalized']) && (new \App\Services\AuthSettings())->all()['auth_phone_mode'] === 'required') $errors['phone'][] = $this->translate('auth_phone_required');
+                $policy = (new \App\Services\AuthSettings())->all();
+                if ($phone === null && $policy['auth_login_login'] !== '1' && $policy['auth_login_email'] !== '1') $errors['phone'][] = $this->translate('auth_phone_required');
+            } catch (\InvalidArgumentException) { $errors['phone'][] = $this->translate('auth_phone_invalid'); }
+        }
         $sensitiveChange = $currentUser
             && (
                 $login !== $this->normalizeLogin((string)($currentUser['login'] ?? ''))
                 || $email !== mb_strtolower(trim((string)($currentUser['email'] ?? '')))
                 || $password !== ''
+                || $phoneChanged
             );
 
         if ($sensitiveChange && ($currentPassword === '' || !password_verify($currentPassword, (string)($currentUser['password'] ?? '')))) {
@@ -1162,7 +1211,8 @@ class User
             return null;
         }
 
-        $this->deletePasswordResetTokensForUser((int)$user['id']);
+        // A resend (or an SMTP failure) must not revoke a link already delivered.
+        // All outstanding links are consumed atomically when a password is changed.
 
         $token = bin2hex(random_bytes(32));
         $tokenHash = hash('sha256', $token);
@@ -1192,6 +1242,7 @@ class User
     public function findActivePasswordResetByToken(string $token): array|false
     {
         $this->ensureUsersTableExists();
+        if (preg_match('/^[a-f0-9]{64}$/D', $token) !== 1) return false;
         $tokenHash = hash('sha256', $token);
 
         return db()->query(
@@ -1200,7 +1251,8 @@ class User
              INNER JOIN {$this->usersTable} u ON u.id = pr.user_id
              WHERE pr.token_hash = ?
                AND pr.used_at IS NULL
-               AND pr.expires_at >= ?
+               AND pr.expires_at > ?
+               AND LOWER(TRIM(pr.email)) = LOWER(TRIM(u.email))
              LIMIT 1",
             [$tokenHash, date('Y-m-d H:i:s')]
         )->getOne();
@@ -1212,24 +1264,32 @@ class User
     public function resetPasswordByToken(string $token, string $password): bool
     {
         $this->ensureUsersTableExists();
+        $this->passwordResetFailure = '';
+        if (preg_match('/^[a-f0-9]{64}$/D', $token) !== 1) {
+            $this->passwordResetFailure = 'invalid_token_format';
+            return false;
+        }
         $database = db();
-        $database->beginTransaction();
 
         try {
+            if (!$database->beginTransaction()) throw new \RuntimeException('transaction_start_failed');
             $tokenHash = hash('sha256', $token);
             $now = date('Y-m-d H:i:s');
             $reset = $database->query(
-                "SELECT id, user_id
-                 FROM {$this->passwordResetsTable}
-                 WHERE token_hash = ?
-                   AND used_at IS NULL
-                   AND expires_at >= ?
+                "SELECT pr.id, pr.user_id, pr.email
+                 FROM {$this->passwordResetsTable} pr
+                 INNER JOIN {$this->usersTable} u ON u.id = pr.user_id
+                 WHERE pr.token_hash = ?
+                   AND pr.used_at IS NULL
+                   AND pr.expires_at > ?
+                   AND LOWER(TRIM(pr.email)) = LOWER(TRIM(u.email))
                  LIMIT 1
                  FOR UPDATE",
                 [$tokenHash, $now]
             )->getOne();
 
             if (!$reset) {
+                $this->passwordResetFailure = $this->passwordResetTokenFailureReason($token);
                 $database->rollBack();
                 return false;
             }
@@ -1243,6 +1303,7 @@ class User
 
             if ($database->rowCount() !== 1) {
                 $database->rollBack();
+                $this->passwordResetFailure = 'token_claim_failed';
                 return false;
             }
 
@@ -1253,12 +1314,16 @@ class User
                  WHERE id = ?",
                 [password_hash($password, PASSWORD_DEFAULT), (int)$reset['user_id']]
             );
+            if ($database->rowCount() !== 1) throw new \RuntimeException('password_save_failed');
+            if (\App\Services\UserSessionService::available()) {
+                $database->query('UPDATE user_sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL', [$now, (int)$reset['user_id']]);
+            }
             $database->query(
-                "DELETE FROM {$this->passwordResetsTable}
-                 WHERE user_id = ?",
-                [(int)$reset['user_id']]
+                "UPDATE {$this->passwordResetsTable} SET used_at = ?
+                 WHERE user_id = ? AND used_at IS NULL",
+                [$now, (int)$reset['user_id']]
             );
-            $database->commit();
+            if (!$database->commit()) throw new \RuntimeException('transaction_commit_failed');
 
             return true;
         } catch (\Throwable $exception) {
@@ -1266,8 +1331,36 @@ class User
                 $database->rollBack();
             } catch (\Throwable) {
             }
-            throw $exception;
+            // Do not log PDO messages or values: diagnostics must never contain
+            // a password, raw token or recovery URL.
+            $this->passwordResetFailure = 'storage_failure';
+            return false;
         }
+    }
+
+    public function passwordResetFailureReason(): string
+    {
+        return $this->passwordResetFailure;
+    }
+
+    /** Stable internal codes only: never include the secret token in logs. */
+    public function passwordResetTokenFailureReason(string $token): string
+    {
+        if (preg_match('/^[a-f0-9]{64}$/D', $token) !== 1) return 'invalid_token_format';
+        $row = db()->query("SELECT pr.used_at, pr.expires_at, pr.email, u.id AS account_id, u.email AS account_email
+            FROM {$this->passwordResetsTable} pr LEFT JOIN {$this->usersTable} u ON u.id = pr.user_id
+            WHERE pr.token_hash = ? LIMIT 1", [hash('sha256', $token)])->getOne();
+        if (!$row) return 'token_missing';
+        if (!$row['account_id']) return 'account_missing';
+        if ($row['used_at'] !== null) return 'token_used';
+        if (strtotime($row['expires_at']) <= time()) return 'token_expired';
+        if (\App\Services\AuthIdentity::email($row['email']) !== \App\Services\AuthIdentity::email($row['account_email'])) return 'account_email_changed';
+        return 'token_claim_failed';
+    }
+
+    public function discardPasswordResetToken(string $token): void
+    {
+        db()->query("DELETE FROM {$this->passwordResetsTable} WHERE token_hash = ?", [hash('sha256', $token)]);
     }
 
     /**
@@ -1993,12 +2086,18 @@ class User
     {
         if ($ignoreId) {
             return (int)db()->query(
-                "SELECT COUNT(*) FROM {$this->usersTable} WHERE email = ? AND id != ?",
+                "SELECT COUNT(*) FROM {$this->usersTable} WHERE LOWER(TRIM(email)) = ? AND id != ?",
                 [$email, $ignoreId]
             )->getColumn() > 0;
         }
 
-        return (int)db()->query("SELECT COUNT(*) FROM {$this->usersTable} WHERE email = ?", [$email])->getColumn() > 0;
+        return (int)db()->query("SELECT COUNT(*) FROM {$this->usersTable} WHERE LOWER(TRIM(email)) = ?", [\App\Services\AuthIdentity::email($email)])->getColumn() > 0;
+    }
+
+    public function phoneExists(string $phone, ?int $ignoreId = null): bool
+    {
+        if (!\App\Services\AuthIdentity::available()) return false;
+        return (int)db()->query("SELECT COUNT(*) FROM {$this->usersTable} WHERE phone_normalized = ? AND id <> ?", [$phone, $ignoreId ?? 0])->getColumn() > 0;
     }
 
     /**

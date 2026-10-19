@@ -29,7 +29,7 @@ return [
     'auth_validation_email_exists' => '该邮箱已被使用。',
     'auth_validation_password_required' => '请输入密码。',
     'auth_validation_password_length' => '密码至少需要 8 个字符。',
-    'auth_validation_password_strength' => '密码必须至少包含一个大写字母和一个数字。',
+    'auth_validation_password_strength' => '密码至少需要 8 个字符，并包含一个大写字母和一个数字。',
     'auth_validation_password_confirmation_required' => '请确认密码。',
     'auth_validation_password_confirmation_match' => '两次输入的密码不一致。',
     'auth_validation_privacy_required' => '您必须接受隐私政策。',

@@ -4,19 +4,25 @@ use FBL\Auth;
 
 function log_error_details(string $title, array $context = [], ?\Throwable $exception = null): void
 {
+    // Recovery/confirmation links are bearer credentials, including in a failed
+    // SQL or mail request. Never copy their query string or stack arguments.
+    $requestUri = (string)($_SERVER['REQUEST_URI'] ?? '-');
+    $authRequest = preg_match('~/(?:login|register|forgot-password|reset-password|verify-email|two-factor[^/?]*)(?:[/?]|$)~', $requestUri) === 1;
+    $safeUri = preg_replace('/([?&](?:token|password|password_confirmation|needCSRFToken)=)[^&#]*/i', '$1[redacted]', $requestUri);
     $lines = [
         '[' . date('Y-m-d H:i:s') . '] ' . $title,
-        'Request URI: ' . ($_SERVER['REQUEST_URI'] ?? '-'),
+        'Request URI: ' . ($safeUri ?? '[redacted]'),
         'Request Method: ' . ($_SERVER['REQUEST_METHOD'] ?? '-'),
         'Remote IP: ' . ($_SERVER['REMOTE_ADDR'] ?? '-'),
     ];
 
     if ($exception) {
         $lines[] = 'Exception: ' . get_class($exception);
-        $lines[] = 'Message: ' . $exception->getMessage();
+        $lines[] = 'Message: ' . ($authRequest ? 'Authentication request failed; code ' . $exception->getCode() : $exception->getMessage());
         $lines[] = 'File: ' . $exception->getFile();
         $lines[] = 'Line: ' . $exception->getLine();
-        $lines[] = 'Trace: ' . $exception->getTraceAsString();
+        $lines[] = 'Trace: ' . implode(PHP_EOL, array_map(static fn(array $frame): string =>
+            ($frame['file'] ?? '[internal]') . ':' . ($frame['line'] ?? 0) . ' ' . ($frame['class'] ?? '') . ($frame['type'] ?? '') . ($frame['function'] ?? ''), $exception->getTrace()));
     }
 
     foreach ($context as $key => $value) {

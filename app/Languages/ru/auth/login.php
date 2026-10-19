@@ -3,7 +3,7 @@
 return [
     'auth_login_title' => 'Вход',
     'auth_login_heading' => 'Вход в аккаунт',
-    'auth_login_subtitle' => 'Используйте логин и пароль, чтобы войти в профиль.',
+    'auth_login_subtitle' => 'Используйте доступный идентификатор и пароль для входа.',
     'auth_login_email' => 'Email',
     'auth_login_login' => 'Логин',
     'auth_login_password' => 'Пароль',
@@ -14,7 +14,7 @@ return [
     'auth_login_forgot_submit' => 'Отправить ссылку',
     'auth_login_register_text' => 'Еще нет аккаунта?',
     'auth_login_register_link' => 'Зарегистрироваться',
-    'auth_login_invalid_credentials' => 'Неверный логин или пароль.',
+    'auth_login_invalid_credentials' => 'Неверные данные для входа.',
     'auth_password_toggle' => 'Показать или скрыть пароль',
     'auth_login_rate_limited' => 'Слишком много попыток входа. Попробуйте снова через 10 минут.',
     'auth_login_success' => 'Вы успешно вошли в аккаунт.',

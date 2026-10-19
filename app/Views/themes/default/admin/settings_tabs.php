@@ -8,6 +8,12 @@ $settingsTabs = [
         'icon' => 'ci-settings',
     ],
     [
+        'key' => 'authentication',
+        'href' => base_href('/admin/settings/authentication'),
+        'label' => return_translation('auth_policy_title'),
+        'icon' => 'ci-user-check',
+    ],
+    [
         'key' => 'privacy',
         'href' => base_href('/admin/settings/privacy'),
         'label' => return_translation('admin_settings_tab_privacy'),

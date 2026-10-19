@@ -1,4 +1,5 @@
 <?php
+$identifierLabel = (new \App\Services\AuthSettings())->loginLabel($auth_policy ?? null);
 $formErrors = session()->get('form_errors') ?: [];
 $errorText = static function (string $field, string $fallback) use ($formErrors): string {
     return htmlSC((string)($formErrors[$field][0] ?? return_translation($fallback)));
@@ -15,17 +16,18 @@ $errorText = static function (string $field, string $fallback) use ($formErrors)
                     <?= get_csrf_field() ?>
 
                     <div class="position-relative mb-4">
+                        <label class="form-label" for="login-login"><?= htmlSC($identifierLabel) ?></label>
                         <input
                             id="login-login"
                             type="text"
                             name="login"
                             value="<?= old('login') ?>"
                             class="form-control form-control-lg <?= get_validation_class('login') ?>"
-                            placeholder="<?= htmlSC(return_translation('auth_login_login')) ?>"
+                            placeholder="<?= htmlSC($identifierLabel) ?>"
                             autocomplete="username"
                             required
                         >
-                        <div class="invalid-feedback"><?= $errorText('login', 'auth_validation_login_required') ?></div>
+                        <div class="invalid-feedback"><?= $errorText('login', 'auth_identifier_required') ?></div>
                     </div>
 
                     <?= view()->renderPartial('incs/password_field', [
@@ -62,6 +64,7 @@ $errorText = static function (string $field, string $fallback) use ($formErrors)
                 </div>
 
                 <p class="text-body-secondary fs-sm mt-4 mb-0">
+                    <a href="<?= base_href('/verify-email') ?>" class="d-block mb-3"><?= print_translation('auth_verify_resend') ?></a>
                     <?= print_translation('auth_login_register_text') ?>
                     <a href="<?= base_href('/register') ?>" class="fw-medium text-decoration-none"><?= print_translation('auth_login_register_link') ?></a>
                 </p>

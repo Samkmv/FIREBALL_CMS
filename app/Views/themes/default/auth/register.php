@@ -1,4 +1,5 @@
 <?php
+$authPolicy = $auth_policy ?? (new \App\Services\AuthSettings())->all();
 $legalInformation = \FBL\Theme::getLegalInformationMenu();
 $privacyUrl = '#';
 $privacySettings = (new \App\Models\SiteSetting())->all();
@@ -39,13 +40,14 @@ if ($privacyUrl === '#') {
                     <?= get_csrf_field() ?>
 
                     <div class="position-relative mb-4">
-                        <label class="form-label" for="register-name"><?= print_translation('auth_register_name') ?></label>
+                        <label class="form-label" for="register-name"><?= print_translation('auth_register_name') ?> <span class="text-danger" data-required-mark aria-hidden="true">*</span></label>
                         <input id="register-name" type="text" name="name" value="<?= old('name') ?>" class="form-control form-control-lg <?= get_validation_class('name') ?>" placeholder="<?= htmlSC(return_translation('auth_register_name')) ?>" autocomplete="name" required>
                         <div class="invalid-feedback"><?= $errorText('name', 'auth_validation_name_required') ?></div>
                     </div>
 
+                    <?php if ($authPolicy['auth_login_mode'] !== 'automatic'): ?>
                     <div class="position-relative mb-4">
-                        <label class="form-label" for="register-login"><?= print_translation('auth_register_login_field') ?></label>
+                        <label class="form-label" for="register-login"><?= print_translation('auth_register_login_field') ?> <span class="text-danger" data-required-mark aria-hidden="true">*</span></label>
                         <!-- FIREBALL_REGISTER_LOGIN_AUTOFILL_V1 -->
                         <input
                             id="register-login"
@@ -65,15 +67,26 @@ if ($privacyUrl === '#') {
                         >
                         <div class="invalid-feedback"><?= $errorText('login', 'auth_validation_login_format') ?></div>
                     </div>
+                    <?php endif; ?>
 
                     <div class="position-relative mb-4">
-                        <label class="form-label" for="register-email"><?= print_translation('auth_register_email') ?></label>
-                        <input id="register-email" type="email" name="email" value="<?= old('email') ?>" class="form-control form-control-lg <?= get_validation_class('email') ?>" placeholder="name@example.com" autocomplete="email" required>
+                        <label class="form-label" for="register-email"><?= print_translation('auth_register_email') ?> <span class="text-danger" data-required-mark aria-hidden="true">*</span></label>
+                        <input id="register-email" type="email" name="email" value="<?= old('email') ?>" class="form-control form-control-lg <?= get_validation_class('email') ?>" placeholder="name@example.com" autocomplete="email" maxlength="190" required>
                         <div class="invalid-feedback"><?= $errorText('email', 'auth_validation_email_invalid') ?></div>
                     </div>
 
+                    <?php if ($authPolicy['auth_phone_mode'] !== 'off'): ?>
+                    <div class="position-relative mb-4">
+                        <label class="form-label" for="register-phone"><?= print_translation('auth_identifier_phone') ?><?php if ($authPolicy['auth_phone_mode'] === 'required'): ?> <span class="text-danger" data-required-mark aria-hidden="true">*</span><?php endif; ?></label>
+                        <input id="register-phone" type="tel" name="phone" value="<?= old('phone') ?>" data-auth-phone class="form-control form-control-lg <?= get_validation_class('phone') ?>" placeholder="+7 (999) 123-45-67" autocomplete="tel" inputmode="tel" maxlength="25" <?= $authPolicy['auth_phone_mode'] === 'required' ? 'required' : '' ?>>
+                        <div class="invalid-feedback"><?= $errorText('phone', 'auth_phone_invalid') ?></div>
+                    </div>
+                    <script src="<?= asset_versioned_url(base_url('/assets/default/js/auth-phone.js'), WWW . '/assets/default/js/auth-phone.js') ?>" defer></script>
+                    <?php endif; ?>
+
                     <?= view()->renderPartial('incs/password_field', [
                         'id' => 'register-password',
+                        'required_mark' => true,
                         'name' => 'password',
                         'label' => return_translation('auth_register_password'),
                         'placeholder' => return_translation('auth_register_password_placeholder'),
@@ -88,6 +101,7 @@ if ($privacyUrl === '#') {
 
                     <?= view()->renderPartial('incs/password_field', [
                         'id' => 'register-password-confirmation',
+                        'required_mark' => true,
                         'name' => 'password_confirmation',
                         'label' => return_translation('auth_register_password_confirmation'),
                         'placeholder' => return_translation('auth_register_password_confirmation'),
@@ -104,6 +118,7 @@ if ($privacyUrl === '#') {
                         <label for="privacy-accepted" class="form-check-label">
                             <?= print_translation('auth_register_privacy_prefix') ?>
                             <a class="text-dark-emphasis" href="<?= htmlSC($privacyUrl) ?>" <?= $privacyUrl === '#' ? '' : 'target="_blank" rel="noopener noreferrer"' ?>><?= print_translation('auth_register_privacy_link') ?></a>
+                            <span class="text-danger" data-required-mark aria-hidden="true">*</span>
                         </label>
                         <div class="invalid-feedback"><?= $errorText('privacy_accepted', 'auth_validation_privacy_required') ?></div>
                     </div>

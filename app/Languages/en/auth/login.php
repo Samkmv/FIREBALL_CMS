@@ -3,7 +3,7 @@
 return [
     'auth_login_title' => 'Login',
     'auth_login_heading' => 'Sign in',
-    'auth_login_subtitle' => 'Use your login and password to access your profile.',
+    'auth_login_subtitle' => 'Use an enabled account identifier and your password to sign in.',
     'auth_login_email' => 'Email',
     'auth_login_login' => 'Login',
     'auth_login_password' => 'Password',
@@ -14,7 +14,7 @@ return [
     'auth_login_forgot_submit' => 'Send reset link',
     'auth_login_register_text' => 'No account yet?',
     'auth_login_register_link' => 'Create one',
-    'auth_login_invalid_credentials' => 'Invalid login or password.',
+    'auth_login_invalid_credentials' => 'Invalid sign-in credentials.',
     'auth_password_toggle' => 'Show or hide password',
     'auth_login_rate_limited' => 'Too many sign-in attempts. Try again in 10 minutes.',
     'auth_login_success' => 'You have successfully signed in.',

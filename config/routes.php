@@ -75,6 +75,8 @@ $app->router->get('/reset-password', [AuthController::class, 'resetPassword'])->
 $app->router->post('/reset-password', [AuthController::class, 'resetPassword'])->middleware(['guest']);
 $app->router->get('/register', [AuthController::class, 'register'])->middleware(['guest']);
 $app->router->post('/register', [AuthController::class, 'register'])->middleware(['guest']);
+$app->router->get('/verify-email', [AuthController::class, 'verifyEmail']);
+$app->router->post('/verify-email', [AuthController::class, 'verifyEmail']);
 $app->router->get('/profile', [AuthController::class, 'profile'])->middleware(['auth']);
 $app->router->post('/profile', [AuthController::class, 'profile'])->middleware(['auth']);
 $app->router->get('/profile/settings', [AuthController::class, 'settings'])->middleware(['auth']);
@@ -246,6 +248,8 @@ $app->router->post('/admin/settings/contact-subjects/delete', [AdminController::
 $app->router->get('/admin/settings/privacy', [AdminController::class, 'privacySettings'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/settings/privacy', [AdminController::class, 'privacySettings'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/settings/mail', [AdminController::class, 'mailSettings'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/settings/authentication', [AdminController::class, 'authenticationSettings'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/settings/authentication', [AdminController::class, 'authenticationSettings'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/settings/mail', [AdminController::class, 'mailSettings'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/settings/mail/logs', [AdminController::class, 'mailLogs'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/security/logs', [AdminController::class, 'securityLogs'])->middleware(['auth', 'admin']);

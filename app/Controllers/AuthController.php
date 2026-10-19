@@ -8,6 +8,9 @@ use App\Models\User;
 use App\Services\MailService;
 use App\Services\PwaService;
 use App\Services\TwoFactorService;
+use App\Services\AuthIdentity;
+use App\Services\AuthSettings;
+use App\Services\EmailVerification;
 use FBL\Auth;
 use FBL\File;
 use FBL\RateLimiter;
@@ -47,12 +50,13 @@ class AuthController extends BaseController
         if (request()->isGet()) {
             return Theme::render('auth/login', [
                 'title' => return_translation('auth_login_title'),
-                'password_recovery_available' => $this->isSettingEnabled('allow_email_password_reset') && (new MailService())->isEnabled(),
+                'auth_policy' => (new AuthSettings())->all(),
+                'password_recovery_available' => $this->isSettingEnabled('allow_email_password_reset') && $this->mailService()->isEnabled(),
             ]);
         }
 
         $data = request()->getData();
-        $data['login'] = trim((string)($data['login'] ?? ''));
+        $data['login'] = trim((string)($data['identifier'] ?? $data['login'] ?? ''));
         $this->assertValidCsrfToken('/login', [
             'login' => $data['login'],
         ]);
@@ -65,7 +69,7 @@ class AuthController extends BaseController
             response()->redirect(base_href('/login'));
         }
 
-        if ($this->isLoginLocked($data['login'])) {
+        if ($this->isLoginLocked($data['login']) || !RateLimiter::attempt('auth.login.ip.' . client_ip(), 30, self::LOGIN_LOCK_SECONDS)) {
             $this->setFormState([
                 'login' => $data['login'],
             ], [
@@ -80,7 +84,7 @@ class AuthController extends BaseController
             'password' => (string)($data['password'] ?? ''),
         ]);
         if (!$user) {
-            $this->securityLogs->record('login', 'failed', null, null, $data['login']);
+            $this->securityLogs->record('login', 'failed', null, null, 'credentials_invalid');
             $this->setFormState([
                 'login' => $data['login'],
             ], [
@@ -94,6 +98,7 @@ class AuthController extends BaseController
             session()->set('auth.two_factor_pending', [
                 'user_id' => (int)$user['id'],
                 'login' => (string)$user['login'],
+                'identifier' => $data['login'],
                 'expires_at' => time() + self::TWO_FACTOR_PENDING_SECONDS,
             ]);
             $this->clearFormState();
@@ -153,7 +158,7 @@ class AuthController extends BaseController
         }
 
         RateLimiter::clear($throttleKey);
-        $this->clearLoginThrottle((string)($pending['login'] ?? $user['login'] ?? ''));
+        $this->clearLoginThrottle((string)($pending['identifier'] ?? $pending['login'] ?? $user['login'] ?? ''));
         session()->remove('auth.two_factor_pending');
         $this->clearFormState();
         Auth::loginUser($user);
@@ -282,13 +287,16 @@ class AuthController extends BaseController
             response()->redirect(base_href('/login'));
         }
 
-        if (!RateLimiter::attempt($this->passwordResetThrottleKey(), 3, 3600)) {
+        $emailThrottle = 'auth.password-reset.email.' . hash('sha256', $data['reset_email']);
+        if (!RateLimiter::attempt('auth.password-reset.burst.' . client_ip(), 10, 60)
+            || !RateLimiter::attempt($this->passwordResetThrottleKey(), 3, 3600)
+            || !RateLimiter::attempt($emailThrottle, 1, 60)) {
             $this->clearFormState();
             session()->setFlash('success', return_translation('auth_reset_request_success'));
             response()->redirect(base_href('/login'));
         }
 
-        $mailService = new MailService();
+        $mailService = $this->mailService();
         if (!$this->isSettingEnabled('allow_email_password_reset') || !$mailService->isEnabled()) {
             $this->securityLogs->record('password_reset_request', 'failed', null, null, 'mail_not_configured');
             $this->clearFormState();
@@ -298,7 +306,8 @@ class AuthController extends BaseController
 
         $token = $this->users->createPasswordResetToken($data['reset_email']);
         if ($token !== null) {
-            $mailSent = $mailService->sendTemplate(
+            try {
+                $mailSent = $mailService->sendTemplate(
                 [$data['reset_email']],
                 return_translation('auth_reset_email_subject'),
                 'auth/password_reset_email',
@@ -306,12 +315,16 @@ class AuthController extends BaseController
                     'reset_url' => base_href('/reset-password?token=' . urlencode($token)),
                     'expires_in_minutes' => 60,
                 ]
-            );
+                );
+            } catch (\Throwable) { $mailSent = false; }
 
             if (!$mailSent) {
+                $this->users->discardPasswordResetToken($token);
+                RateLimiter::clear($this->passwordResetThrottleKey());
+                RateLimiter::clear($emailThrottle);
                 $this->securityLogs->record('password_reset_request', 'failed', null, null, 'mail_failed');
                 $this->setFormState($data, []);
-                session()->setFlash('error', return_translation('auth_reset_request_error'));
+                session()->setFlash('success', return_translation('auth_reset_request_success'));
                 response()->redirect(base_href('/login'));
             }
         }
@@ -327,7 +340,11 @@ class AuthController extends BaseController
      */
     public function resetPassword()
     {
-        $token = trim((string)request()->get('token', request()->post('token', '')));
+        header('Referrer-Policy: no-referrer');
+        header('Cache-Control: no-store');
+        // POST is authoritative. A stale/empty query parameter must not replace
+        // the token carried by the password form.
+        $token = trim((string)(request()->isGet() ? request()->get('token', '') : request()->post('token', '')));
         $resetRequest = $token !== '' ? $this->users->findActivePasswordResetByToken($token) : false;
 
         if (request()->isGet()) {
@@ -348,6 +365,7 @@ class AuthController extends BaseController
         ]);
 
         if (!$resetRequest) {
+            $this->securityLogs->record('password_reset_complete', 'failed', null, null, $this->users->passwordResetTokenFailureReason($token));
             session()->setFlash('error', return_translation('auth_reset_invalid_token'));
             response()->redirect(base_href('/login'));
         }
@@ -367,7 +385,9 @@ class AuthController extends BaseController
         }
 
         if (!$this->users->resetPasswordByToken($token, $data['password'])) {
-            session()->setFlash('error', return_translation('auth_reset_invalid_token'));
+            $reason = $this->users->passwordResetFailureReason();
+            $this->securityLogs->record('password_reset_complete', 'failed', null, (int)$resetRequest['user_id'], $reason);
+            session()->setFlash('error', return_translation($reason === 'storage_failure' ? 'auth_reset_save_error' : 'auth_reset_invalid_token'));
             response()->redirect(base_href('/login'));
         }
 
@@ -385,17 +405,20 @@ class AuthController extends BaseController
         if (request()->isGet()) {
             return Theme::render('auth/register', [
                 'title' => return_translation('auth_register_title'),
+                'auth_policy' => (new AuthSettings())->all(),
             ]);
         }
 
         $data = request()->getData();
         $data['login'] = trim((string)($data['login'] ?? ''));
         $data['email'] = mb_strtolower(trim((string)($data['email'] ?? '')));
+        $data['phone'] = trim((string)($data['phone'] ?? ''));
         $data['privacy_accepted'] = !empty($data['privacy_accepted']) ? 1 : 0;
         $this->assertValidCsrfToken('/register', [
             'name' => trim((string)($data['name'] ?? '')),
             'login' => $data['login'],
             'email' => $data['email'],
+            'phone' => $data['phone'],
         ]);
         $errors = $this->users->validateRegistration($data);
         if (empty($data['privacy_accepted'])) {
@@ -407,21 +430,62 @@ class AuthController extends BaseController
                 'name' => trim((string)($data['name'] ?? '')),
                 'login' => $data['login'],
                 'email' => $data['email'],
+                'phone' => $data['phone'],
                 'privacy_accepted' => $data['privacy_accepted'],
             ], $errors);
             response()->redirect(base_href('/register'));
         }
 
-        $this->users->create($data);
-
-        Auth::login([
-            'login' => $data['login'],
-            'password' => (string)$data['password'],
-        ]);
+        if (!AuthIdentity::available() || !$this->mailService()->isEnabled()) {
+            session()->setFlash('error', return_translation(AuthIdentity::available() ? 'auth_mail_not_configured' : 'auth_schema_required'));
+            response()->redirect(base_href('/register'));
+        }
+        if (!RateLimiter::attempt('auth.registration.' . client_ip(), 5, 3600)) {
+            session()->setFlash('error', return_translation('auth_login_rate_limited'));
+            response()->redirect(base_href('/register'));
+        }
+        try {
+            $userId = $this->users->create($data);
+        } catch (\PDOException) {
+            $this->securityLogs->record('registration', 'failed', null, null, 'identifier_conflict_or_storage_failure');
+            session()->setFlash('error', return_translation('auth_registration_conflict'));
+            response()->redirect(base_href('/register'));
+        }
+        (new EmailVerification($this->mailService()))->request($userId);
 
         $this->clearFormState();
-        session()->setFlash('success', return_translation('auth_register_success'));
-        response()->redirect(apply_filters('auth_success_redirect', base_href('/profile')));
+        session()->setFlash('success', return_translation('auth_verify_registration_notice'));
+        response()->redirect(base_href('/verify-email'));
+    }
+
+    public function verifyEmail()
+    {
+        header('Referrer-Policy: no-referrer');
+        header('Cache-Control: no-store');
+        $service = new EmailVerification($this->mailService());
+        $token = trim((string)(request()->isGet() ? request()->get('token', '') : request()->post('token', '')));
+        if (request()->isGet()) return Theme::render('auth/verify_email', [
+            'title' => return_translation('auth_verify_title'), 'token' => $service->valid($token) ? $token : '',
+            'seo_robots' => 'noindex,nofollow',
+        ]);
+        $this->assertValidCsrfToken('/verify-email');
+        if (request()->post('verification_action') === 'resend') {
+            if (RateLimiter::attempt('auth.verify.resend.' . client_ip(), 20, 3600)) {
+                $user = get_user();
+                if ($user) $service->request((int)$user['id']);
+                else $service->resendForAddress((string)request()->post('email', ''));
+            }
+            session()->setFlash('success', return_translation('auth_verify_resend_notice'));
+            response()->redirect(base_href('/verify-email'));
+        }
+        $confirmed = $service->confirm($token);
+        session()->setFlash($confirmed ? 'success' : 'error', return_translation($confirmed ? 'auth_verify_success' : 'auth_verify_invalid'));
+        response()->redirect(base_href('/login'));
+    }
+
+    protected function mailService(): MailService
+    {
+        return new MailService();
     }
 
     /**
@@ -554,6 +618,7 @@ class AuthController extends BaseController
                     'name' => trim((string)request()->post('name', '')),
                     'login' => trim((string)request()->post('login', '')),
                     'email' => mb_strtolower(trim((string)request()->post('email', ''))),
+                    'phone' => trim((string)request()->post('phone', $user['phone_normalized'] ?? '')),
                     'current_password' => (string)request()->post('current_password', ''),
                     'password' => (string)request()->post('password', ''),
                     'password_confirmation' => (string)request()->post('password_confirmation', ''),
@@ -564,6 +629,7 @@ class AuthController extends BaseController
                     $data['name'] = (string)$user['name'];
                     $data['login'] = (string)$user['login'];
                     $data['email'] = (string)$user['email'];
+                    $data['phone'] = (string)($user['phone_normalized'] ?? '');
                 } elseif ($isSettings) {
                     $data['password'] = '';
                     $data['password_confirmation'] = '';
@@ -578,13 +644,35 @@ class AuthController extends BaseController
                         'name' => $data['name'],
                         'login' => $data['login'],
                         'email' => $data['email'],
+                        'phone' => $data['phone'],
                     ], $errors);
                     response()->redirect(base_href($settingsUrl));
                 }
 
-                $this->users->updateProfile((int)$user['id'], $data);
-                Auth::setUser();
-                Auth::rotateSession();
+                $emailChanged = $data['email'] !== AuthIdentity::email((string)$user['email']);
+                $targetEmail = $data['email'];
+                if ($emailChanged && AuthIdentity::available()) {
+                    $data['email'] = (string)$user['email'];
+                }
+                try {
+                    $this->users->updateProfile((int)$user['id'], $data);
+                } catch (\PDOException) {
+                    $this->securityLogs->record('profile_identity_update', 'failed', (int)$user['id'], (int)$user['id'], 'identifier_conflict_or_storage_failure');
+                    session()->setFlash('error', return_translation('auth_registration_conflict'));
+                    response()->redirect(base_href($settingsUrl));
+                }
+                if ($emailChanged && AuthIdentity::available()) {
+                    $sent = (new EmailVerification($this->mailService()))->request((int)$user['id'], $targetEmail);
+                    session()->setFlash('warning', return_translation($sent ? 'auth_verify_change_notice' : 'auth_verify_change_retry'));
+                }
+                if ($data['password'] !== '') {
+                    // Keep this freshly password-confirmed device signed in;
+                    // the incremented version invalidates all older sessions.
+                    Auth::loginUser($this->users->findById((int)$user['id']));
+                } else {
+                    Auth::setUser();
+                    Auth::rotateSession();
+                }
                 $this->clearFormState();
                 session()->setFlash('success', return_translation('auth_profile_updated'));
                 response()->redirect(base_href($settingsUrl));
@@ -718,7 +806,9 @@ class AuthController extends BaseController
     protected function loginThrottleKey(string $login): string
     {
         $ip = client_ip();
-        return 'auth.login.' . make_slug($login, '') . '|' . $ip;
+        try { $phone = AuthIdentity::phone($login); } catch (\InvalidArgumentException) { $phone = null; }
+        $identifier = $phone ?? AuthIdentity::email($login);
+        return 'auth.login.' . hash('sha256', $identifier) . '|' . $ip;
     }
 
     protected function passwordResetThrottleKey(): string

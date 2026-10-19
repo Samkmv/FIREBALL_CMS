@@ -550,7 +550,7 @@ class ThemeManager
     {
         return ['home', 'page', 'posts', 'post', 'category', 'archive', 'search',
             'contacts', 'support', 'support_article', 'auth/login', 'auth/two_factor_challenge',
-            'auth/two_factor_recovery', 'auth/reset_password', 'auth/register', 'auth/profile',
+            'auth/two_factor_recovery', 'auth/reset_password', 'auth/verify_email', 'auth/register', 'auth/profile',
             'auth/settings', 'chat/index', 'chat/group', 'offline', '404'];
     }
 
@@ -643,6 +643,11 @@ class ThemeManager
     {
         $started = PerformanceProfiler::begin();
         $templateFile = $this->resolveFile('templates', $template)['path'] ?? $fallback;
+        // Newly introduced security flow must also work in independent themes
+        // published before this CMS version. Their explicit override wins.
+        if ($templateFile === null && $template === 'auth/verify_email') {
+            $templateFile = APP . '/Views/themes/default/auth/verify_email.php';
+        }
         if ($templateFile === null && !$this->getActiveTheme()['inheritDefault']) {
             $templateFile = $this->resolveFile('templates', '404')['path'] ?? null;
             http_response_code(404);

@@ -38,18 +38,10 @@ class Auth
         $password = (string)($credentials['password'] ?? '');
         unset($credentials['password']);
         $field = array_key_first($credentials);
-        if ($field === null) {
+        if (!in_array($field, ['login', 'email', 'phone', 'identifier'], true)) {
             return false;
         }
-        $value = $credentials[$field];
-
-        if ($field === 'login') {
-            $value = make_slug((string)$value, '');
-        } elseif ($field === 'email') {
-            $value = mb_strtolower(trim((string)$value));
-        }
-
-        $user = db()->findOne('users', $value, $field);
+        $user = \App\Services\AuthIdentity::findForLogin((string)$credentials[$field]);
 
         if (!$user) {
             return false;
@@ -58,6 +50,10 @@ class Auth
         if (!password_verify($password, $user['password'])) {
             return false;
         }
+
+        // Existing accounts are explicitly exempted by the migration; only new
+        // registrations wait for their email link. Errors stay non-enumerating.
+        if (!empty($user['email_verification_required']) && empty($user['email_verified_at'])) return false;
 
         return $user;
     }

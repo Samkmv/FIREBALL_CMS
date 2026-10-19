@@ -587,6 +587,31 @@ class AdminController extends BaseController
         ]);
     }
 
+    public function authenticationSettings()
+    {
+        $policy = new \App\Services\AuthSettings();
+        if (request()->isPost()) {
+            $data = $policy->normalize(request()->getData());
+            $errors = \App\Services\AuthIdentity::available()
+                ? $policy->validate($data) : ['auth_phone_mode' => [return_translation('auth_schema_required')]];
+            if ($errors) {
+                session()->set('form_data', $data);
+                session()->set('form_errors', $errors);
+                response()->redirect(base_href('/admin/settings/authentication'));
+            }
+            $this->siteSettings->setMany($data);
+            session()->remove('form_data');
+            session()->remove('form_errors');
+            session()->setFlash('success', return_translation('auth_policy_saved'));
+            response()->redirect(base_href('/admin/settings/authentication'));
+        }
+        return view('admin/authentication_settings', [
+            'title' => return_translation('auth_policy_title'),
+            'settings' => $policy->all(),
+            'auth_schema_ready' => \App\Services\AuthIdentity::available(),
+        ]);
+    }
+
     public function mailSettings()
     {
         $settings = $this->siteSettings->all();

@@ -29,7 +29,7 @@ return [
     'auth_validation_email_exists' => 'A user with this email already exists.',
     'auth_validation_password_required' => 'Enter your password.',
     'auth_validation_password_length' => 'Password must be at least 8 characters long.',
-    'auth_validation_password_strength' => 'Password must include at least one uppercase letter and one number.',
+    'auth_validation_password_strength' => 'Use at least 8 characters, including one uppercase letter and one number.',
     'auth_validation_password_confirmation_required' => 'Confirm your password.',
     'auth_validation_password_confirmation_match' => 'Passwords do not match.',
     'auth_validation_privacy_required' => 'You must accept the Privacy Policy.',
