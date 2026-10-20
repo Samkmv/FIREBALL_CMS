@@ -126,6 +126,19 @@ function fixtureGit(array $arguments): ?string {
     fclose($pipes[1]); fclose($pipes[2]);
     return proc_close($process) === 0 ? $output : null;
 }
+function catalogRecord(string $version, string $commit, array $required, array $extras = []): array {
+    return ['version' => $version, 'commit' => $commit,
+        'required_files' => array_map(fn($bytes) => hash('sha256', $bytes), $required),
+        'allowed_extras' => array_map(fn($bytes) => hash('sha256', $bytes), $extras)];
+}
+function catalogDocument(string $slug, array $records, string $repository = 'fixture/repository'): array {
+    return ['schema' => 1, 'repository' => $repository, 'plugins' => [$slug => $records]];
+}
+function catalogMatch(array $document, array $current, array $config = [], string $version = '1.0.0', string $slug = 'fixture-catalog'): ?array {
+    putFixture('catalog/unit.json', json_encode($document, JSON_THROW_ON_ERROR));
+    return (new App\Services\PluginBaselineCatalog(ROOT . '/catalog/unit.json'))->match($slug, $version,
+        $config + ['repository' => 'fixture/repository', 'path' => 'plugins/' . $slug], $current);
+}
 $previousCeiling = getenv('GIT_CEILING_DIRECTORIES');
 putenv('GIT_CEILING_DIRECTORIES=' . dirname(ROOT));
 try {
@@ -215,6 +228,81 @@ try {
     failureProof(fn() => $probe->probe('fixture-history', 'bounded-history'));
     verifyProof('Historical lookups have a hard pagination bound', count(array_filter($probe->requests, fn($url) => str_contains($url, '/commits?'))) === 4);
 
+    // A core-shipped catalog proves old ZIP packages without spending any REST
+    // quota. Every comparison is by file bytes, never just plugin version.
+    $catalogPackage = packageFixture('fixture-catalog', '1.0.0', 'return "catalog official package";');
+    $catalogExtras = ['docs/readme.md' => "Official development documentation\n", 'tests/check.php' => '<?php return true;'];
+    $catalogRecord = catalogRecord('1.0.0', str_repeat('1', 40), $catalogPackage, $catalogExtras);
+    $catalogDocument = catalogDocument('fixture-catalog', [$catalogRecord]);
+    $catalogHashes = array_map(fn($bytes) => hash('sha256', $bytes), $catalogPackage);
+    $fullCatalogHashes = $catalogHashes + array_map(fn($bytes) => hash('sha256', $bytes), $catalogExtras);
+    verifyProof('Bundled catalog accepts an exact official archive', (catalogMatch($catalogDocument, $catalogHashes)['commit'] ?? '') === str_repeat('1', 40));
+    verifyProof('Bundled catalog accepts a full checkout with same-commit export-ignored files', catalogMatch($catalogDocument, $fullCatalogHashes) !== null);
+    verifyProof('Optional development files may be present only in part', catalogMatch($catalogDocument, $catalogHashes + ['docs/readme.md' => hash('sha256', $catalogExtras['docs/readme.md'])]) !== null);
+    verifyProof('Repository identity is case-insensitive but otherwise exact', catalogMatch($catalogDocument, $catalogHashes, ['repository' => 'FIXTURE/Repository']) !== null
+        && catalogMatch($catalogDocument, $catalogHashes, ['repository' => 'different/repository']) === null);
+    verifyProof('Catalog cannot approve another plugin or configured directory', catalogMatch($catalogDocument, $catalogHashes, ['path' => 'plugins/different']) === null
+        && catalogMatch($catalogDocument, $catalogHashes, [], '1.0.0', 'another-plugin') === null);
+    verifyProof('Catalog requires the exact installed version', catalogMatch($catalogDocument, $catalogHashes, [], '1.0.1') === null);
+    $editedHashes = $catalogHashes; $editedHashes['Plugin.php'] = hash('sha256', 'manual customization');
+    verifyProof('Catalog rejects edited required source files', catalogMatch($catalogDocument, $editedHashes) === null);
+    $missingHashes = $catalogHashes; unset($missingHashes['Plugin.php']);
+    verifyProof('Catalog rejects missing required source files', catalogMatch($catalogDocument, $missingHashes) === null);
+    verifyProof('Catalog rejects unknown extra files', catalogMatch($catalogDocument, $catalogHashes + ['custom.php' => hash('sha256', 'custom')]) === null);
+    $editedExtraHashes = $fullCatalogHashes; $editedExtraHashes['docs/readme.md'] = hash('sha256', 'edited development documentation');
+    verifyProof('Catalog rejects edited export-ignored files', catalogMatch($catalogDocument, $editedExtraHashes) === null);
+    $otherRecord = catalogRecord('1.0.0', str_repeat('2', 40), $catalogPackage, ['tests/other.php' => '<?php return "other commit";']);
+    $mixedHashes = $fullCatalogHashes + ['tests/other.php' => hash('sha256', '<?php return "other commit";')];
+    verifyProof('Catalog never combines allowed extras from different commits', catalogMatch(catalogDocument('fixture-catalog', [$catalogRecord, $otherRecord]), $mixedHashes) === null);
+    $malformed = [
+        'unsupported schema' => array_replace($catalogDocument, ['schema' => 2]),
+        'repository type' => array_replace($catalogDocument, ['repository' => []]),
+        'plugin list type' => array_replace($catalogDocument, ['plugins' => 'not a map']),
+    ];
+    foreach ([
+        'invalid commit' => ['commit' => 'main'],
+        'invalid required hash' => ['required_files' => ['plugin.json' => 'wrong', 'Plugin.php' => $catalogHashes['Plugin.php']]],
+        'empty required files' => ['required_files' => []],
+        'invalid extra hash' => ['allowed_extras' => ['docs/readme.md' => 'wrong']],
+    ] as $name => $change) $malformed[$name] = catalogDocument('fixture-catalog', [array_replace($catalogRecord, $change)]);
+    foreach (['../escape.php', '/absolute.php', 'docs/../escape.php', 'docs\\escape.php', '.git/config', "control\x00.php"] as $path) {
+        $malformed['unsafe required path ' . json_encode($path)] = catalogDocument('fixture-catalog', [array_replace($catalogRecord,
+            ['required_files' => $catalogHashes + [$path => hash('sha256', 'unsafe')]])]);
+        $malformed['unsafe optional path ' . json_encode($path)] = catalogDocument('fixture-catalog', [array_replace($catalogRecord,
+            ['allowed_extras' => [$path => hash('sha256', 'unsafe')]])]);
+    }
+    foreach ($malformed as $name => $document) verifyProof('Malformed catalog fails closed: ' . $name, catalogMatch($document, $catalogHashes) === null);
+    verifyProof('Catalog rejects unsafe current paths and malformed fingerprints', catalogMatch($catalogDocument, $catalogHashes + ['../escape.php' => hash('sha256', 'unsafe')]) === null
+        && catalogMatch($catalogDocument, array_replace($catalogHashes, ['Plugin.php' => 'invalid'])) === null);
+    putFixture('catalog/invalid.json', '{not valid JSON');
+    verifyProof('Unreadable, absent and invalid JSON catalogs cannot authorize an update', (new App\Services\PluginBaselineCatalog(ROOT . '/catalog/absent.json'))->match('fixture-catalog', '1.0.0', ['repository' => 'fixture/repository', 'path' => 'plugins/fixture-catalog'], $catalogHashes) === null
+        && (new App\Services\PluginBaselineCatalog(ROOT . '/catalog/invalid.json'))->match('fixture-catalog', '1.0.0', ['repository' => 'fixture/repository', 'path' => 'plugins/fixture-catalog'], $catalogHashes) === null);
+    putFixture('catalog/oversized.json', json_encode($catalogDocument) . str_repeat(' ', 8 * 1048576));
+    verifyProof('Catalog input has a hard eight MiB bound', (new App\Services\PluginBaselineCatalog(ROOT . '/catalog/oversized.json'))->match('fixture-catalog', '1.0.0', ['repository' => 'fixture/repository', 'path' => 'plugins/fixture-catalog'], $catalogHashes) === null);
+    putFixture('catalog/real.json', json_encode($catalogDocument));
+    if (!symlink(ROOT . '/catalog/real.json', ROOT . '/catalog/link.json')) throw new RuntimeException('Unable to create catalog symlink fixture');
+    verifyProof('Catalog symlinks cannot authorize an update', (new App\Services\PluginBaselineCatalog(ROOT . '/catalog/link.json'))->match('fixture-catalog', '1.0.0', ['repository' => 'fixture/repository', 'path' => 'plugins/fixture-catalog'], $catalogHashes) === null);
+
+    installFixture('fixture-catalog', $catalogPackage + $catalogExtras);
+    putFixture('config/plugin-baselines.json', json_encode($catalogDocument));
+    $probe->forcedResponse = ['status_code' => 403, 'body' => '{"message":"API rate limit exceeded"}'];
+    $probe->requests = []; $catalogBefore = $installations->tree(ROOT . '/plugins/fixture-catalog');
+    verifyProof('A known legacy ZIP package is verified with zero HTTP requests despite REST rate limits', $probe->probe('fixture-catalog', 'catalog-rate-limit') === $catalogBefore && $probe->requests === []);
+    verifyProof('Catalog adoption neither changes files nor manufactures a receipt', $installations->tree(ROOT . '/plugins/fixture-catalog') === $catalogBefore && $installations->receipt('fixture-catalog') === null);
+    $installations->record('fixture-catalog', ['kind' => 'catalog-regression-fixture']);
+    putFixture('plugins/fixture-catalog/Plugin.php', '<?php return "edited after a receipt";');
+    $receiptEdited = $installations->tree(ROOT . '/plugins/fixture-catalog');
+    $editedRecord = $catalogRecord; $editedRecord['required_files'] = array_intersect_key($receiptEdited, $catalogRecord['required_files']);
+    putFixture('config/plugin-baselines.json', json_encode(catalogDocument('fixture-catalog', [$editedRecord])));
+    verifyProof('Even a catalog match cannot bypass an existing receipt conflict', str_contains(failureProof(fn() => $probe->probe('fixture-catalog', 'catalog-receipt-conflict')), 'отличается от установленного пакета') && $probe->requests === []);
+    unlink(STORAGE . '/component-installations/plugins/fixture-catalog.json');
+    installFixture('fixture-catalog', $catalogPackage);
+    putFixture('config/plugin-baselines.json', json_encode($catalogDocument));
+    putFixture('.git', 'gitdir: /nonexistent/fixture-worktree');
+    verifyProof('Catalog cannot bypass a Git worktree conflict', str_contains(failureProof(fn() => $probe->probe('fixture-catalog', 'catalog-git-conflict')), 'отличается от установленного пакета') && $probe->requests === []);
+    unlink(ROOT . '/.git'); unlink(ROOT . '/config/plugin-baselines.json');
+    $probe->forcedResponse = null;
+
     // Real historical layouts of both reported plugins. Optional in shallow
     // checkouts; the synthetic security tests above need no repository history.
     $historical = [];
@@ -238,6 +326,47 @@ try {
         installFixture($slug, $files);
         verifyProof($slug . ' ' . $metadata['version'] . ': full source checkout also passes', $probe->probe($slug, $slug . '-checkout') === $installations->tree(ROOT . '/plugins/' . $slug));
         $historical[$slug] = ['version' => $metadata['version'], 'commit' => $ref, 'full_files' => count($files), 'archive_files' => count($probe->packages[$ref][$slug])];
+    }
+    // Verify the three production versions reported on Maxipapa against actual
+    // repository blobs AND git archive export rules, not a self-made fixture.
+    $productCatalogPath = $project . '/config/plugin-baselines.json';
+    $productDocument = json_decode((string)file_get_contents($productCatalogPath), true, 512, JSON_THROW_ON_ERROR);
+    $productCatalog = new App\Services\PluginBaselineCatalog($productCatalogPath);
+    foreach (['reel-player' => '1.7.6', 'subscriptions' => '1.5.4', 'toy-car-rental' => '1.1.11'] as $slug => $version) {
+        $records = array_values(array_filter($productDocument['plugins'][$slug] ?? [], fn($record) => $record['version'] === $version));
+        verifyProof($slug . ' ' . $version . ': the shipped catalog includes the reported production version', $records !== []);
+        $record = $records[0]; $ref = $record['commit'];
+        $listing = fixtureGit(['ls-tree', '-rz', '--full-tree', $ref, '--', 'plugins/' . $slug . '/']);
+        if ($listing === null || $listing === '') continue; // Shallow source distributions can still run synthetic checks.
+        $files = [];
+        foreach (array_filter(explode("\0", $listing), 'strlen') as $entry) {
+            if (!preg_match('/^100(?:644|755) blob [a-f0-9]{40}\t(.+)$/sD', $entry, $match)) throw new RuntimeException('Unexpected catalog fixture type');
+            $contents = fixtureGit(['show', $ref . ':' . $match[1]]);
+            if ($contents === null) throw new RuntimeException('Unable to read catalog fixture blob');
+            $files[substr($match[1], strlen('plugins/' . $slug . '/'))] = $contents;
+        }
+        $archiveBytes = fixtureGit(['archive', '--format=zip', $ref, 'plugins/' . $slug]);
+        if ($archiveBytes === null) throw new RuntimeException('Unable to read catalog fixture archive');
+        $archivePath = ROOT . '/catalog/product-' . $slug . '.zip'; file_put_contents($archivePath, $archiveBytes);
+        $zip = new ZipArchive(); if ($zip->open($archivePath) !== true) throw new RuntimeException('Unable to open catalog fixture archive');
+        $archivedFiles = [];
+        for ($index = 0; $index < $zip->numFiles; $index++) {
+            $name = $zip->getNameIndex($index);
+            if (!str_starts_with($name, 'plugins/' . $slug . '/') || str_ends_with($name, '/')) continue;
+            $bytes = $zip->getFromIndex($index);
+            if ($bytes === false) throw new RuntimeException('Unable to read catalog fixture archive entry');
+            $archivedFiles[substr($name, strlen('plugins/' . $slug . '/'))] = $bytes;
+        }
+        $zip->close(); unlink($archivePath);
+        $config = ['repository' => $productDocument['repository'], 'path' => 'plugins/' . $slug];
+        $archiveHashes = array_map(fn($bytes) => hash('sha256', $bytes), $archivedFiles); ksort($archiveHashes, SORT_STRING);
+        $fullHashes = array_map(fn($bytes) => hash('sha256', $bytes), $files); ksort($fullHashes, SORT_STRING);
+        verifyProof($slug . ' ' . $version . ': catalog mandatory hashes equal the real historical git archive', $archiveHashes === $record['required_files']);
+        verifyProof($slug . ' ' . $version . ': catalog approves the real historical source archive without a token', $productCatalog->match($slug, $version, $config, $archiveHashes) !== null);
+        verifyProof($slug . ' ' . $version . ': catalog approves the same-commit full checkout', $productCatalog->match($slug, $version, $config, $fullHashes) !== null);
+        $fullHashes['Plugin.php'] = hash('sha256', 'simulated production customization');
+        verifyProof($slug . ' ' . $version . ': catalog preserves actual local customizations', $productCatalog->match($slug, $version, $config, $fullHashes) === null);
+        $historical[$slug . '-catalog'] = ['version' => $version, 'commit' => $ref, 'full_files' => count($files), 'archive_files' => count($archivedFiles)];
     }
     foreach (['ru', 'en', 'de', 'zh-cn'] as $language) {
         $messages = require $project . '/app/languages/' . $language . '.php';

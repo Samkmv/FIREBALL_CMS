@@ -43,8 +43,17 @@ final class RecoveryUpdater extends App\Services\UpdateCenter {
 }
 final class PackageUpdater extends App\Services\PluginUpdateService {
     public bool $race=false;
+    public bool $publicQuotaBlocked=false;
+    public array $requests=[];
+    public array $downloads=[];
     public function __construct(FBL\Plugins\PluginManager $manager,App\Models\SiteSetting $settings,private array $metadata,private string $archive,private ?array $baselineMetadata=null,private string $baselineArchive=''){parent::__construct($manager);$this->siteSettings=$settings;}
     protected function httpGet(string $url,array $headers=[]): array{
+        $this->requests[]=['url'=>$url,'headers'=>$headers];
+        if($this->publicQuotaBlocked){
+            if(str_contains($url,'.git/info/refs?'))return ['status_code'=>200,'body'=>str_repeat('a',40)." refs/heads/main\0multi_ack\n"];
+            if(str_starts_with($url,'https://raw.githubusercontent.com/fixture/cms/'.str_repeat('a',40).'/plugins/reel-player/'))return ['status_code'=>200,'body'=>json_encode($this->metadata)];
+            return ['status_code'=>403,'body'=>'{"message":"API rate limit exceeded"}','headers'=>['x-ratelimit-remaining'=>'0']];
+        }
         if(str_starts_with($url,'https://raw.githubusercontent.com/')||str_contains($url,'.git/info/refs?'))return ['status_code'=>404,'body'=>'Not public'];
         if(str_contains($url,'/commits?'))$body=[['sha'=>str_repeat('b',40)]];
         elseif(str_contains($url,'/commits/'))$body=['sha'=>str_repeat('a',40)];
@@ -52,7 +61,11 @@ final class PackageUpdater extends App\Services\PluginUpdateService {
         return ['status_code'=>200,'body'=>json_encode($body)];
     }
     public function baseline(string $slug,array $metadata,string $workspace): array{return $this->assertInstalledPluginPackage($slug,$metadata,$metadata['update'],$workspace);}
-    protected function downloadFile(string $url,string $destination,array $headers=[]): void{copy(str_ends_with($url,str_repeat('b',40))?$this->baselineArchive:$this->archive,$destination);}
+    protected function downloadFile(string $url,string $destination,array $headers=[]): void{
+        $this->downloads[]=['url'=>$url,'headers'=>$headers];
+        if($this->publicQuotaBlocked && $url!=='https://codeload.github.com/fixture/cms/zip/'.str_repeat('a',40))throw new RuntimeException('Rate-limited public updates may download only the pinned public package');
+        copy(str_ends_with($url,str_repeat('b',40))?$this->baselineArchive:$this->archive,$destination);
+    }
     protected function clearRuntimeCache(): void{}
     protected function createPreUpdateBackups(): void{parent::createPreUpdateBackups();if($this->race)file_put_contents(PLUGINS.'/reel-player/Plugin.php',"<?php return 'concurrent edit';");}
 }
@@ -127,7 +140,29 @@ try {
         $legacyResult=$legacyUpdater->update('reel-player');
         verify('Old ZIP installation completes a real plugin upgrade without a pre-existing receipt',$legacyResult['status']==='success' && json_decode(file_get_contents(PLUGINS.'/reel-player/plugin.json'),true)['version']==='10.0.0');
         verify('Legacy upgrade records the new package and leaves maintenance mode',(new App\Services\ManagedPluginInstallations(ROOT))->isVerified('reel-player') && !is_file(STORAGE.'/update.maintenance'));
+
+        // Reproduce Maxipapa: old official ZIP, no receipt/Git checkout, a
+        // nonempty stale token, and every REST endpoint over its shared quota.
+        // Public HEAD/raw/archive plus the core catalog must suffice end to end.
+        put('plugins/reel-player/Plugin.php',$pluginCode);put('plugins/reel-player/plugin.json',json_encode($pluginNew));unlink($receiptFile);
+        $pdo->exec("UPDATE plugins SET version='9.0.0' WHERE slug='reel-player'");
+        put('config/plugin-baselines.json',json_encode(['schema'=>1,'repository'=>'fixture/cms','plugins'=>['reel-player'=>[[
+            'version'=>'9.0.0','commit'=>str_repeat('b',40),
+            'required_files'=>['Plugin.php'=>hash('sha256',$pluginCode),'plugin.json'=>hash('sha256',json_encode($pluginNew))],
+            'allowed_extras'=>[],
+        ]]]]));
+        $settings->setMany(['updater_github_token'=>'fixture-invalid-token-not-a-real-secret']);
+        $publicManager=new FBL\Plugins\PluginManager();
+        $publicUpdater=new PackageUpdater($publicManager,$settings,$nextPlugin,$nextArchive);$publicUpdater->publicQuotaBlocked=true;
+        $publicResult=$publicUpdater->update('reel-player');
+        verify('Legacy ZIP upgrades successfully while all GitHub REST endpoints are rate-limited',$publicResult['status']==='success' && json_decode(file_get_contents(PLUGINS.'/reel-player/plugin.json'),true)['version']==='10.0.0');
+        verify('Public legacy upgrade makes no REST or historical source request',count($publicUpdater->requests)===2 && !array_filter($publicUpdater->requests,fn($request)=>str_starts_with($request['url'],'https://api.github.com/')));
+        verify('Public legacy upgrade downloads only the commit-pinned new archive',count($publicUpdater->downloads)===1 && $publicUpdater->downloads[0]['url']==='https://codeload.github.com/fixture/cms/zip/'.str_repeat('a',40));
+        verify('A stale configured token is never sent to public update endpoints',!array_filter(array_merge($publicUpdater->requests,$publicUpdater->downloads),fn($request)=>(bool)array_filter($request['headers'],fn($header)=>(bool)preg_match('/^(?:authorization|cookie):/i',$header))));
+        verify('Rate-limited legacy upgrade records a verified new receipt and leaves maintenance mode',(new App\Services\ManagedPluginInstallations(ROOT))->isVerified('reel-player') && !is_file(STORAGE.'/update.maintenance'));
     } finally {
+        if(is_file(CONFIG.'/plugin-baselines.json'))unlink(CONFIG.'/plugin-baselines.json');
+        $settings->setMany(['updater_github_token'=>'']);
         put('plugins/reel-player/Plugin.php',$pluginCode);put('plugins/reel-player/plugin.json',json_encode($pluginNew));
         file_put_contents($receiptFile,$receipt);chmod($receiptFile,0600);rename($scratch.'/held-git',ROOT.'/.git');
         $pdo->exec("UPDATE plugins SET version='9.0.0' WHERE slug='reel-player'");$manager->setSetting('reel-player','__plugin_update_state',$savedPluginState);

@@ -534,9 +534,16 @@ class PluginUpdateService extends UpdateCenter
             // A worktree's .git is a file, not a directory. Never bypass a Git conflict.
             if ($installations->receipt($slug) !== null || file_exists(ROOT . '/.git') || is_link(ROOT . '/.git')) throw $conflict;
         }
+        $current = $installations->tree($this->pluginsPath . '/' . $slug);
+        // Old ZIP installs predate private receipts. The core ships exact
+        // historical proofs so these sites do not need API history/tree calls.
+        // Existing receipt/Git conflicts have already stopped above.
+        if ((new PluginBaselineCatalog(ROOT . '/config/plugin-baselines.json'))->match(
+            $slug, (string)($metadata['version'] ?? ''), $config, $current) !== null) {
+            return $current;
+        }
         $token = trim((string)($this->siteSettings->all()['updater_github_token'] ?? ''));
         $headers = $this->buildGithubHeaders($token);
-        $current = $installations->tree($this->pluginsPath . '/' . $slug);
         $seen = [];
         $closest = [];
         $verify = function (string $commit) use ($slug, $metadata, $config, $workspace, $installations, $current, $headers, &$seen, &$closest): bool {
