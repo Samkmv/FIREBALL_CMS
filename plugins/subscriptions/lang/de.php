@@ -142,7 +142,7 @@ return array_replace($en, [
     'subscriptions_error_consents' => 'Akzeptieren Sie das öffentliche Angebot und die Datenschutzrichtlinie.',
     'subscriptions_error_plan_not_found' => 'Abonnementtarif wurde nicht gefunden.',
     'subscriptions_error_email' => 'Geben Sie eine gültige E-Mail-Adresse ein.',
-    'subscriptions_error_phone' => 'Geben Sie eine gültige Telefonnummer ein.',
+    'subscriptions_error_phone' => 'Geben Sie eine russische Telefonnummer ein: +7 (999) 123-45-67. Nummern mit 8 oder ohne Landesvorwahl werden ebenfalls akzeptiert.',
     'subscriptions_profile_field_first_name' => 'Vorname',
     'subscriptions_profile_field_last_name' => 'Nachname',
     'subscriptions_profile_field_middle_name' => 'Zweiter Vorname',

@@ -85,7 +85,7 @@ if ($autoRenewEnabled) {
                     <a class="btn btn-sm btn-outline-secondary rounded-pill d-none d-md-inline-flex" href="<?= base_href('/profile/subscription-details') ?>"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_change_details')) ?></a>
                 </div>
                 <div class="subscriptions-checkout-contact vstack gap-3">
-                    <div class="d-flex align-items-start gap-3"><i class="ci-user text-body-secondary mt-1"></i><span><?= htmlSC((string)$profile['email']) ?><br><span class="text-body-secondary"><?= htmlSC((string)$profile['phone']) ?></span></span></div>
+                    <div class="d-flex align-items-start gap-3"><i class="ci-user text-body-secondary mt-1"></i><span><?= htmlSC((string)$profile['email']) ?><br><span class="text-body-secondary"><?= htmlSC(\Fireball\Subscriptions\Support\RussianPhone::display((string)$profile['phone'])) ?></span></span></div>
                     <?php if ($address !== ''): ?><div class="d-flex align-items-start gap-3"><i class="ci-map-pin text-body-secondary mt-1"></i><span class="text-body-secondary"><?= htmlSC($address) ?></span></div><?php endif; ?>
                 </div>
 

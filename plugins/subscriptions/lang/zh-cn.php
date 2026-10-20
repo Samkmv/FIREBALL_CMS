@@ -142,7 +142,7 @@ return array_replace($en, [
     'subscriptions_error_consents' => '请接受公开要约和个人数据政策。',
     'subscriptions_error_plan_not_found' => '找不到订阅套餐。',
     'subscriptions_error_email' => '请输入有效的电子邮件地址。',
-    'subscriptions_error_phone' => '请输入有效的电话号码。',
+    'subscriptions_error_phone' => '请输入俄罗斯电话号码：+7 (999) 123-45-67。也可以输入以 8 开头或不含国家代码的号码。',
     'subscriptions_profile_field_first_name' => '名',
     'subscriptions_profile_field_last_name' => '姓',
     'subscriptions_profile_field_middle_name' => '中间名',

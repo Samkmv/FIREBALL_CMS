@@ -120,7 +120,9 @@ $app->router->post('/chat/conversation/audit/clear', [ChatController::class, 'cl
 $app->router->get('/notifications/feed', [NotificationController::class, 'feed'])->middleware(['auth']);
 $app->router->post('/notifications/read', [NotificationController::class, 'markRead'])->middleware(['auth']);
 $app->router->post('/notifications/clear', [NotificationController::class, 'clear'])->middleware(['auth']);
-$app->router->post('/logout', [AuthController::class, 'logout'])->middleware(['auth']);
+// AuthController checks CSRF before any authenticated logout. A guest retry
+// is idempotent; a stale authenticated form redirects without ending its session.
+$app->router->post('/logout', [AuthController::class, 'logout'])->withoutCSRFToken();
 $app->router->get('/search/suggest', [SearchController::class, 'suggest']);
 $app->router->get('/search', [SearchController::class, 'index']);
 $app->router->get('/support', [HomeController::class, 'support']);

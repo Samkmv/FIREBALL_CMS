@@ -1,6 +1,9 @@
 <?php
 
 return [
+    'security_event_logout' => 'Account sign-out',
+    'security_reason_csrf_invalid' => 'The form security token is stale or does not match the current session. The action was denied.',
+    'auth_logout_retry' => 'The sign-out form is outdated. You are still signed in. Sign out again from the refreshed page.',
     'security_event_unknown' => 'Other event',
     'security_event_login' => 'Account sign-in',
     'security_event_login_2fa' => 'Two-factor verification',

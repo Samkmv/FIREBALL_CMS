@@ -261,6 +261,7 @@ require_once __DIR__ . '/../src/Support/AddressNormalizer.php';
 require_once __DIR__ . '/../src/Support/AddressMatcher.php';
 require_once __DIR__ . '/../src/Payments/PaymentGatewayInterface.php';
 require_once __DIR__ . '/../src/Repositories/ProfileRepository.php';
+require_once __DIR__ . '/../src/Support/RussianPhone.php';
 require_once __DIR__ . '/../src/Repositories/PlanRepository.php';
 require_once __DIR__ . '/../src/Repositories/AddressExclusionRepository.php';
 require_once __DIR__ . '/../src/Services/AccessService.php';

@@ -1,6 +1,9 @@
 <?php
 
 return [
+    'security_event_logout' => 'Выход из аккаунта',
+    'security_reason_csrf_invalid' => 'Защитный код формы устарел или не совпадает с текущей сессией. Действие отклонено.',
+    'auth_logout_retry' => 'Форма выхода устарела. Вы ещё в аккаунте. Повторите выход с обновлённой страницы.',
     'security_event_unknown' => 'Другое событие',
     'security_event_login' => 'Вход в аккаунт',
     'security_event_login_2fa' => 'Проверка двухфакторного кода',

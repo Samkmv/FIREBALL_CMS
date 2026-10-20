@@ -274,7 +274,7 @@ return array_replace($en, [
     'subscriptions_error_recurring_consent' => 'Необходимо согласие на рекуррентные списания.',
     'subscriptions_error_currency_mismatch' => 'Валюта тарифа не совпадает с валютой платёжного шлюза.',
     'subscriptions_error_email' => 'Укажите корректный адрес электронной почты.',
-    'subscriptions_error_phone' => 'Укажите корректный номер телефона.',
+    'subscriptions_error_phone' => 'Укажите российский номер телефона: +7 (999) 123-45-67. Можно ввести номер с 8 или без кода страны.',
     'subscriptions_error_field_required' => 'Укажите название и системный ключ поля.',
     'subscriptions_error_required_field' => 'Заполните обязательное поле: :field.',
     'subscriptions_error_system_field' => 'Системное поле нельзя удалить.',

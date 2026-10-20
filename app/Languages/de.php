@@ -1,6 +1,9 @@
 <?php
 
 return [
+    'security_event_logout' => 'Kontoabmeldung',
+    'security_reason_csrf_invalid' => 'Der Sicherheitscode des Formulars ist veraltet oder stimmt nicht mit der aktuellen Sitzung überein. Die Aktion wurde abgelehnt.',
+    'auth_logout_retry' => 'Das Abmeldeformular ist veraltet. Sie sind noch angemeldet. Melden Sie sich auf der aktualisierten Seite erneut ab.',
     'security_event_unknown' => 'Anderes Ereignis',
     'security_event_login' => 'Kontoanmeldung',
     'security_event_login_2fa' => 'Zwei-Faktor-Prüfung',

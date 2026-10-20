@@ -43,6 +43,8 @@ session()->remove('subscriptions.checkout_return');
                                 <?php require __DIR__ . '/region-field.php'; ?>
                             <?php elseif ($field['is_system'] && in_array($key, ['city', 'street', 'house'], true)): ?>
                                 <?php require __DIR__ . '/address-field.php'; ?>
+                            <?php elseif (($field['is_system'] && $key === 'phone') || $field['field_type'] === 'phone'): ?>
+                                <input class="form-control" type="tel" inputmode="tel" autocomplete="tel" name="<?= htmlSC($name) ?>" value="<?= htmlSC(\Fireball\Subscriptions\Support\RussianPhone::display((string)$fieldValue)) ?>" placeholder="+7 (999) 123-45-67" data-subscriptions-phone <?= $field['is_required'] ? 'required' : '' ?>>
                             <?php elseif ($field['is_system'] && $key === 'postal_code'): ?>
                                 <input
                                     class="form-control"
@@ -66,3 +68,4 @@ session()->remove('subscriptions.checkout_return');
         </form>
     </div></div>
 </section>
+<script src="<?= htmlSC(base_href('/plugins/subscriptions/assets/profile-phone.js?v=' . filemtime(__DIR__ . '/../../assets/profile-phone.js'))) ?>" defer></script>

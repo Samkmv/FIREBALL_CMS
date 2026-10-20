@@ -272,7 +272,7 @@ return [
     'subscriptions_error_recurring_consent' => 'Recurring payment consent is required.',
     'subscriptions_error_currency_mismatch' => 'Plan currency does not match the payment gateway currency.',
     'subscriptions_error_email' => 'Enter a valid email address.',
-    'subscriptions_error_phone' => 'Enter a valid phone number.',
+    'subscriptions_error_phone' => 'Enter a Russian phone number: +7 (999) 123-45-67. Numbers starting with 8 or without a country code are also accepted.',
     'subscriptions_error_field_required' => 'Field name and system key are required.',
     'subscriptions_error_required_field' => 'Complete the required field: :field.',
     'subscriptions_error_system_field' => 'A system field cannot be deleted.',

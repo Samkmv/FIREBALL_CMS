@@ -1,6 +1,9 @@
 <?php
 
 return [
+    'security_event_logout' => '退出账号',
+    'security_reason_csrf_invalid' => '表单安全令牌已过期或与当前会话不匹配。操作已拒绝。',
+    'auth_logout_retry' => '退出表单已失效。您仍处于登录状态，请在刷新后的页面重新退出。',
     'security_event_unknown' => '其他事件',
     'security_event_login' => '账号登录',
     'security_event_login_2fa' => '双重验证',

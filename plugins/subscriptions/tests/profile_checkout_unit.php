@@ -65,6 +65,7 @@ final class FireballPluginSubscriptions
 }
 
 require_once __DIR__ . '/../src/Repositories/ProfileRepository.php';
+require_once __DIR__ . '/../src/Support/RussianPhone.php';
 require_once __DIR__ . '/../src/Support/RussianRegionCatalog.php';
 require_once __DIR__ . '/../src/Services/PublicOfferService.php';
 

@@ -39,6 +39,7 @@ return static function (array $payer, array $profileFields = [], array $customFi
                 : 'subscriptions_value_no'));
         }
         $value = trim(is_scalar($value) ? (string)$value : '');
+        if ($type === 'phone') $value = \Fireball\Subscriptions\Support\RussianPhone::display($value);
 
         return $value === '' ? '<span class="text-body-secondary">—</span>' : nl2br(htmlSC($value));
     };
@@ -50,7 +51,7 @@ return static function (array $payer, array $profileFields = [], array $customFi
             <?php $value = array_key_exists($key, $payer) ? $payer[$key] : ($address[$key] ?? ''); ?>
             <div class="subscriptions-payer-field">
                 <span class="subscriptions-payer-field__label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_profile_field_' . $key)) ?></span>
-                <span class="subscriptions-payer-field__value"><?= $renderValue($value) ?></span>
+                <span class="subscriptions-payer-field__value"><?= $renderValue($value, $key === 'phone' ? 'phone' : 'text') ?></span>
             </div>
         <?php endforeach; ?>
     </div>

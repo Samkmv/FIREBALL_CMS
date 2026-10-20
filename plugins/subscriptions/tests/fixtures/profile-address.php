@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../../src/Support/RussianPhone.php';
 
 // CLI-only, isolated profile preview. No CMS bootstrap, session storage or database.
 if (PHP_SAPI !== 'cli') {

@@ -6,7 +6,7 @@ namespace App\Services;
 final class SecurityLogPresenter
 {
     public const EVENTS = [
-        'login', 'login_2fa', 'login_session_created', 'session_revoked',
+        'login', 'logout', 'login_2fa', 'login_session_created', 'session_revoked',
         'logout_other_devices', 'logout_all', 'two_factor_email_recovery_request',
         'two_factor_email_recovery_complete', 'password_reset_request',
         'password_reset_complete', 'registration', 'email_verification',
@@ -21,7 +21,7 @@ final class SecurityLogPresenter
         'storage_failure', 'identifier_conflict_or_storage_failure',
         'verification_storage_failed', 'verification_mail_failed', 'verification_sent',
         'verification_completed', 'verification_conflict_or_storage_failed',
-        'permission_denied', 'password_failed', '2fa_failed',
+        'permission_denied', 'password_failed', '2fa_failed', 'csrf_invalid',
     ];
     private const STAGES = ['begin', 'lookup', 'claim', 'password', 'sessions', 'consume', 'commit'];
 

@@ -3,6 +3,7 @@
 namespace Fireball\Subscriptions\Repositories;
 
 use Fireball\Subscriptions\Support\RussianRegionCatalog;
+use Fireball\Subscriptions\Support\RussianPhone;
 
 final class ProfileRepository
 {
@@ -31,14 +32,17 @@ final class ProfileRepository
             [$userId]
         )->getOne();
         if (!$profile && $create) {
-            $user = db()->query('SELECT name, email FROM users WHERE id = ? LIMIT 1', [$userId])->getOne();
+            $user = db()->query('SELECT * FROM users WHERE id = ? LIMIT 1', [$userId])->getOne();
             if (!$user) {
                 return null;
             }
             $now = date('Y-m-d H:i:s');
+            // Prefill only a new questionnaire. Editing a contact phone must
+            // never change the phone used to sign in to the CMS account.
+            $phone = RussianPhone::canonicalOrOriginal((string)($user['phone_normalized'] ?? $user['phone'] ?? ''));
             db()->query(
-                'INSERT INTO subscription_profiles (user_id, first_name, email, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-                [$userId, trim((string)$user['name']), trim((string)$user['email']), $now, $now]
+                'INSERT INTO subscription_profiles (user_id, first_name, email, phone, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+                [$userId, trim((string)$user['name']), trim((string)$user['email']), $phone, $now, $now]
             );
             $profile = db()->query('SELECT * FROM subscription_profiles WHERE user_id = ? LIMIT 1', [$userId])->getOne();
         }
@@ -46,6 +50,7 @@ final class ProfileRepository
             return null;
         }
 
+        $profile['phone'] = RussianPhone::canonicalOrOriginal((string)($profile['phone'] ?? ''));
         $profile['custom_values'] = $this->values((int)$profile['id']);
 
         return $profile;
@@ -65,6 +70,7 @@ final class ProfileRepository
         )->get() ?: [];
         $profiles = [];
         foreach ($rows as $row) {
+            $row['phone'] = RussianPhone::canonicalOrOriginal((string)($row['phone'] ?? ''));
             $row['custom_values'] = [];
             $row['custom_fields'] = [];
             $profiles[(int)$row['user_id']] = $row;
@@ -141,9 +147,7 @@ final class ProfileRepository
         if ($columns['email'] !== '' && filter_var($columns['email'], FILTER_VALIDATE_EMAIL) === false) {
             throw new \InvalidArgumentException(\FireballPluginSubscriptions::t('subscriptions_error_email'));
         }
-        if ($columns['phone'] !== '' && preg_match('/^[+0-9()\-\s]{7,30}$/', $columns['phone']) !== 1) {
-            throw new \InvalidArgumentException(\FireballPluginSubscriptions::t('subscriptions_error_phone'));
-        }
+        $columns['phone'] = RussianPhone::normalize($columns['phone']);
 
         $now = date('Y-m-d H:i:s');
         db()->beginTransaction();
@@ -211,11 +215,16 @@ final class ProfileRepository
             $invalidRegion = $field['is_system'] && $key === 'region' && !$this->isEmptyValue($value)
                 && (new RussianRegionCatalog())->appliesToCountry((string)($profile['country'] ?? ''))
                 && (new RussianRegionCatalog())->resolve((string)$value) === null;
-            if (!$field['is_required'] && !$invalidRegion) {
+            $invalidPhone = false;
+            if (($key === 'phone' || $field['field_type'] === 'phone') && !$this->isEmptyValue($value)) {
+                try { RussianPhone::normalize((string)$value); }
+                catch (\InvalidArgumentException) { $invalidPhone = true; }
+            }
+            if (!$field['is_required'] && !$invalidRegion && !$invalidPhone) {
                 continue;
             }
             $required[] = $key;
-            if ($invalidRegion || $this->isEmptyValue($value) || (in_array($field['field_type'], ['checkbox', 'boolean'], true) && (string)$value !== '1')) {
+            if ($invalidRegion || $invalidPhone || $this->isEmptyValue($value) || (in_array($field['field_type'], ['checkbox', 'boolean'], true) && (string)$value !== '1')) {
                 $missing[] = (string)$field['label'];
             }
         }
@@ -257,7 +266,7 @@ final class ProfileRepository
             'last_name' => (string)$profile['last_name'],
             'middle_name' => (string)$profile['middle_name'],
             'email' => (string)$profile['email'],
-            'phone' => (string)$profile['phone'],
+            'phone' => RussianPhone::canonicalOrOriginal((string)$profile['phone']),
             'address' => array_intersect_key($profile, array_flip(['country', 'region', 'city', 'street', 'house', 'apartment', 'postal_code'])),
             'custom_fields' => (array)($profile['custom_values'] ?? []),
         ];
@@ -342,8 +351,8 @@ final class ProfileRepository
         if ($field['field_type'] === 'email' && $value !== '' && filter_var($value, FILTER_VALIDATE_EMAIL) === false) {
             throw new \InvalidArgumentException((string)$field['label']);
         }
-        if ($field['field_type'] === 'phone' && $value !== '' && preg_match('/^[+0-9()\-\s]{7,30}$/', $value) !== 1) {
-            throw new \InvalidArgumentException((string)$field['label']);
+        if ($field['field_type'] === 'phone') {
+            $value = RussianPhone::normalize($value);
         }
         if ($field['field_type'] === 'number' && $value !== '' && !is_numeric($value)) {
             throw new \InvalidArgumentException((string)$field['label']);

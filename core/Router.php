@@ -178,7 +178,7 @@ class Router
                                 'message' => Language::get('tpl_security_error'),
                             ], 419);
                         } else {
-                            abort('Page expired', 419);
+                            abort(Language::get('error_419_message'), 419);
                         }
                     }
                 }

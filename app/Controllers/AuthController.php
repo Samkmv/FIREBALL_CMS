@@ -770,7 +770,22 @@ class AuthController extends BaseController
      */
     public function logout()
     {
+        // An old tab may submit logout after another tab already signed out.
+        // There is no authenticated state left to change in that case.
+        if (!check_auth()) response()->redirect(base_href('/'));
+
+        // This route delegates CSRF validation here so an expired form can
+        // return to a fresh profile instead of showing a bare 419 page.
+        // Never sign out an authenticated session with an invalid token.
+        if (!app()->router->checkCSRFToken()) {
+            $userId = (int)(get_user()['id'] ?? 0);
+            $this->securityLogs->record('logout', 'denied', $userId, $userId, 'csrf_invalid');
+            session()->setFlash('warning', return_translation('auth_logout_retry'));
+            response()->redirect(base_href('/profile'));
+        }
+        $userId = (int)(get_user()['id'] ?? 0);
         logout();
+        $this->securityLogs->record('logout', 'success', $userId, $userId);
         session()->setFlash('success', return_translation('auth_profile_logout_success'));
         response()->redirect(base_href('/'));
     }
@@ -864,7 +879,7 @@ class AuthController extends BaseController
     }
 
     /**
-     * Проверяет CSRF-токен, обновляет его и возвращает пользователя на форму при ошибке.
+     * Проверяет сессионный CSRF-токен и возвращает пользователя на форму при ошибке.
      */
     protected function assertValidCsrfToken(string $redirectPath, array $formData = []): void
     {
@@ -872,11 +887,13 @@ class AuthController extends BaseController
         $requestToken = (string)request()->post('needCSRFToken', '');
 
         if ($sessionToken !== '' && $requestToken !== '' && hash_equals($sessionToken, $requestToken)) {
-            app()->regenerateCSRFToken();
+            // It is a session token, not a single-use form nonce. Rotating on
+            // every submit invalidates other tabs and persistent navigation.
+            // Authentication/session changes still rotate it in FBL\Auth.
             return;
         }
 
-        app()->regenerateCSRFToken();
+        if ($sessionToken === '') app()->regenerateCSRFToken();
 
         if ($formData !== []) {
             session()->set('form_data', $formData);

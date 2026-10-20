@@ -126,6 +126,7 @@ require_once __DIR__ . '/../src/Support/AddressNormalizer.php';
 require_once __DIR__ . '/../src/Support/AddressMatcher.php';
 require_once __DIR__ . '/../src/Repositories/ContentRuleRepository.php';
 require_once __DIR__ . '/../src/Repositories/ProfileRepository.php';
+require_once __DIR__ . '/../src/Support/RussianPhone.php';
 require_once __DIR__ . '/../src/Repositories/AddressExclusionRepository.php';
 require_once __DIR__ . '/../src/Services/AccessService.php';
 require_once __DIR__ . '/../src/Services/SubscriptionService.php';
@@ -147,7 +148,7 @@ use Fireball\Subscriptions\Support\Money;
 use Fireball\Subscriptions\Support\ProtectedContent;
 
 $manifest = json_decode((string)file_get_contents(__DIR__ . '/../plugin.json'), true, 512, JSON_THROW_ON_ERROR);
-assertSameValue('1.5.4', $manifest['version'] ?? '', 'Plugin release version');
+assertSameValue('1.5.5', $manifest['version'] ?? '', 'Plugin release version');
 assertSameValue('github_directory', $manifest['update']['provider'] ?? '', 'Independent update provider');
 assertSameValue('Samkmv/FIREBALL_CMS', $manifest['update']['repository'] ?? '', 'Independent update repository');
 assertSameValue('main', $manifest['update']['branch'] ?? '', 'Independent update branch');
