@@ -18,6 +18,7 @@ import zlib
 
 project = Path(__file__).resolve().parents[1]
 (project / "tests/.tmp").mkdir(parents=True, exist_ok=True)
+
 server = None
 checks = []
 php = os.environ.get("FBL_TEST_PHP", "/Applications/MAMP/bin/php/php8.2.0/bin/php")
@@ -25,7 +26,6 @@ with socket.socket() as port_probe:
     port_probe.bind(("127.0.0.1", 0))
     port = port_probe.getsockname()[1]
 base = "http://127.0.0.1:" + str(port)
-scratch = Path(tempfile.mkdtemp(prefix="pwa-installation-", dir=project / "tests/.tmp"))
 
 def check(label, condition):
     if not condition:
