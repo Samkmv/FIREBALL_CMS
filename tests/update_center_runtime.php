@@ -62,8 +62,8 @@ try {
     verify('Custom favicon produces an immutable runtime set',str_contains($icons['favicon']['src'],'/uploads/pwa/generated-'));
     verify('Favicon changes keep system assets intact',$before===hashes(WWW.'/assets/default/pwa') && $updater->inspect()['is_update_clean']);
     $first=$icons['sizes'][192];$settings->values['site_favicon']='';png('public/uploads/app.png',256,0x228833);$settings->values['pwa_app_icon']='/uploads/app.png';$pwa->syncIcons();
-    verify('PWA icon has its own complete generated set',$pwa->icons()['sizes'][192]!==$first && count($pwa->manifestIcons())===10);
-    foreach($pwa->manifestIcons() as $icon){$image=getimagesize(WWW.parse_url($icon['src'],PHP_URL_PATH));verify('Manifest size and MIME match runtime asset '.$icon['sizes'].' '.$icon['purpose'],$image[0].'x'.$image[1]===$icon['sizes'] && $image['mime']===$icon['type']);}
+    verify('PWA icon has its own complete generated set',$pwa->icons()['sizes'][192]!==$first && count($pwa->manifestIcons())===11);
+    foreach($pwa->manifestIcons() as $icon){$image=$icon['sizes']==='180x180'?getimagesizefromstring($pwa->appleTouchIconPng()):getimagesize(WWW.parse_url($icon['src'],PHP_URL_PATH));verify('Manifest size and MIME match runtime asset '.$icon['sizes'].' '.$icon['purpose'],$image[0].'x'.$image[1]===$icon['sizes'] && $image['mime']===$icon['type']);}
     verify('Apple touch icon uses the runtime PNG',str_contains($pwa->icons()['apple']['src'],'/uploads/pwa/generated-'));
     verify('Direct attempt to generate into system assets is rejected',rejects(fn()=>$pwa->generate(WWW.'/uploads/app.png',WWW.'/assets/default/pwa')) && $before===hashes(WWW.'/assets/default/pwa'));
     $settings->values['site_title']='Custom user settings';put('config/config.local.php','<?php return ["custom"=>true];');put('public/uploads/music/user.flac','user audio fixture');

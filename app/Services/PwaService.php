@@ -11,6 +11,8 @@ class PwaService
     protected bool $schemaReady = false;
 
     protected array $iconSizes = [48, 72, 96, 128, 144, 152, 180, 192, 384, 512];
+    private array $applePngCache = [];
+    private const MAX_INLINE_APPLE_PNG_BYTES = 131072;
 
     public function __construct(?SiteSetting $settings = null)
     {
@@ -70,8 +72,10 @@ class PwaService
             'background_color' => $this->color('pwa_background_color', '#ffffff'),
             'favicon_url' => $icons['favicon']['src'],
             'favicon_type' => $icons['favicon']['type'],
-            // Give the installer a versioned static image; root discovery remains available.
+            // The iOS install sheet has its own image loader. Inline its preferred
+            // PNG so installation does not depend on a second network request.
             'apple_touch_icon_url' => $this->appleTouchIconUrl(),
+            'apple_touch_icon_data_uri' => $this->appleTouchIconDataUri(),
             'app_icon_192_url' => $icons['sizes'][192] ?? '',
             'startup_image_url' => $this->startupImageUrl(),
             'vapid_public_key' => $this->settings->get('pwa_vapid_public_key', ''),
@@ -148,6 +152,10 @@ class PwaService
                 ];
             }
         }
+
+        // Keep a real HTTP image for manifest consumers; data URLs are confined
+        // to the HTML Apple hint and never replace Android's 192/512px icons.
+        $icons[] = ['src' => $this->appleTouchIconUrl(), 'sizes' => '180x180', 'type' => 'image/png', 'purpose' => 'any'];
 
         if (!empty($set['maskable'])) {
             $icons[] = [
@@ -300,17 +308,62 @@ class PwaService
 
     public function appleTouchIconUrl(): string
     {
+        $png = $this->appleTouchIconPng();
+        return base_url('/apple-touch-icon.png') . ($png === null ? '' : '?v=' . hash('sha256', $png));
+    }
+
+    /** One canonical, bounded PNG for both root discovery and the inline HTML hint. */
+    public function appleTouchIconPng(): ?string
+    {
         $path = $this->appleTouchIconPath();
-        if ($path === null) return base_url('/apple-touch-icon.png');
-        $url = $this->assetUrlFromLocalPath($path);
-        if ($url === null && function_exists('theme')) {
+        if ($path === null) return null;
+        $data = @file_get_contents($path, false, null, 0, 4 * 1048576 + 1);
+        if (!is_string($data) || !PwaIconStorage::valid('apple-touch-icon.png', $data)) return null;
+        $background = $this->color('pwa_background_color', '#ffffff');
+        $key = hash('sha256', $data) . $background;
+        if (isset($this->applePngCache[$key])) return $this->applePngCache[$key];
+
+        if (function_exists('imagecreatefromstring') && function_exists('imagecreatetruecolor')) {
+            $image = @imagecreatefromstring($data);
+            if (!$image) return null;
+            $canvas = imagecreatetruecolor(180, 180);
             try {
-                if (realpath(theme()->assetPath('images/apple-touch-icon.png')) === $path) {
-                    $url = theme()->asset('images/apple-touch-icon.png');
-                }
-            } catch (\Throwable) { /* Root discovery can still serve the validated PNG. */ }
+                // Apple applies its own mask. Flatten alpha onto the configured
+                // app background and emit an ordinary, opaque RGB PNG.
+                $rgb = sscanf($background, '#%02x%02x%02x');
+                imagefill($canvas, 0, 0, imagecolorallocate($canvas, ...$rgb));
+                imagealphablending($canvas, true);
+                imagesavealpha($canvas, false);
+                imagecopy($canvas, $image, 0, 0, 0, 0, 180, 180);
+                ob_start();
+                try { $saved = imagepng($canvas, null, 9); $encoded = ob_get_contents(); }
+                finally { ob_end_clean(); }
+                if (!$saved || !is_string($encoded) || !PwaIconStorage::valid('apple-touch-icon.png', $encoded)) return null;
+                $data = $encoded;
+            } finally { imagedestroy($image); imagedestroy($canvas); }
         }
-        return $this->withVersion($url ?: base_url('/apple-touch-icon.png'), $path);
+        // Request-local only: never generate or modify a file while rendering a page.
+        return $this->applePngCache[$key] = $data;
+    }
+
+    public function appleTouchIconDataUri(): string
+    {
+        // Respect an application-supplied CSP rather than advertising an image
+        // the page itself forbids. Report-only policies do not block loading.
+        foreach (headers_list() as $header) {
+            if (!preg_match('/^Content-Security-Policy:\s*(.*)$/i', $header, $match)) continue;
+            $directives = [];
+            foreach (explode(';', $match[1]) as $directive) {
+                $parts = preg_split('/\s+/', strtolower(trim($directive)));
+                $name = array_shift($parts);
+                if ($name !== '' && !isset($directives[$name])) $directives[$name] = $parts;
+            }
+            $images = $directives['img-src'] ?? $directives['default-src'] ?? null;
+            if ($images !== null && !in_array('data:', $images, true)) return '';
+        }
+        $png = $this->appleTouchIconPng();
+        return $png !== null && strlen($png) <= self::MAX_INLINE_APPLE_PNG_BYTES
+            ? 'data:image/png;base64,' . base64_encode($png) : '';
     }
 
     public function serviceWorkerScript(): string
