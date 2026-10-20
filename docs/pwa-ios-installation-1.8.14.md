@@ -1,5 +1,7 @@
 # FIREBALL CMS 1.8.14 — иконка в окне установки iPhone
 
+> Историческая заметка. Для случая iOS 27.x, когда PNG уже доступен, но установка показывает монограмму, см. [исправление встраиванием канонического PNG](pwa-ios-inline-install-icon.md).
+
 На присланном снимке iPhone показывает букву T уже в окне «На экран Домой». Проверка tape-room.ru обнаружила доступные PNG по ссылкам HTML/манифеста, но стандартный `/apple-touch-icon.png` отвечал 404. Это недостаток резервного обнаружения иконки, а не доказательство единственной причины сбоя конкретного iPhone.
 
 Apple описывает корневой PNG и явный `apple-touch-icon` в [Safari Web Content Guide](https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariWebContent/ConfiguringWebApplications/ConfiguringWebApplications.html). В 1.8.14 добавлена совместимая выдача этого изображения:

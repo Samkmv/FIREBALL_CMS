@@ -60,6 +60,8 @@ dist/fireball-cms-*.zip*
 !/tests/update_center_dependencies.php
 !/tests/update_center_runtime.php
 !/tests/update_center_recovery.php
+!/tests/plugin_source_verification.php
+!/tests/auth_verification_ui.php
 !/tests/update_streaming.php
 !/tests/pwa_installation_check.py
 !/tests/pwa_installation_fixture.php

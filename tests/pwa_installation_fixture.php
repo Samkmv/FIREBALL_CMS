@@ -22,15 +22,36 @@ $app=new FBL\Application(false);$app->db=new PwaFixtureDatabase($pdo);$app->them
 $path=parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH);
 if($path==='/test/select'){
     $mode=$_GET['mode']??'default';$source=match($mode){'a'=>'/uploads/source-a.png','b'=>'/uploads/source-b.png','svg'=>'/uploads/source.svg',default=>''};
-    (new App\Models\SiteSetting())->setMany(['site_title'=>'PWA fixture','site_favicon'=>$source,'active_theme'=>'tape-room','pwa_enabled'=>'1']);
+    (new App\Models\SiteSetting())->setMany(['site_title'=>'PWA fixture','site_favicon'=>$source,'active_theme'=>'tape-room','pwa_enabled'=>'1','pwa_background_color'=>'#ffffff']);
     (new App\Services\PwaService())->syncIcons();
+    if($mode==='flat'){
+        $settings=new App\Models\SiteSetting();$pwa=new App\Services\PwaService($settings);
+        $settings->setMany(['site_favicon'=>'/uploads/source-a.png']);$pwa->syncIcons();
+        $directory=WWW.'/uploads/pwa/'.$settings->get('pwa_generated_icon_set','');
+        foreach(App\Services\PwaIconStorage::names() as $name)copy($directory.'/'.$name,WWW.'/uploads/pwa/'.$name);
+        $settings->setMany(['pwa_generated_icon_set'=>'','pwa_generated_icon_fingerprint'=>'']);
+    }
+    if($mode==='dark')(new App\Models\SiteSetting())->setMany(['pwa_background_color'=>'#112233']);
+    if($mode==='corrupt'){
+        foreach([WWW.'/assets/default/pwa/apple-touch-icon.png',ROOT.'/themes/tape-room/assets/images/apple-touch-icon.png'] as $file)file_put_contents($file,substr(file_get_contents($file),0,33));
+    }
     if($mode==='unavailable'){
         unlink(WWW.'/assets/default/pwa/apple-touch-icon.png');unlink(ROOT.'/themes/tape-room/assets/images/apple-touch-icon.png');
     }
     header('Content-Type: application/json');echo json_encode(['mode'=>$mode]);exit;
 }
 if($path==='/'){
+    $policy=match($_GET['csp']??''){'blocked'=>"img-src 'self'",'allowed'=>"img-src 'self' data:",'default-blocked'=>"default-src 'self'",default=>''};
+    if($policy!=='')header('Content-Security-Policy: '.$policy);
+    if(($_GET['csp']??'')==='report')header("Content-Security-Policy-Report-Only: img-src 'none'");
     header('Content-Type: text/html; charset=utf-8');echo '<!doctype html><html><head><meta charset="utf-8">'.pwa_head_tags().'</head><body>PWA icon fixture</body></html>';exit;
+}
+if($path==='/test/inline-limit'){
+    $pwa=new class extends App\Services\PwaService {public function appleTouchIconPng(): ?string{return str_repeat('x',131073);}};
+    header('Content-Type: application/json');echo json_encode(['inline'=>$pwa->appleTouchIconDataUri()]);exit;
+}
+if($path==='/test/theme-head'){
+    header('Content-Type: text/html; charset=utf-8');require $project.'/themes/tape-room/partials/pwa-head.php';exit;
 }
 if($path==='/themes/tape-room/assets/images/apple-touch-icon.png'){
     header('Content-Type: image/png');readfile(ROOT.$path);exit;

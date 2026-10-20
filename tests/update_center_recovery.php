@@ -108,6 +108,7 @@ try {
     put('plugins/reel-player/Plugin.php',$pluginCode);
 
     $receiptFile=STORAGE.'/component-installations/plugins/reel-player.json';$receipt=file_get_contents($receiptFile);unlink($receiptFile);
+    $savedPluginState=$manager->setting('reel-player','__plugin_update_state',[]);
     rename(ROOT.'/.git',$scratch.'/held-git');
     try {
         $legacyUpdater=new PackageUpdater($manager,$settings,$nextPlugin,$nextArchive,$pluginNew,$archive);
@@ -115,7 +116,15 @@ try {
         verify('Old ZIP plugin is verified against an official historical package',count($legacyUpdater->baseline('reel-player',$pluginNew,$probe))===2 && !file_exists($receiptFile));
         put('plugins/reel-player/Plugin.php','<?php return "unknown ZIP customization";');
         verify('Old ZIP plugin with manual changes cannot be approved by its version alone',rejects(fn()=>$legacyUpdater->baseline('reel-player',$pluginNew,$probe)));
-    } finally {put('plugins/reel-player/Plugin.php',$pluginCode);file_put_contents($receiptFile,$receipt);chmod($receiptFile,0600);rename($scratch.'/held-git',ROOT.'/.git');}
+        put('plugins/reel-player/Plugin.php',$pluginCode);
+        $legacyResult=$legacyUpdater->update('reel-player');
+        verify('Old ZIP installation completes a real plugin upgrade without a pre-existing receipt',$legacyResult['status']==='success' && json_decode(file_get_contents(PLUGINS.'/reel-player/plugin.json'),true)['version']==='10.0.0');
+        verify('Legacy upgrade records the new package and leaves maintenance mode',(new App\Services\ManagedPluginInstallations(ROOT))->isVerified('reel-player') && !is_file(STORAGE.'/update.maintenance'));
+    } finally {
+        put('plugins/reel-player/Plugin.php',$pluginCode);put('plugins/reel-player/plugin.json',json_encode($pluginNew));
+        file_put_contents($receiptFile,$receipt);chmod($receiptFile,0600);rename($scratch.'/held-git',ROOT.'/.git');
+        $pdo->exec("UPDATE plugins SET version='9.0.0' WHERE slug='reel-player'");$manager->setSetting('reel-player','__plugin_update_state',$savedPluginState);
+    }
     $icon=imagecreatetruecolor(48,48);imagefill($icon,0,0,0x334455);imagepng($icon,WWW.'/assets/default/pwa/icon-48.png');imagedestroy($icon);$oldIconHash=hash_file('sha256',WWW.'/assets/default/pwa/icon-48.png');
     $updater=new RecoveryUpdater($settings,$pdo);$result=$updater->runUpdate();
     $pwa=new App\Services\PwaService($settings);$activeIcon=WWW.parse_url($pwa->icons()['sizes'][48],PHP_URL_PATH);
