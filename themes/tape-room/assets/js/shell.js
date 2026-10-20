@@ -72,6 +72,10 @@
             });
             demoPlay.setAttribute('aria-pressed',String(active));demoPlay.setAttribute('aria-label',active?'Пауза — пример':'Воспроизвести — пример');const glyph=demoPlay.querySelector('.tr-icon');glyph.classList.toggle('ci-pause',active);glyph.classList.toggle('ci-play-filled',!active);if(glyph.hasAttribute('data-icon'))glyph.dataset.icon=active?'pause':'play';return;
         }
+        const demoShuffle=event.target.closest('[data-tr-demo-shuffle]');
+        if(demoShuffle){const active=demoShuffle.getAttribute('aria-pressed')!=='true';demoShuffle.setAttribute('aria-pressed',String(active));demoShuffle.classList.toggle('is-active',active);demoShuffle.setAttribute('aria-label',`Случайный порядок: ${active?'включён':'выключен'} — пример`);return;}
+        const demoRepeat=event.target.closest('[data-tr-demo-repeat]');
+        if(demoRepeat){const mode={off:'all',all:'one',one:'off'}[demoRepeat.dataset.trDemoRepeat];demoRepeat.dataset.trDemoRepeat=mode;demoRepeat.classList.toggle('is-active',mode!=='off');demoRepeat.setAttribute('aria-pressed',String(mode!=='off'));demoRepeat.setAttribute('aria-label',`Повтор: ${mode==='off'?'выключен':mode==='one'?'одного трека':'плейлиста'} — пример`);demoRepeat.parentElement.querySelector('[data-tr-demo-repeat-one]').hidden=mode!=='one';return;}
         const demoFavorite=event.target.closest('[data-tr-demo-favorite]');
         if(demoFavorite){const active=demoFavorite.getAttribute('aria-pressed')!=='true';demoFavorite.setAttribute('aria-pressed',String(active));demoFavorite.setAttribute('aria-label',active?'Убрать из избранного — пример':'Добавить в избранное — пример');demoFavorite.querySelector('.tr-icon').className='ci-bookmark tr-icon';return;}
         const demoCollection=event.target.closest('[data-tr-demo-collection]');

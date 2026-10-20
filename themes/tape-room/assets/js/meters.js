@@ -3,8 +3,8 @@
     // Analysis owns its own resources. It never pauses, routes, seeks or changes
     // the rate of the audible HTML Audio element.
     class TapeRoomMeters {
-        constructor({audio,generation,source,bufferedAhead,changed=()=>{},env=globalThis}) {
-            Object.assign(this,{audio,generation,source,bufferedAhead,changed,env});
+        constructor({audio,generation,source,bufferedAhead,enabled=()=>true,changed=()=>{},env=globalThis}) {
+            Object.assign(this,{audio,generation,source,bufferedAhead,enabled,changed,env});
             this.engine = null; this.trackGeneration = -1; this.request = 0;
             this.phase = 'idle'; this.reason = ''; this.needsGesture = false;
             this.events = []; this.rebuildTimes = []; this.timer = null;
@@ -47,7 +47,7 @@
             this.lastOrigin = ['user','automatic','system','lifecycle'].includes(origin) ? origin : 'automatic';
             this.lastActivation = activation; this.newGeneration();
             if(this.lastOrigin!=='lifecycle')this.playOrigin=this.lastOrigin;
-            if (this.env.document.hidden || !this.audio.src) { this.stop('hidden'); return; }
+            if (!this.enabled() || this.env.document.hidden || !this.audio.src) { this.stop('hidden'); return; }
             if (activation) {
                 this.counts.activations++;this.lastActivationMs=this.now();
                 if(this.terminal||this.retryAt!==null)this.unload('manual-retry');
@@ -233,6 +233,7 @@
             if(this.ticking)return;this.ticking=true;
             try {
                 this.newGeneration();
+                if(!this.enabled()){this.stop('hidden');return;}
                 if(this.env.document.hidden)return;
                 if((this.audio.paused||this.audio.ended)&&!(this.gestureUntil>this.now()))return;
                 const e=this.engine;if(!e||this.terminal)return;

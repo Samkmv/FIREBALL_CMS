@@ -172,10 +172,10 @@ add_filter('cms_rendered_html', static function (string $html): string {
 <script>
 addEventListener('DOMContentLoaded', () => {
     const app = document.querySelector('[data-player]'); if (!app) return;
-    const audio = app.querySelector('[data-audio]'), controls = app.querySelector('.rp-main-controls');
+    const audio = app.querySelector('[data-audio]'), controls = app.querySelector('.rp-main-controls'), options=app.querySelector('.rp-playback-options');
     const output = document.createElement('output'); output.hidden = true; output.dataset.miniTest = ''; document.body.append(output);
     const events = {loadstart:0,play:0,pause:0,volumechange:0};
-    const sync = () => { output.textContent = JSON.stringify({events, volume:audio.volume, muted:audio.muted, sameAudio:audio === app.querySelector('[data-audio]'), sameControls:controls === app.querySelector('.rp-main-controls')}); };
+    const sync = () => { output.textContent = JSON.stringify({events, volume:audio.volume, muted:audio.muted, sameAudio:audio === app.querySelector('[data-audio]'), sameControls:controls === app.querySelector('.rp-main-controls'),sameOptions:options === app.querySelector('.rp-playback-options')}); };
     for (const name of Object.keys(events)) audio.addEventListener(name, () => { events[name]++; sync(); });
     for (const name of ['change','click']) document.addEventListener(name, () => requestAnimationFrame(sync));
     sync();
@@ -183,6 +183,26 @@ addEventListener('DOMContentLoaded', () => {
 </script>
 HTML;
     return str_replace('</body>', $audit . '</body>', $html);
+});
+add_filter('cms_rendered_html',static function(string $html):string{
+    if(!in_array($_GET['quality_retry_test']??'',['once','always'],true))return $html;
+    $audit=<<<'HTML'
+<script>
+(() => {
+    const original=window.fetch.bind(window),always=new URL(location.href).searchParams.get('quality_retry_test')==='always';
+    const output=document.createElement('output');output.hidden=true;output.dataset.qualityRetryTest='';output.textContent='0';document.body.append(output);
+    let count=0;
+    window.fetch=(url,options)=>{
+        if(String(url).includes('/quality/4')){
+            output.textContent=String(++count);
+            if(always||count===1)return Promise.resolve(new Response(JSON.stringify({status:true,quality:{format:'FLAC'}}),{status:200,headers:{'Content-Type':'application/json'}}));
+        }
+        return original(url,options);
+    };
+})();
+</script>
+HTML;
+    return str_replace('</body>',$audit.'</body>',$html);
 });
 $router->get('/', [\App\Controllers\HomeController::class, 'index']);
 $router->get('/login', [\App\Controllers\AuthController::class, 'login'])->middleware(['guest']);

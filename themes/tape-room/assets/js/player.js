@@ -93,7 +93,7 @@
     let chapterKey = '', chapterIndex = -2, chapterDuration = -1, chapterRows = [], chapterMarkers = [];
     let chapterJob = null;
     const qualityCache = new Map();
-    let qualityJob = null;
+    let qualityJob = null, qualityRetry = null, qualityAttempts = 0;
     const playbackDuration = () => window.TapeRoomQuality.duration(activeTrack() || {},qualityCache.get(current),audio.readyState > 0 ? audio.duration : 0);
     const descriptorForPlaylist = id => ({type:id === -1 ? 'favorites' : id > 0 ? 'playlist' : 'songs', ...(id > 0 ? {id} : {})});
     const collectionName = id => collections.name(data,descriptorForPlaylist(id));
@@ -330,8 +330,9 @@
         if (node.title !== title) node.title = title;
     }
     function cancelQuality() {
+        clearTimeout(qualityRetry); qualityRetry = null;
         if (!qualityJob) return;
-        qualityJob.controller.abort(); clearTimeout(qualityJob.timer); qualityJob = null;
+        qualityJob.cancelled=true;qualityJob.controller.abort(); clearTimeout(qualityJob.timer); qualityJob = null;
     }
     function syncDuration() {
         const t=activeTrack();if(!t)return;
@@ -342,22 +343,29 @@
         if(!t.shared && !t.browserLocal)action('track.duration',{id:t.id,duration}).catch(()=>{});
     }
     async function requestQuality() {
-        cancelQuality();
         const t = activeTrack();
-        if (!t || t.browserLocal) return;
-        if (qualityCache.has(t.id)) { syncDuration();return; }
+        if (!t || t.browserLocal || qualityJob || qualityRetry !== null) return;
+        if (qualityCache.has(t.id) && window.TapeRoomQuality.durationConfirmed(t,qualityCache.get(t.id))) { syncDuration();return; }
+        if (qualityAttempts >= 3) return;
+        qualityAttempts++;
         const version = generation, id = t.id, controller = new AbortController();
         const job = {controller,timer:setTimeout(() => controller.abort(),9000)};
         qualityJob = job;
         try {
             const result = await api(`${t.shared ? 'catalog/' : ''}quality/${id}`,undefined,controller.signal);
             if (generation !== version || current !== id || controller.signal.aborted) return;
-            qualityCache.set(id,result.quality || {});const item=track(id);if(item)item.quality=result.quality;
+            const info={...t.quality,...result.quality};
+            qualityCache.set(id,info);const item=track(id);if(item)item.quality=info;
             if (qualityCache.size > 64) qualityCache.delete(qualityCache.keys().next().value);
             syncDuration();drawProgress(true);
             if(libraryView.type==='album'){const entry=album(libraryView.id),items=(entry?.tracks||[]).map(track).filter(Boolean),info=app.querySelector('.rp-album-detail-info'),badge=window.TapeRoomQuality.albumBadge(items);if(info&&badge&&!info.querySelector('.tr-lossless-badge'))info.querySelector('.rp-album-detail-meta')?.insertAdjacentHTML('afterend',badge);}
         } catch (_) { /* Optional technical metadata never gates music or opens an error dialog. */ }
-        finally { clearTimeout(job.timer); if (qualityJob === job) qualityJob = null; }
+        finally {
+            clearTimeout(job.timer); if (qualityJob === job) qualityJob = null;
+            if(!job.cancelled && generation === version && current === id && qualityAttempts < 3 && !window.TapeRoomQuality.durationConfirmed(t,qualityCache.get(id)) && !document.hidden){
+                qualityRetry=setTimeout(()=>{qualityRetry=null;requestQuality();},qualityAttempts * 2000);
+            }
+        }
     }
     function updateNow() {
         const t = activeTrack();
@@ -510,10 +518,11 @@
         });
         if (visible && transport.moving && !frameInProgress) startAnimation();
     }
-    const meterController = new window.TapeRoomMeters({audio,generation:()=>generation,source:()=>activeTrack()?.source,bufferedAhead,changed:()=>{
+    const metersVisible = () => document.documentElement.dataset.playerView !== 'mini' && app.dataset.sitePage !== '1';
+    const meterController = new window.TapeRoomMeters({audio,generation:()=>generation,source:()=>activeTrack()?.source,bufferedAhead,enabled:metersVisible,changed:()=>{
         graph = meterController.engine;
         const notice = $('[data-meter-recovery]');
-        if (notice) notice.hidden = !meterController.needsGesture || audio.paused || audio.ended || document.hidden;
+        if (notice) notice.hidden = !(meterController.needsGesture || meterController.terminal) || audio.paused || audio.ended || document.hidden || !metersVisible();
     }});
     function resumeMeters(origin = 'lifecycle', event) {
         try { meterController.resume(origin,event); }
@@ -576,17 +585,17 @@
         // cookies, OAuth credentials or account details; nothing is uploaded.
         const copy = graph?.mirror;
         meterReport.samples.push({ms:Math.round(now), hidden:document.hidden,
-            native:{time:audio.currentTime,paused:audio.paused,ended:audio.ended,ready:audio.readyState,seeking:audio.seeking,waiting:loading,rate:audio.playbackRate,muted:audio.muted,volume:audio.volume},
+            native:{time:audio.currentTime,duration:Number.isFinite(audio.duration)?audio.duration:null,displayDuration:playbackDuration(),headerDuration:qualityCache.get(current)?.duration??null,bufferedAhead:bufferedAhead(),paused:audio.paused,ended:audio.ended,ready:audio.readyState,seeking:audio.seeking,waiting:loading,rate:audio.playbackRate,muted:audio.muted,volume:audio.volume},
             analysis:{mode:copy ? 'copy' : graph?.capture ? 'capture' : 'none',state:graph?.context.state || 'absent',clock:graph?.context.currentTime,resuming:Boolean(graph?.resumeJob),levels:[...meterLevels],rms:[...meterSignal.rms],sampleAgeMs:meterSignal.sampled.map(time => Number.isFinite(time) ? Math.round(now-time) : null),health:meterController.snapshot(),
                 copy:copy ? {time:copy.currentTime,paused:copy.paused,ended:copy.ended,ready:copy.readyState,seeking:copy.seeking,rate:copy.playbackRate} : undefined}});
         while (meterReport.samples.length > 180 || now - meterReport.samples[0].ms > 90000) meterReport.samples.shift();
         if (meterReport.status && dialogOpen() && meterReport.status.isConnected) {
-            const retry = $('[data-meter-report-retry]'); if (retry) retry.hidden = !meterController.needsGesture || audio.paused || audio.ended;
+            const retry = $('[data-meter-report-retry]'); if (retry) retry.hidden = !(meterController.needsGesture || meterController.terminal) || audio.paused || audio.ended;
             meterReport.status.textContent = audio.paused ? 'Музыка на паузе.' : loading ? 'Музыка буферизуется.' : meterController.needsGesture ? 'Safari требует нажатия. Нажмите «Включить индикаторы».' : meterController.terminal ? 'Анализатор не смог продолжить работу. Причина записана в отчёте; воспроизведение песни от него не зависит.' : meterLevels.some(level => level > 0) ? 'Индикаторы получают сигнал музыки.' : 'Музыка играет. Сейчас анализатор не показывает уровень сигнала.';
         }
     }
     function openMeterReport() {
-        openDialog('Проверка индикаторов', `<div class="rp-settings-section"><h3>Tape Room ${esc(config.version || '')}</h3><p data-meter-report-status></p><button type="button" class="rp-button" data-action="meters" data-meter-report-retry hidden>Включить индикаторы</button></div><div class="rp-settings-section"><p>Если индикаторы пропадают, сохраните отчёт во время воспроизведения. Файл остаётся на устройстве и содержит только состояние плеера за последние 90 секунд, без данных аккаунта и названий песен.</p><button type="button" class="rp-button" data-action="meter-report-download">Сохранить отчёт</button></div>`, async () => {}, '', 'Готово');
+        openDialog('Проверка индикаторов', `<div class="rp-settings-section"><h3>Tape Room ${esc(config.version || '')}</h3><p data-meter-report-status></p><button type="button" class="rp-button" data-action="meters" data-meter-report-retry hidden>Включить индикаторы</button></div><div class="rp-settings-section"><p>Если индикаторы пропадают или шкала расходится со звуком, сохраните отчёт во время сбоя. Файл остаётся на устройстве и содержит только состояние плеера за последние 90 секунд, без данных аккаунта и названий песен.</p><button type="button" class="rp-button" data-action="meter-report-download">Сохранить отчёт</button></div>`, async () => {}, '', 'Готово');
         meterReport.status = $('[data-meter-report-status]'); recordMeterDiagnostic(true);
     }
     function downloadMeterReport() {
@@ -678,6 +687,7 @@
         const t = track(id); if (!t) return;
         sampleListening(); listening = null;
         recovery.select(t.id,t.source==='drive'&&!t.browserLocal);
+        cancelQuality();qualityAttempts=0;
         preloader.cancel(); generation++; audio.pause(); stopMeters('track-change'); current = t.id; restoreTime = time; setBuffering(false);
         chapterKey = ''; chapterIndex = -2; chapterDuration = -1;
         if(t.browserLocal){
@@ -1358,7 +1368,7 @@
     });
     audio.addEventListener('durationchange', () => { syncDuration();drawProgress(true); });
     audio.addEventListener('play', () => { recovery.play();setBuffering(audio.readyState < 3); startAnimation(); });
-    audio.addEventListener('playing', () => { setBuffering(false); resumeMeters(); startAnimation(); startListening(); });
+    audio.addEventListener('playing', () => { setBuffering(false); resumeMeters(); startAnimation(); startListening(); requestQuality(); });
     audio.addEventListener('waiting', () => { recovery.waiting();setBuffering(true); });
     // stalled concerns downloading; only waiting proves playback is starved.
     audio.addEventListener('stalled', () => { drawProgress(); });
@@ -1459,7 +1469,8 @@
         }
     });
     reducedMotion.addEventListener('change', () => { syncReels(); drawTape(); });
-    setInterval(()=>{recovery.tick();if(remotePlayback){drawProgress();updateButtons();}},1000);
+    document.addEventListener('tape-room:player-view',()=>{if(metersVisible()){if(!audio.paused)resumeMeters();}else stopMeters('hidden');});
+    setInterval(()=>{recovery.observe({position:audio.currentTime,paused:audio.paused,seeking:audio.seeking,ended:audio.ended,visible:!document.hidden});recovery.tick();if(remotePlayback){drawProgress();updateButtons();}},1000);
     window.addEventListener('offline', () => { preloader.connectivity(false); meterController.network(false); });
     window.addEventListener('online', () => { recovery.connected();preloader.connectivity(true); meterController.network(true); prepareUpcoming(); if (!audio.paused) resumeMeters(); });
     window.addEventListener('pageshow', () => { drawProgress(); if (!audio.paused) { resumeMeters(); startAnimation(); } });

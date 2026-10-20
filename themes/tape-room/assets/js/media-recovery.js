@@ -7,7 +7,7 @@
         }
         select(key,eligible) { this.pause();this.key=key;this.eligible=eligible;this.attempts=0;this.position=0;this.stableFrom=0;this.stalledAt=null; }
         play(manual=false) { if(manual){this.pause();this.attempts=0;}this.desired=true; }
-        pause() { this.desired=false;this.epoch++;if(this.timer!=null)this.cancel(this.timer);this.timer=null;this.inflight=false;this.offlineWait=false;this.stalledAt=null;this.maintenance=false;this.maintenanceUntil=0;this.onState(); }
+        pause() { this.desired=false;this.epoch++;if(this.timer!=null)this.cancel(this.timer);this.timer=null;this.inflight=false;this.offlineWait=false;this.stalledAt=null;this.watch=null;this.maintenance=false;this.maintenanceUntil=0;this.onState(); }
         get pending() { return this.desired&&(this.timer!=null||this.inflight||this.offlineWait); }
         progress(position) {
             if(!this.desired)return;
@@ -15,6 +15,13 @@
             this.position=position;
         }
         waiting() { if(this.eligible&&this.desired&&this.stalledAt==null)this.stalledAt=this.now(); }
+        observe({position,paused,seeking,ended,visible=true}) {
+            // Some WebKit stalls arrive without waiting/error. Observe the
+            // native clock, never wall-clock-estimate the song's position.
+            if(!this.eligible||!this.desired||this.pending||paused||seeking||ended||!visible){this.watch=null;return;}
+            if(!this.watch||Math.abs(position-this.watch.position)>.05){this.watch={position,time:this.now()};return;}
+            if(this.now()-this.watch.time>=12000){this.watch=null;this.failed({code:2,position});}
+        }
         tick() {
             if(this.inflight&&this.now()-this.inflightAt>=15000){this.epoch++;this.inflight=false;this.failed({code:2,position:this.position});}
             else if(this.stalledAt!=null&&this.now()-this.stalledAt>=12000)this.failed({code:2,position:this.position});

@@ -13,10 +13,15 @@
     // be an estimate and must not replace this value or poison the saved tags.
     const exactDuration = info => info?.format === 'FLAC' && info.lossless === true ? seconds(info.duration) : 0;
     function duration(track = {}, technical = null, nativeDuration = 0) {
-        return exactDuration(technical || track.quality) || seconds(nativeDuration) || seconds(track.duration);
+        const exact=exactDuration(technical) || exactDuration(track.quality);
+        if(exact)return exact;
+        // While the optional header is pending, a short WebKit estimate must
+        // not shrink a longer duration already known by the library.
+        if(format(track)==='FLAC' || technical?.format==='FLAC')return Math.max(seconds(nativeDuration),seconds(track.duration));
+        return seconds(nativeDuration) || seconds(track.duration);
     }
     function durationToSave(track = {}, technical = null, nativeDuration = 0) {
-        const info=technical || track.quality;
+        const info=exactDuration(technical) ? technical : exactDuration(track.quality) ? track.quality : technical || track.quality;
         return format(track) === 'FLAC' || info?.format === 'FLAC' ? exactDuration(info) : seconds(nativeDuration);
     }
     function format(track = {}) {
@@ -43,5 +48,6 @@
     const isLossless=track=>track?.quality?.lossless===true || track?.lossless===true || format(track)==='FLAC';
     const badge=()=>'<span class="tr-lossless-badge"><span class="tr-lossless-mark" aria-hidden="true"></span><span>Высокое качество <b>lossless</b></span></span>';
     const albumBadge=tracks=>tracks.length && tracks.every(isLossless)?badge():'';
-    return {format,summary,isLossless,badge,albumBadge,duration,durationToSave};
+    const durationConfirmed = (track, technical) => (format(track) !== 'FLAC' && technical?.format !== 'FLAC') || exactDuration(technical) > 0;
+    return {format,summary,isLossless,badge,albumBadge,duration,durationToSave,durationConfirmed};
 });

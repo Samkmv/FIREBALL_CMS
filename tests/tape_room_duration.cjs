@@ -23,5 +23,10 @@ check('Late header arrival restores a valid progress fraction beyond the old end
     assert.ok(position/quality.duration(flac,null,182)>1);
     assert.ok(position/quality.duration(flac,stream,182)<1);
 });
+check('A partial response does not hide already verified FLAC metadata',()=>assert.equal(quality.duration({...flac,quality:stream},{format:'FLAC'},182),267.25));
+check('A short native FLAC estimate cannot shrink a known library duration while the header is pending',()=>assert.equal(quality.duration({...flac,duration:267.25},{format:'FLAC'},182),267.25));
+check('A partial response cannot erase a verified duration to save',()=>assert.equal(quality.durationToSave({...flac,quality:stream},{format:'FLAC'},182),267.25));
+check('An incomplete FLAC header remains eligible for a bounded retry',()=>assert.equal(quality.durationConfirmed(flac,{format:'FLAC'}),false));
+check('A verified FLAC header completes optional metadata loading',()=>assert.equal(quality.durationConfirmed(flac,stream),true));
 const folder=__dirname+'/artifacts/tape-room-flac-duration';fs.mkdirSync(folder,{recursive:true});
 const report={passed:checks.length,checks};fs.writeFileSync(folder+'/unit.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report,null,2));

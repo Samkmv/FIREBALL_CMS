@@ -76,6 +76,7 @@ dist/fireball-cms-*.zip*
 !/tests/tape_room_playback_source.cjs
 !/tests/tape_room_duration.cjs
 !/tests/tape_room_duration.php
+!/tests/tape_room_meters.cjs
 !/tests/fixtures/
 /tests/fixtures/*
 !/tests/fixtures/tape-room-duration.flac
