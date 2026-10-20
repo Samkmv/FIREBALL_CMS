@@ -12,6 +12,7 @@ final class AuthSettings
         'auth_login_login' => '1',
         'auth_login_email' => '1',
         'auth_login_phone' => '0',
+        'auth_email_verification_required' => '1',
     ];
 
     public function all(): array
@@ -27,7 +28,14 @@ final class AuthSettings
             'auth_login_login' => !empty($input['auth_login_login']) ? '1' : '0',
             'auth_login_email' => !empty($input['auth_login_email']) ? '1' : '0',
             'auth_login_phone' => !empty($input['auth_login_phone']) ? '1' : '0',
+            'auth_email_verification_required' => !empty($input['auth_email_verification_required']) ? '1' : '0',
         ];
+    }
+
+    public function emailVerificationRequired(?array $policy = null): bool
+    {
+        $policy ??= $this->all();
+        return ($policy['auth_email_verification_required'] ?? self::DEFAULTS['auth_email_verification_required']) === '1';
     }
 
     public function validate(array $policy): array

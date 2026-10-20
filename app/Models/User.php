@@ -254,8 +254,9 @@ class User
             ? 'user-' . bin2hex(random_bytes(12))
             : $this->normalizeLogin((string)($data['login'] ?? ''));
         $identitySql = \App\Services\AuthIdentity::available() ? ', phone, phone_normalized, email_verification_required' : '';
-        $identityValues = $identitySql !== '' ? ', :phone, :phone_normalized, 1' : '';
-        $identityParams = $identitySql !== '' ? ['phone' => $phone, 'phone_normalized' => $phone] : [];
+        $identityValues = $identitySql !== '' ? ', :phone, :phone_normalized, :email_verification_required' : '';
+        $identityParams = $identitySql !== '' ? ['phone' => $phone, 'phone_normalized' => $phone,
+            'email_verification_required' => (new \App\Services\AuthSettings())->emailVerificationRequired($policy) ? 1 : 0] : [];
 
         db()->query(
             "INSERT INTO {$this->usersTable} (name, login, email, password, role, locale, admin_locale, created_at{$identitySql})

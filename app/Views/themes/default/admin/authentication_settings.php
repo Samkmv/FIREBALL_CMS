@@ -10,6 +10,13 @@ $values = $form + $settings;
     <div class="card-body p-3 p-md-4">
         <h2 class="h5 mb-3"><?= print_translation('auth_policy_registration') ?></h2>
         <p class="text-body-secondary"><?= print_translation('auth_policy_email_required') ?></p>
+        <div class="form-check form-switch mb-2">
+            <input type="hidden" name="auth_email_verification_required" value="0">
+            <input class="form-check-input" id="auth-email-verification-required" name="auth_email_verification_required" type="checkbox" value="1" aria-describedby="auth-email-verification-hint" <?= ($values['auth_email_verification_required'] ?? '1') === '1' ? 'checked' : '' ?>>
+            <label class="form-check-label" for="auth-email-verification-required"><?= print_translation('auth_policy_email_verification') ?></label>
+        </div>
+        <p id="auth-email-verification-hint" class="text-body-secondary fs-sm mb-4"><?= print_translation('auth_policy_email_verification_hint') ?></p>
+        <?= get_errors('auth_email_verification_required') ?>
         <div class="row g-3 mb-4">
             <div class="col-md-6">
                 <label for="auth-phone-mode" class="form-label"><?= print_translation('auth_identifier_phone') ?></label>

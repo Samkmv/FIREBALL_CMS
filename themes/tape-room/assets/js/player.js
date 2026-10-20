@@ -83,7 +83,7 @@
     const activeTrack = () => track(current);
     const chapters = window.TapeRoomChapters;
     const currentChapters = () => activeTrack()?.chapters || [];
-    const remotePosition = () => Math.min(Number(activeTrack()?.duration)||Infinity,window.TapeRoomPlaybackSync.position(remotePlayback,(performance.now()-remotePlayback.received)/1000));
+    const remotePosition = () => Math.min(playbackDuration()||Infinity,window.TapeRoomPlaybackSync.position(remotePlayback,(performance.now()-remotePlayback.received)/1000));
     const playbackPosition = () => remotePlayback?.state.current===current ? remotePosition() : audio.readyState === 0 && restoreTime ? restoreTime : audio.currentTime || 0;
     const remotePlaying = () => remotePlayback?.playing && (remotePlayback.serverTime-remotePlayback.updatedAt+performance.now()-remotePlayback.received)<30000;
     function claimPlayback() {
@@ -94,6 +94,7 @@
     let chapterJob = null;
     const qualityCache = new Map();
     let qualityJob = null;
+    const playbackDuration = () => window.TapeRoomQuality.duration(activeTrack() || {},qualityCache.get(current),audio.readyState > 0 ? audio.duration : 0);
     const descriptorForPlaylist = id => ({type:id === -1 ? 'favorites' : id > 0 ? 'playlist' : 'songs', ...(id > 0 ? {id} : {})});
     const collectionName = id => collections.name(data,descriptorForPlaylist(id));
     const collectionTracks = id => collections.collection(data,descriptorForPlaylist(id),'playlist');
@@ -332,10 +333,19 @@
         if (!qualityJob) return;
         qualityJob.controller.abort(); clearTimeout(qualityJob.timer); qualityJob = null;
     }
+    function syncDuration() {
+        const t=activeTrack();if(!t)return;
+        const duration=window.TapeRoomQuality.durationToSave(t,qualityCache.get(t.id),audio.readyState > 0 ? audio.duration : 0);
+        if(!duration || Math.abs((Number(t.duration)||0)-duration)<(window.TapeRoomQuality.format(t)==='FLAC'?.05:1))return;
+        for(const item of [...trackPool,...data.tracks,...(data.catalog?.tracks || [])])if(Number(item.id)===t.id)item.duration=duration;
+        render();
+        if(!t.shared && !t.browserLocal)action('track.duration',{id:t.id,duration}).catch(()=>{});
+    }
     async function requestQuality() {
         cancelQuality();
         const t = activeTrack();
-        if (!t || t.browserLocal || qualityCache.has(t.id)) return;
+        if (!t || t.browserLocal) return;
+        if (qualityCache.has(t.id)) { syncDuration();return; }
         const version = generation, id = t.id, controller = new AbortController();
         const job = {controller,timer:setTimeout(() => controller.abort(),9000)};
         qualityJob = job;
@@ -344,7 +354,7 @@
             if (generation !== version || current !== id || controller.signal.aborted) return;
             qualityCache.set(id,result.quality || {});const item=track(id);if(item)item.quality=result.quality;
             if (qualityCache.size > 64) qualityCache.delete(qualityCache.keys().next().value);
-            drawAudioQuality();
+            syncDuration();drawProgress(true);
             if(libraryView.type==='album'){const entry=album(libraryView.id),items=(entry?.tracks||[]).map(track).filter(Boolean),info=app.querySelector('.rp-album-detail-info'),badge=window.TapeRoomQuality.albumBadge(items);if(info&&badge&&!info.querySelector('.tr-lossless-badge'))info.querySelector('.rp-album-detail-meta')?.insertAdjacentHTML('afterend',badge);}
         } catch (_) { /* Optional technical metadata never gates music or opens an error dialog. */ }
         finally { clearTimeout(job.timer); if (qualityJob === job) qualityJob = null; }
@@ -395,6 +405,7 @@
         const sh = $('[data-action="shuffle"]'); sh.classList.toggle('is-active', shuffle); sh.setAttribute('aria-pressed', String(shuffle));
         sh.setAttribute('aria-label', `Случайный порядок: ${shuffle ? 'включён' : 'выключен'}`); sh.title = sh.getAttribute('aria-label');
         const re = $('[data-action="repeat"]'); re.classList.toggle('is-active', repeat !== 'off'); re.setAttribute('aria-label', `Повтор: ${repeat === 'off' ? 'выключен' : repeat === 'one' ? 'одного трека' : 'плейлиста'}`); re.title = re.getAttribute('aria-label'); $('[data-repeat-one]').hidden = repeat !== 'one';
+        re.setAttribute('aria-pressed', String(repeat !== 'off'));
         syncVolume();
         syncPlaybackQueue();
         catalogUI.syncPlayback(current,playing);
@@ -428,7 +439,7 @@
         if (visuals.seek.style.getPropertyValue('--buffered') !== value) visuals.seek.style.setProperty('--buffered',value);
     }
     function drawProgress(forcePosition = false) {
-        const duration = Number.isFinite(audio.duration) ? audio.duration : activeTrack()?.duration || 0;
+        const duration = playbackDuration();
         const position = playbackPosition();
         drawAudioQuality();
         const progress = duration > 0 ? Math.max(0, Math.min(1, position / duration)) : 0;
@@ -611,7 +622,7 @@
         configureAudioSession();
         if (audio.error || (activeTrack()?.browserLocal && !audio.hasAttribute('src'))) load(current,playbackPosition());
         recovery.play(origin==='user'||origin==='system');
-        if (audio.ended || (Number.isFinite(audio.duration) && audio.currentTime>=audio.duration-.05)) audio.currentTime = 0;
+        if (audio.ended) audio.currentTime = 0;
         if(activeTrack()?.browserLocal && !audio.hasAttribute('src')){
             const t=activeTrack(),sourceVersion=generation;
             sourceJob=window.TapeRoomTorrents.resolve(t).then(url=>{if(sourceVersion===generation){audio.src=url;audio.load();}});
@@ -658,7 +669,7 @@
     }
     function prepareUpcoming() {
         const connection = navigator.connection;
-        const enough = bufferedAhead() >= 8 || (Number.isFinite(audio.duration) && bufferedAhead() >= audio.duration-audio.currentTime-.25 && audio.readyState >= 3);
+        const enough = bufferedAhead() >= 8 || (playbackDuration() > 0 && bufferedAhead() >= playbackDuration()-audio.currentTime-.25 && audio.readyState >= 3);
         const allowed = !document.hidden && !audio.paused && !audio.ended && !audio.seeking && !loading && enough && !connection?.saveData && !['slow-2g','2g'].includes(connection?.effectiveType);
         preloader.schedule(upcoming(),allowed && config.authenticated!==false);
     }
@@ -864,7 +875,7 @@
         chapterRows = [...$('[data-chapter-list]').children];
         if ($('[data-chapter-empty]')) $('[data-chapter-empty]').hidden = visible.length !== 0;
         chapterIndex = -2;
-        syncChapter(Number.isFinite(audio.duration) ? audio.duration : t?.duration || 0);
+        syncChapter(playbackDuration());
     }
     function syncChapter(duration) {
         const items = currentChapters(), markerContainer = $('[data-chapter-markers]'), status = $('[data-chapter-current]');
@@ -902,7 +913,7 @@
     function seekTo(time) {
         if (!current || !Number.isFinite(Number(time))) return;
         claimPlayback();
-        const duration = Number.isFinite(audio.duration) ? audio.duration : activeTrack()?.duration || 0;
+        const duration = playbackDuration();
         const position = Math.max(0,duration > 0 ? Math.min(duration,Number(time)) : Number(time));
         if (audio.readyState === 0) restoreTime = position; else audio.currentTime = position;
         drawProgress(); save();
@@ -917,7 +928,7 @@
     }
     function chapterTrack(control) { return Number(control.dataset.trackId) || current; }
     function chapterAtPointer(event) {
-        const container = $('[data-chapter-markers]'), duration = Number.isFinite(audio.duration) ? audio.duration : activeTrack()?.duration || 0;
+        const container = $('[data-chapter-markers]'), duration = playbackDuration();
         const bounds = container.getBoundingClientRect();
         const time = bounds.width ? Math.max(0,Math.min(1,(event.clientX-bounds.left)/bounds.width))*duration : 0;
         return chapters.nearest(currentChapters().filter(item => item.start < duration),time);
@@ -1333,21 +1344,19 @@
     document.addEventListener('click', event => { if (!$('[data-sort]').contains(event.target)) closeSort(); });
     $('[data-volume]').addEventListener('input', event => { const volume = Number(event.target.value); audio.volume = volume; if (volume > 0) audibleVolume = volume; audio.muted = volume === 0; syncVolume(); save(); });
     audio.addEventListener('volumechange', syncVolume);
-    $('[data-seek]').addEventListener('input', event => { seekActive = true; const fraction = Number(event.target.value) / 1000; rangeFill(event.target,fraction); $('[data-elapsed]').textContent = formatTime((Number.isFinite(audio.duration) ? audio.duration : activeTrack()?.duration || 0) * fraction); });
-    $('[data-seek]').addEventListener('change', event => { const duration = Number.isFinite(audio.duration) ? audio.duration : activeTrack()?.duration || 0; seekActive = false; if (duration) seekTo(duration * Number(event.target.value) / 1000); });
+    $('[data-seek]').addEventListener('input', event => { seekActive = true; const fraction = Number(event.target.value) / 1000; rangeFill(event.target,fraction); $('[data-elapsed]').textContent = formatTime(playbackDuration() * fraction); });
+    $('[data-seek]').addEventListener('change', event => { const duration = playbackDuration(); seekActive = false; if (duration) seekTo(duration * Number(event.target.value) / 1000); });
     $('[data-audio-files]').addEventListener('change', event => uploadFiles([...event.target.files]));
     audio.addEventListener('loadedmetadata', () => {
         if (restoreTime) {
-            if (Number.isFinite(audio.duration)) audio.currentTime = recovery.pending ? Math.min(Math.max(0,audio.duration-.1),restoreTime) : restoreTime >= audio.duration - .25 ? 0 : Math.max(0, restoreTime);
+            const duration=window.TapeRoomQuality.durationToSave(activeTrack() || {},qualityCache.get(current),audio.duration);
+            audio.currentTime=duration ? (recovery.pending ? Math.min(Math.max(0,duration-.1),restoreTime) : restoreTime>=duration-.25 ? 0 : Math.max(0,restoreTime)) : Math.max(0,restoreTime);
             restoreTime = 0;
         }
+        syncDuration();
         drawProgress();
-        const t = activeTrack();
-        if (t && !t.shared && Number.isFinite(audio.duration) && Math.abs(t.duration - audio.duration) > 1) {
-            t.duration = audio.duration;
-            action('track.duration',{id:t.id,duration:audio.duration}).catch(() => {});
-        }
     });
+    audio.addEventListener('durationchange', () => { syncDuration();drawProgress(true); });
     audio.addEventListener('play', () => { recovery.play();setBuffering(audio.readyState < 3); startAnimation(); });
     audio.addEventListener('playing', () => { setBuffering(false); resumeMeters(); startAnimation(); startListening(); });
     audio.addEventListener('waiting', () => { recovery.waiting();setBuffering(true); });

@@ -64,6 +64,8 @@ dist/fireball-cms-*.zip*
 !/tests/plugin_source_verification.php
 !/tests/plugin_update_transport.php
 !/tests/auth_verification_ui.php
+!/tests/auth_modernization.php
+!/tests/security_log_presentation.php
 !/tests/update_streaming.php
 !/tests/pwa_installation_check.py
 !/tests/pwa_installation_fixture.php
@@ -72,6 +74,11 @@ dist/fireball-cms-*.zip*
 !/tests/toy-rental-audio.js
 !/tests/toy-rental-settings.js
 !/tests/tape_room_playback_source.cjs
+!/tests/tape_room_duration.cjs
+!/tests/tape_room_duration.php
+!/tests/fixtures/
+/tests/fixtures/*
+!/tests/fixtures/tape-room-duration.flac
 !/tests/tape_room_media_recovery.cjs
 !/tests/tape_room_sync.cjs
 !/tests/tape_room_sync_check.py

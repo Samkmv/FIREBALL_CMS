@@ -21,6 +21,7 @@ final class SecurityLogPresenter
         'storage_failure', 'identifier_conflict_or_storage_failure',
         'verification_storage_failed', 'verification_mail_failed', 'verification_sent',
         'verification_completed', 'verification_conflict_or_storage_failed',
+        'email_not_verified', 'verification_code_invalid', 'verification_code_attempts_exhausted',
         'permission_denied', 'password_failed', '2fa_failed', 'csrf_invalid',
     ];
     private const STAGES = ['begin', 'lookup', 'claim', 'password', 'sessions', 'consume', 'commit'];

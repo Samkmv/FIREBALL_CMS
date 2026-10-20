@@ -5,6 +5,20 @@ $testRoot = getenv('TAPE_ROOM_TEST_ROOT');
 if (!$testRoot || !str_starts_with(realpath($testRoot) ?: '', dirname(__DIR__) . '/tests/.tmp/')) {
     throw new RuntimeException('TAPE_ROOM_TEST_ROOT must point inside tests/.tmp/.');
 }
+// This synthetic account must stay offline even during a long browser audit:
+// refresh its bounded seed instead of letting the five-minute cache expire
+// and accidentally requesting Google with a deliberately fake token.
+if(is_file($testRoot.'/flac-duration-seed.json')&&is_file($testRoot.'/flac-duration.flac')){
+    $file=json_decode(file_get_contents($testRoot.'/flac-duration-seed.json'),true,512,JSON_THROW_ON_ERROR);
+    $appSettings=json_decode(file_get_contents($testRoot.'/storage/reel-player/drive-app.json'),true,512,JSON_THROW_ON_ERROR);
+    $binding=hash('sha256',$appSettings['client_id']."\0".$appSettings['client_secret']);
+    $identity=hash('sha256',$binding.':fixture-token');$key=hash('sha256',$identity.':'.$file['id']);
+    $prefix=$testRoot.'/storage/reel-player/2/drive-cache/'.$key;
+    file_put_contents($testRoot.'/storage/reel-player/2/drive.json',json_encode(['access_token'=>'fixture-token','expires_at'=>time()+3600,'app_binding'=>$binding]));
+    if(!is_file($prefix.'.bin'))copy($testRoot.'/flac-duration.flac',$prefix.'.bin');
+    file_put_contents($prefix.'.meta',json_encode($file));
+    file_put_contents($prefix.'.info',json_encode(['version'=>hash('sha256',json_encode([$file['id'],$file['size'],$file['headRevisionId'],'','']))]));
+}
 foreach (['cache', 'storage', 'sessions', 'uploads', 'views/layouts', 'views/themes/default/admin'] as $directory) {
     if (!is_dir($testRoot . '/' . $directory)) mkdir($testRoot . '/' . $directory, 0755, true);
 }
@@ -102,6 +116,30 @@ $router->get('/tape-room/api/drive/files',static function() use($testRoot){
     response()->json(['status'=>true,'files'=>$folder==='root' ? [['id'=>'fixture-folder-01','name'=>'Music','mimeType'=>'application/vnd.google-apps.folder']] : $files,'nextPageToken'=>'']);
 })->middleware(['auth']);
 require ROOT . '/plugins/reel-player/routes.php';
+add_filter('cms_rendered_html',static function(string $html):string{
+    if(($_GET['flac_duration_test']??'')!=='1')return $html;
+    $html=preg_replace_callback('~(<script type="application/json" data-player-config>)(.*?)(</script>)~s',static function($m){
+        $config=json_decode($m[2],true,512,JSON_THROW_ON_ERROR);$config['storageKey'].=':flac-duration-reference';unset($config['playback']);
+        $config['state']['tracks']=array_values(array_filter($config['state']['tracks'],static fn($t)=>$t['id']===4));$config['state']['catalog']['albums']=[];$config['state']['catalog']['tracks']=[];
+        return $m[1].json_encode($config,JSON_HEX_TAG|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE).$m[3];
+    },$html);
+    $audit=<<<'HTML'
+<script>
+(() => {
+    const audio=document.querySelector('[data-audio]');
+    const native=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'duration').get;
+    Object.defineProperty(audio,'duration',{get(){const actual=native.call(this);return this.src.includes('/media/4')&&Number.isFinite(actual)?actual/2:actual;}});
+    const output=document.createElement('output');output.hidden=true;output.dataset.flacDurationTest='';document.body.append(output);
+    let ended=0;const errors=[];audio.addEventListener('ended',()=>ended++);
+    audio.addEventListener('error',()=>errors.push({code:audio.error?.code,time:audio.currentTime}));
+    const report=()=>output.textContent=JSON.stringify({nativeDuration:native.call(audio),reportedDuration:audio.duration,time:audio.currentTime,ended,errors});
+    for(const event of ['timeupdate','loadedmetadata','durationchange','ended','pause','error'])audio.addEventListener(event,report);
+    report();
+})();
+</script>
+HTML;
+    return preg_replace('~(<script[^>]+src="[^"]*/js/player\.js[^>]*>)~',$audit.'$1',$html,1);
+});
 $recoveryFixture=static function()use($testRoot):never{
     $maintenance=str_contains($_SERVER['REQUEST_URI'],'/test/maintenance-media.wav');
     $counter=$testRoot.($maintenance?'/maintenance-requests.json':'/recovery-requests.json');$items=is_file($counter)?json_decode(file_get_contents($counter),true):[];$items[]=['range'=>$_SERVER['HTTP_RANGE']??'','retry'=>isset($_GET['_tr_retry'])];file_put_contents($counter,json_encode($items));

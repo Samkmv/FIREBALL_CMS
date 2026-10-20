@@ -2,7 +2,7 @@
   "name": "Tape Room",
   "slug": "reel-player",
   "class": "FireballPluginReelPlayer",
-  "version": "1.8.4",
+  "version": "1.8.5",
   "type": "system",
   "description": "Reel-to-reel player with a shared album catalogue, artists, personal collections, playlists and audio chapters.",
   "name_i18n": {
@@ -19,23 +19,20 @@
     "cms": ">=1.8.19"
   },
   "release_notes": [
-    "Highlight the current sidebar section on people pages and music profiles, including direct loading and persistent mini-player navigation.",
-    "Keep sidebar state correct after searches and browser history; deselect the hidden music catalogue and restore its selection on return.",
-    "Update the shared navigation component, UI example, Change Log and current capabilities.",
-    "Keep player decoration out of site-page Bootstrap controls; align search and sorting and polish gallery lists, carousel, navigation, feedback and content in both themes."
+    "Use exact FLAC STREAMINFO sample duration for progress, reel winding, seeking, chapters and Media Session in both player views.",
+    "Do not persist an initial browser FLAC estimate; repair stored durations when the verified header arrives without restarting playback.",
+    "Resume beyond an underestimated end without jumping to zero; handle late duration changes and add FLAC regression coverage."
   ],
   "release_notes_i18n": {
     "en": [
-      "Highlight the current sidebar section on people pages and music profiles, including direct loading and persistent mini-player navigation.",
-      "Keep sidebar state correct after searches and browser history; deselect the hidden music catalogue and restore its selection on return.",
-      "Update the shared navigation component, UI example, Change Log and current capabilities.",
-      "Keep player decoration out of site-page Bootstrap controls; align search and sorting and polish gallery lists, carousel, navigation, feedback and content in both themes."
+      "Use exact FLAC STREAMINFO sample duration for progress, reel winding, seeking, chapters and Media Session in both player views.",
+      "Do not persist an initial browser FLAC estimate; repair stored durations when the verified header arrives without restarting playback.",
+      "Resume beyond an underestimated end without jumping to zero; handle late duration changes and add FLAC regression coverage."
     ],
     "ru": [
-      "Исправлено выделение «Пользователи» в списке людей и музыкальных профилях при прямом открытии и переходах с мини-плеером.",
-      "Меню учитывает поиск и историю браузера; скрытый музыкальный каталог не остаётся выделенным, при возвращении выделение восстанавливается.",
-      "Обновлены общий компонент навигации, UI-пример, Change Log и текущие возможности.",
-      "Оформление плеера не искажает компоненты страниц; выровнены поиск с сортировкой и UI-примеры списков, карусели, навигации, сообщений и контента в обеих темах."
+      "Для FLAC шкала, намотка катушек, перемотка, главы и системное управление используют точное число семплов в обоих видах плеера.",
+      "Первоначальная браузерная оценка FLAC не записывается в библиотеку; после чтения заголовка длительность исправляется без перезапуска песни.",
+      "Продолжение после ошибочно определённого конца не сбрасывает позицию; добавлены проверки позднего уточнения длительности и FLAC-регрессии."
     ]
   },
   "update": {

@@ -82,7 +82,7 @@ class AuthController extends BaseController
         $user = Auth::validateCredentials([
             'login' => $data['login'],
             'password' => (string)($data['password'] ?? ''),
-        ]);
+        ], true);
         if (!$user) {
             $this->securityLogs->record('login', 'failed', null, null, 'credentials_invalid');
             $this->setFormState([
@@ -92,6 +92,16 @@ class AuthController extends BaseController
             ]);
             session()->setFlash('error', return_translation('auth_login_invalid_credentials'));
             response()->redirect(base_href('/login'));
+        }
+
+        if (Auth::requiresEmailVerification($user)) {
+            $this->rememberEmailVerification((string)$user['email'], (int)$user['id']);
+            $this->securityLogs->record('login', 'failed', null, (int)$user['id'], 'email_not_verified');
+            $this->setFormState(['login' => $data['login']], [
+                'login' => [return_translation('auth_email_not_verified')],
+            ]);
+            session()->setFlash('error', return_translation('auth_email_not_verified'));
+            response()->redirect(base_href('/verify-email'));
         }
 
         if ($this->users->hasTwoFactorEnabled($user)) {
@@ -449,7 +459,12 @@ class AuthController extends BaseController
             response()->redirect(base_href('/register'));
         }
 
-        if (!AuthIdentity::available() || !$this->mailService()->isEnabled()) {
+        $verificationRequired = (new AuthSettings())->emailVerificationRequired();
+        if (!AuthIdentity::available() || ($verificationRequired && !EmailVerification::codesAvailable())) {
+            session()->setFlash('error', return_translation('auth_schema_required'));
+            response()->redirect(base_href('/register'));
+        }
+        if ($verificationRequired && !$this->mailService()->isEnabled()) {
             session()->setFlash('error', return_translation(AuthIdentity::available() ? 'auth_mail_not_configured' : 'auth_schema_required'));
             response()->redirect(base_href('/register'));
         }
@@ -464,10 +479,19 @@ class AuthController extends BaseController
             session()->setFlash('error', return_translation('auth_registration_conflict'));
             response()->redirect(base_href('/register'));
         }
-        (new EmailVerification($this->mailService()))->request($userId);
-
         $this->clearFormState();
-        session()->setFlash('success', return_translation('auth_verify_registration_notice'));
+        $this->securityLogs->record('registration', 'success', $userId, $userId);
+        $registered = $this->users->findById($userId);
+        // Use the policy saved with the account, not a setting read before creation.
+        if (!Auth::requiresEmailVerification($registered)) {
+            session()->remove('auth.email_verification');
+            Auth::loginUser($registered);
+            session()->setFlash('success', return_translation('auth_login_success'));
+            response()->redirect(base_href('/profile'));
+        }
+        $this->rememberEmailVerification($data['email'], $userId, true);
+        $sent = (new EmailVerification($this->mailService()))->request($userId);
+        session()->setFlash($sent ? 'success' : 'warning', return_translation($sent ? 'auth_verify_registration_notice' : 'auth_verify_send_failed'));
         response()->redirect(base_href('/verify-email'));
     }
 
@@ -476,24 +500,81 @@ class AuthController extends BaseController
         header('Referrer-Policy: no-referrer');
         header('Cache-Control: no-store');
         $service = new EmailVerification($this->mailService());
+        $context = $this->emailVerificationContext();
+        $signedIn = get_user();
+        $account = $signedIn ? $this->users->findById((int)$signedIn['id']) : false;
+        $email = $account ? AuthIdentity::email((string)($account['pending_email'] ?: $account['email'])) : (string)($context['email'] ?? '');
         $token = trim((string)(request()->isGet() ? request()->get('token', '') : request()->post('token', '')));
         if (request()->isGet()) return Theme::render('auth/verify_email', [
             'title' => return_translation('auth_verify_title'), 'token' => $service->valid($token) ? $token : '',
+            'verification_email' => $email,
+            'verification_code_ready' => EmailVerification::codesAvailable(),
+            'verification_required' => (new AuthSettings())->emailVerificationRequired(),
             'seo_robots' => 'noindex,nofollow',
         ]);
         $this->assertValidCsrfToken('/verify-email');
+        if (!$account) $email = AuthIdentity::email((string)request()->post('email', ''));
+        if (AuthIdentity::validEmail($email)) {
+            if (($context['email'] ?? '') !== $email) $this->rememberEmailVerification($email);
+            $context = $this->emailVerificationContext();
+        }
         if (request()->post('verification_action') === 'resend') {
             if (RateLimiter::attempt('auth.verify.resend.' . client_ip(), 20, 3600)) {
-                $user = get_user();
-                if ($user) $service->request((int)$user['id']);
-                else $service->resendForAddress((string)request()->post('email', ''));
+                if ($account) $service->request((int)$account['id']);
+                else $service->resendForAddress($email);
             }
             session()->setFlash('success', return_translation('auth_verify_resend_notice'));
             response()->redirect(base_href('/verify-email'));
         }
+        if (request()->post('verification_action') === 'confirm_code') {
+            $expectedId = $account ? (int)$account['id'] : (int)($context['user_id'] ?? 0);
+            $confirmed = $service->confirmCode($email, trim((string)request()->post('verification_code', '')), $expectedId ?: null);
+            if (!$confirmed) {
+                $this->setFormState([], ['verification_code' => [return_translation('auth_verify_code_invalid')]]);
+                session()->setFlash('error', return_translation('auth_verify_code_invalid'));
+                response()->redirect(base_href('/verify-email'));
+            }
+            $this->clearFormState();
+            session()->remove('auth.email_verification');
+            if ($account) {
+                if (AuthIdentity::email((string)$account['email']) !== $email) {
+                    Auth::logout();
+                } else {
+                    Auth::setUser();
+                    session()->setFlash('success', return_translation('auth_verify_success'));
+                    response()->redirect(base_href('/profile/settings?section=information'));
+                }
+            } elseif (!empty($context['registration']) && $expectedId > 0) {
+                $registered = $this->users->findById($expectedId);
+                if ($registered && !empty($registered['email_verified_at']) && !Auth::requiresEmailVerification($registered)
+                    && AuthIdentity::email((string)$registered['email']) === $email && !$this->users->hasTwoFactorEnabled($registered)) {
+                    Auth::loginUser($registered);
+                    session()->setFlash('success', return_translation('auth_verify_success'));
+                    response()->redirect(base_href('/profile'));
+                }
+            }
+            session()->setFlash('success', return_translation('auth_verify_success'));
+            response()->redirect(base_href('/login'));
+        }
         $confirmed = $service->confirm($token);
         session()->setFlash($confirmed ? 'success' : 'error', return_translation($confirmed ? 'auth_verify_success' : 'auth_verify_invalid'));
         response()->redirect(base_href('/login'));
+    }
+
+    protected function rememberEmailVerification(string $email, int $userId = 0, bool $registration = false): void
+    {
+        session()->set('auth.email_verification', [
+            'email' => AuthIdentity::email($email), 'user_id' => $userId,
+            'registration' => $registration, 'created_at' => time(),
+        ]);
+    }
+
+    protected function emailVerificationContext(): array
+    {
+        $context = session()->get('auth.email_verification');
+        if (!is_array($context) || (int)($context['created_at'] ?? 0) < time() - 86400
+            || !AuthIdentity::validEmail((string)($context['email'] ?? ''))) return [];
+        return $context;
     }
 
     protected function mailService(): MailService
@@ -676,6 +757,7 @@ class AuthController extends BaseController
                 }
                 if ($emailChanged && AuthIdentity::available()) {
                     $sent = (new EmailVerification($this->mailService()))->request((int)$user['id'], $targetEmail);
+                    if ($sent) $this->rememberEmailVerification($targetEmail, (int)$user['id']);
                     session()->setFlash('warning', return_translation($sent ? 'auth_verify_change_notice' : 'auth_verify_change_retry'));
                 }
                 if ($data['password'] !== '') {

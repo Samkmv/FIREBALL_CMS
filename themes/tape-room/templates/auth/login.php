@@ -1,3 +1,4 @@
+<?php $authPolicy = $auth_policy ?? (new \App\Services\AuthSettings())->all(); ?>
 <div class="row g-4 g-xl-5 align-items-center tr-auth-layout">
     <?= $this->partial('auth-intro') ?>
     <section class="col-lg-6">
@@ -13,6 +14,9 @@
                 <?php if(!empty($password_recovery_available)): ?><div class="text-end"><button type="button" class="btn btn-link p-0 tr-form-link" data-bs-toggle="modal" data-bs-target="#tr-password-recovery">Забыли пароль?</button></div><?php endif; ?>
                 <button class="btn btn-primary btn-lg w-100 mt-2" type="submit">Войти <?= $this->partial('site-icon',['name'=>'arrow']) ?></button>
             </form>
+            <?php if ((new \App\Services\AuthSettings())->emailVerificationRequired($authPolicy)): ?>
+                <p class="text-body-secondary small mt-4 mb-0"><?= print_translation('auth_verify_login_hint') ?> <a href="<?= htmlSC(base_href('/verify-email')) ?>"><?= print_translation('auth_verify_resend') ?></a></p>
+            <?php endif; ?>
             <div class="tr-auth-switch">Ещё нет аккаунта? <a href="<?= htmlSC(base_href('/register')) ?>">Создать аккаунт</a></div>
         </div></div>
     </section>

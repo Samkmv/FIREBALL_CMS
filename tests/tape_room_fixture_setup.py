@@ -68,6 +68,14 @@ tag+=frame('APIC',b'\x03image/png\0\x03\0'+cover)
 length=len(tag);sync=bytes([(length>>21)&127,(length>>14)&127,(length>>7)&127,length&127])
 media=b'ID3\x03\0\0'+sync+tag+b'\xff\xfb\x90\0'+b'\0'*830
 file={'id':'fixture-drive-01','name':'Filename artist - Filename title.mp3','mimeType':'audio/mpeg','size':len(media),'headRevisionId':'fixture-revision','capabilities':{'canDownload':True}}
+flac_duration=len(sys.argv)>2 and sys.argv[2]=='flac-duration'
+if flac_duration:
+    # Reference 12-second, 44.1 kHz / 16-bit mono FLAC, encoded by libsndfile.
+    # The fixture needs no encoder installed and remains fully offline.
+    media=(root/'tests/fixtures/tape-room-duration.flac').read_bytes()
+    file.update(name='Tape Room - FLAC duration.flac',mimeType='audio/flac',size=len(media))
+    (scratch/'flac-duration.flac').write_bytes(media)
+    (scratch/'flac-duration-seed.json').write_text(json.dumps(file))
 binding=hashlib.sha256((app['client_id']+'\0'+app['client_secret']).encode()).hexdigest()
 (scratch/'storage/reel-player/2/drive.json').write_text(json.dumps({'access_token':'fixture-token','expires_at':time.time()+3600,'app_binding':binding}))
 account=hashlib.sha256((binding+':fixture-token').encode()).hexdigest();key=hashlib.sha256((account+':'+file['id']).encode()).hexdigest()
@@ -76,6 +84,7 @@ cache=scratch/'storage/reel-player/2/drive-cache';cache.mkdir(parents=True,exist
 version=hashlib.sha256(json.dumps([file['id'],file['size'],file['headRevisionId'],'',''],separators=(',',':')).encode()).hexdigest()
 (cache/(key+'.info')).write_text(json.dumps({'version':version}))
 conn.execute("INSERT INTO reel_tracks(id,owner_id,title,artist,filename,mime,file_size,duration,source,source_id,created_at) VALUES(4,2,?,?,?,?,?,0,'drive',?,CURRENT_TIMESTAMP)",['Filename title','Filename artist',file['name'],file['mimeType'],file['size'],file['id']])
+if flac_duration:conn.execute("UPDATE reel_tracks SET duration=6,title='FLAC: точная длительность',artist='Tape Room',metadata_loaded=1 WHERE id=4")
 conn.commit();conn.close()
 for folder in ['views/layouts','views/themes/default/admin','sessions','uploads','cache']:(scratch/folder).mkdir(parents=True,exist_ok=True)
 (scratch/'views/layouts/default.php').write_text('<?php echo $this->content;')

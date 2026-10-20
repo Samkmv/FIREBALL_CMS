@@ -594,6 +594,9 @@ class AdminController extends BaseController
             $data = $policy->normalize(request()->getData());
             $errors = \App\Services\AuthIdentity::available()
                 ? $policy->validate($data) : ['auth_phone_mode' => [return_translation('auth_schema_required')]];
+            if ($policy->emailVerificationRequired($data) && !\App\Services\EmailVerification::codesAvailable()) {
+                $errors['auth_email_verification_required'][] = return_translation('auth_schema_required');
+            }
             if ($errors) {
                 session()->set('form_data', $data);
                 session()->set('form_errors', $errors);

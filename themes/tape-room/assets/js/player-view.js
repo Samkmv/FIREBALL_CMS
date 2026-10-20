@@ -16,7 +16,8 @@
     // Move the existing transport, keeping its listeners, focus, queue and audio intact.
     const mounts = mini ? [
         [app.querySelector('.rp-main-controls'), mini.querySelector('[data-mini-transport]')],
-        [app.querySelector('.rp-secondary-controls'), mini.querySelector('[data-mini-secondary]')]
+        [app.querySelector('.rp-secondary-controls'), mini.querySelector('[data-mini-secondary]')],
+        [app.querySelector('.rp-playback-options'), mini.querySelector('[data-mini-options]')]
     ].map(([node, target]) => {
         const anchor = document.createComment('Tape Room transport home');
         node.before(anchor);

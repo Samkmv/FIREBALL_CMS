@@ -33,7 +33,7 @@ class Auth
     /**
      * Validates credentials without creating an authenticated session.
      */
-    public static function validateCredentials(array $credentials): array|false
+    public static function validateCredentials(array $credentials, bool $allowUnverified = false): array|false
     {
         $password = (string)($credentials['password'] ?? '');
         unset($credentials['password']);
@@ -51,11 +51,17 @@ class Auth
             return false;
         }
 
-        // Existing accounts are explicitly exempted by the migration; only new
-        // registrations wait for their email link. Errors stay non-enumerating.
-        if (!empty($user['email_verification_required']) && empty($user['email_verified_at'])) return false;
+        // The controller may inspect a PASSWORD-VERIFIED account to explain its
+        // pending email status. Ordinary callers still cannot authenticate it.
+        if (!$allowUnverified && self::requiresEmailVerification($user)) return false;
 
         return $user;
+    }
+
+    public static function requiresEmailVerification(array $user): bool
+    {
+        return !empty($user['email_verification_required']) && empty($user['email_verified_at'])
+            && (new \App\Services\AuthSettings())->emailVerificationRequired();
     }
 
     /**

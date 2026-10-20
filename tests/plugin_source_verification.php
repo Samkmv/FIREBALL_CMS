@@ -36,6 +36,7 @@ final class SourceProofProbe extends App\Services\PluginUpdateService {
     public function __construct(public SourceProofSettings $settings) {
         $this->siteSettings = $settings;
         (new ReflectionProperty(App\Services\PluginUpdateService::class, 'pluginsPath'))->setValue($this, ROOT . '/plugins');
+        (new ReflectionProperty(App\Services\PluginUpdateService::class, 'workspaceRoot'))->setValue($this, STORAGE . '/plugin-updates');
     }
     public function probe(string $slug, string $attempt): array {
         $manager = new FBL\Plugins\PluginManager(ROOT . '/plugins');
@@ -254,6 +255,80 @@ try {
     $otherRecord = catalogRecord('1.0.0', str_repeat('2', 40), $catalogPackage, ['tests/other.php' => '<?php return "other commit";']);
     $mixedHashes = $fullCatalogHashes + ['tests/other.php' => hash('sha256', '<?php return "other commit";')];
     verifyProof('Catalog never combines allowed extras from different commits', catalogMatch(catalogDocument('fixture-catalog', [$catalogRecord, $otherRecord]), $mixedHashes) === null);
+
+    // Old ZIP updates copied over an existing directory instead of replacing it.
+    // Only exact, older official path/hash pairs may survive that overlay; the
+    // active package still has to be one complete commit of the current version.
+    $legacyFiles = [
+        'assets/obsolete.webp' => "RIFF\x00\x01legacy official image",
+        'assets/legacy-player.js' => 'window.legacyPlayer = true;',
+        'assets/legacy-style.css' => '.legacy-player { display: block; }',
+        'src/LegacyHelper.php' => '<?php return "retired official helper";',
+        'src/Payments/Gateway.php.bak-20260927-160132' => '<?php return "official historical backup";',
+    ];
+    $legacyOptional = ['docs/retired.md' => "Official retired development documentation\n"];
+    $legacyPackage = packageFixture('fixture-catalog', '0.9.9', 'return "previous official source";') + $legacyFiles;
+    $legacyRecord = catalogRecord('0.9.9', str_repeat('3', 40), $legacyPackage, $legacyOptional);
+    $legacyHashes = array_map(fn($bytes) => hash('sha256', $bytes), $legacyFiles + $legacyOptional);
+    $overlayDocument = catalogDocument('fixture-catalog', [$catalogRecord, $legacyRecord]);
+    $overlayHashes = $fullCatalogHashes + $legacyHashes;
+    $overlayMatch = catalogMatch($overlayDocument, $overlayHashes);
+    $expectedLegacy = $legacyHashes; ksort($expectedLegacy, SORT_STRING);
+    verifyProof('A clean catalog match keeps its original return format', catalogMatch($overlayDocument, $catalogHashes) === $catalogRecord);
+    verifyProof('Exact older official overlay leftovers are reported separately from the active package', $overlayMatch !== null
+        && ($overlayMatch['legacy_extras'] ?? null) === $expectedLegacy
+        && array_diff_key($overlayMatch, ['legacy_extras' => true]) === $catalogRecord);
+    foreach ($legacyHashes as $path => $hash) {
+        $singleLegacy = catalogMatch($overlayDocument, $catalogHashes + [$path => $hash]);
+        verifyProof('An exact old file can be recognized independently: ' . $path,
+            ($singleLegacy['legacy_extras'] ?? null) === [$path => $hash]);
+        verifyProof('A modified historical file is never discarded: ' . $path,
+            catalogMatch($overlayDocument, array_replace($overlayHashes, [$path => hash('sha256', 'local edit of ' . $path)])) === null);
+    }
+    verifyProof('One unknown file still blocks an otherwise recognized old overlay',
+        catalogMatch($overlayDocument, $overlayHashes + ['assets/custom.webp' => hash('sha256', 'custom image')]) === null);
+    verifyProof('Historical hashes never excuse a changed current required file',
+        catalogMatch($overlayDocument, array_replace($overlayHashes, ['Plugin.php' => $legacyRecord['required_files']['Plugin.php']])) === null);
+    $oldOptionalRecord = $legacyRecord;
+    $oldOptionalRecord['allowed_extras']['docs/readme.md'] = hash('sha256', 'older documentation at a current optional path');
+    verifyProof('Historical hashes never excuse a changed current optional file',
+        catalogMatch(catalogDocument('fixture-catalog', [$catalogRecord, $oldOptionalRecord]),
+            array_replace($overlayHashes, ['docs/readme.md' => $oldOptionalRecord['allowed_extras']['docs/readme.md']])) === null);
+    $sameVersionRecord = array_replace($legacyRecord, ['version' => '1.0.0']);
+    $futureRecord = array_replace($legacyRecord, ['version' => '1.0.1']);
+    verifyProof('Another commit of the installed version is not an older overlay origin',
+        catalogMatch(catalogDocument('fixture-catalog', [$catalogRecord, $sameVersionRecord]), $overlayHashes) === null);
+    verifyProof('A later official version cannot authorize overlay leftovers',
+        catalogMatch(catalogDocument('fixture-catalog', [$catalogRecord, $futureRecord]), $overlayHashes) === null);
+    $crossPluginDocument = catalogDocument('fixture-catalog', [$catalogRecord]);
+    $crossPluginDocument['plugins']['another-plugin'] = [$legacyRecord];
+    verifyProof('Matching historical hashes belonging to another plugin cannot authorize files',
+        catalogMatch($crossPluginDocument, $overlayHashes) === null);
+    $invalidOrigin = array_replace($legacyRecord, ['commit' => 'not-an-official-commit']);
+    verifyProof('An invalid historical catalog record cannot authorize otherwise matching extras',
+        catalogMatch(catalogDocument('fixture-catalog', [$catalogRecord, $invalidOrigin]), $overlayHashes) === null);
+    $secondLegacyFile = ['assets/even-older.css' => '.even-older { color: red; }'];
+    $secondLegacy = catalogRecord('0.8.0', str_repeat('4', 40),
+        packageFixture('fixture-catalog', '0.8.0', 'return "even older official source";') + $secondLegacyFile);
+    $secondLegacyHash = array_map(fn($bytes) => hash('sha256', $bytes), $secondLegacyFile);
+    $multiOriginExpected = $legacyHashes + $secondLegacyHash; ksort($multiOriginExpected, SORT_STRING);
+    verifyProof('Independent deleted paths may have different strictly older official origins',
+        (catalogMatch(catalogDocument('fixture-catalog', [$catalogRecord, $legacyRecord, $secondLegacy]),
+            $overlayHashes + $secondLegacyHash)['legacy_extras'] ?? null) === $multiOriginExpected);
+    $splitCurrent = $catalogRecord;
+    $splitCurrent['required_files']['Plugin.php'] = hash('sha256', 'different official same-version source');
+    $splitCurrent['required_files']['src/CurrentHelper.php'] = hash('sha256', 'another active source file');
+    verifyProof('Older leftovers do not permit mixing active required files across same-version commits',
+        catalogMatch(catalogDocument('fixture-catalog', [$catalogRecord, $splitCurrent, $legacyRecord]),
+            $overlayHashes + ['src/CurrentHelper.php' => $splitCurrent['required_files']['src/CurrentHelper.php']]) === null);
+    $numericOrigin = array_replace($legacyRecord, ['version' => '0.10.0']);
+    $numericCurrent = array_replace($catalogRecord, ['version' => '0.9.0']);
+    verifyProof('Older overlay versions are compared semantically, not lexicographically',
+        catalogMatch(catalogDocument('fixture-catalog', [$numericCurrent, $numericOrigin]), $overlayHashes, [], '0.9.0') === null);
+    $buildCurrent = array_replace($catalogRecord, ['version' => '1.0.0+current']);
+    $buildOrigin = array_replace($legacyRecord, ['version' => '1.0.0+older']);
+    verifyProof('Build metadata does not turn another same-version commit into a strictly older overlay origin',
+        catalogMatch(catalogDocument('fixture-catalog', [$buildCurrent, $buildOrigin]), $overlayHashes, [], '1.0.0+current') === null);
     $malformed = [
         'unsupported schema' => array_replace($catalogDocument, ['schema' => 2]),
         'repository type' => array_replace($catalogDocument, ['repository' => []]),
@@ -289,6 +364,76 @@ try {
     $probe->requests = []; $catalogBefore = $installations->tree(ROOT . '/plugins/fixture-catalog');
     verifyProof('A known legacy ZIP package is verified with zero HTTP requests despite REST rate limits', $probe->probe('fixture-catalog', 'catalog-rate-limit') === $catalogBefore && $probe->requests === []);
     verifyProof('Catalog adoption neither changes files nor manufactures a receipt', $installations->tree(ROOT . '/plugins/fixture-catalog') === $catalogBefore && $installations->receipt('fixture-catalog') === null);
+    installFixture('fixture-catalog', $legacyFiles + $legacyOptional);
+    putFixture('config/plugin-baselines.json', json_encode($overlayDocument));
+    $catalogOverlayBefore = $installations->tree(ROOT . '/plugins/fixture-catalog');
+    verifyProof('Known old overlay files are verified offline but retained in the complete pre-update snapshot',
+        $probe->probe('fixture-catalog', 'catalog-old-overlay') === $catalogOverlayBefore && $probe->requests === []);
+    verifyProof('Recognizing historical leftovers does not delete them or manufacture a receipt',
+        $installations->tree(ROOT . '/plugins/fixture-catalog') === $catalogOverlayBefore && $installations->receipt('fixture-catalog') === null);
+    $backupMethod = new ReflectionMethod(App\Services\PluginUpdateService::class, 'createPluginBackup');
+    $backupPath = $backupMethod->invoke($probe, ROOT . '/plugins/fixture-catalog', 'fixture-catalog', '1.0.0', $catalogOverlayBefore);
+    $backupZip = new ZipArchive();
+    if ($backupZip->open($backupPath) !== true) throw new RuntimeException('Unable to open old-overlay backup');
+    $backupHashes = [];
+    for ($index = 0; $index < $backupZip->numFiles; $index++) {
+        $name = $backupZip->getNameIndex($index);
+        if (!str_starts_with($name, 'fixture-catalog/') || str_ends_with($name, '/')) continue;
+        $bytes = $backupZip->getFromIndex($index);
+        if ($bytes === false) throw new RuntimeException('Unable to read old-overlay backup entry');
+        $backupHashes[substr($name, strlen('fixture-catalog/'))] = hash('sha256', $bytes);
+    }
+    $backupZip->close(); ksort($backupHashes, SORT_STRING);
+    verifyProof('The pre-update ZIP backup contains every current file and every recognized historical leftover byte-for-byte',
+        $backupHashes === $catalogOverlayBefore && array_diff_assoc($legacyHashes, $backupHashes) === []);
+    verifyProof('Creating the full old-overlay backup leaves the source directory untouched',
+        $installations->tree(ROOT . '/plugins/fixture-catalog') === $catalogOverlayBefore);
+    $assertBackup = new ReflectionMethod(App\Services\PluginUpdateService::class, 'assertPluginBackup');
+    verifyProof('The completed old-overlay backup passes independent read-back verification',
+        failureProof(fn() => $assertBackup->invoke($probe, $backupPath, 'fixture-catalog', $catalogOverlayBefore)) === '');
+    $backupBytes = [];
+    foreach ($catalogOverlayBefore as $path => $hash) $backupBytes['fixture-catalog/' . $path] = (string)file_get_contents(ROOT . '/plugins/fixture-catalog/' . $path);
+    $badBackups = [];
+    $badBackups['missing'] = $backupBytes; unset($badBackups['missing']['fixture-catalog/Plugin.php']);
+    $badBackups['edited'] = array_replace($backupBytes, ['fixture-catalog/Plugin.php' => '<?php return "corrupted saved source";']);
+    $badBackups['unknown'] = $backupBytes + ['fixture-catalog/unexpected.php' => '<?php return "not in the verified snapshot";'];
+    $badBackups['unsafe'] = $backupBytes + ['fixture-catalog/../escape.php' => '<?php return "unsafe archive entry";'];
+    $badBackups['duplicate'] = $backupBytes + ['fixture-catalog/PlugiN.php' => $backupBytes['fixture-catalog/Plugin.php']];
+    foreach ($badBackups as $kind => $entries) {
+        $badBackupPath = ROOT . '/catalog/backup-' . $kind . '.zip';
+        $badZip = new ZipArchive();
+        if ($badZip->open($badBackupPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) throw new RuntimeException('Unable to create invalid backup fixture');
+        foreach ($entries as $name => $bytes) if (!$badZip->addFromString($name, $bytes)) throw new RuntimeException('Unable to add invalid backup fixture entry');
+        $badZip->close();
+        if ($kind === 'duplicate') {
+            $zipBytes = (string)file_get_contents($badBackupPath);
+            $zipBytes = str_replace('fixture-catalog/PlugiN.php', 'fixture-catalog/Plugin.php', $zipBytes, $replacements);
+            if ($replacements !== 2) throw new RuntimeException('Duplicate ZIP fixture did not replace both local and central names');
+            file_put_contents($badBackupPath, $zipBytes);
+        }
+        verifyProof('Independent backup verification rejects ' . $kind . ' archive entries',
+            failureProof(fn() => $assertBackup->invoke($probe, $badBackupPath, 'fixture-catalog', $catalogOverlayBefore)) !== '');
+        verifyProof('A rejected ' . $kind . ' backup never changes the installed plugin directory',
+            $installations->tree(ROOT . '/plugins/fixture-catalog') === $catalogOverlayBefore);
+    }
+    putFixture('catalog/backup-corrupt.zip', 'This is not a ZIP archive');
+    verifyProof('Independent backup verification rejects a corrupt ZIP and leaves every installed file intact',
+        failureProof(fn() => $assertBackup->invoke($probe, ROOT . '/catalog/backup-corrupt.zip', 'fixture-catalog', $catalogOverlayBefore)) !== ''
+        && $installations->tree(ROOT . '/plugins/fixture-catalog') === $catalogOverlayBefore);
+    $installations->record('fixture-catalog', ['kind' => 'overlay-receipt-regression-fixture']);
+    installFixture('fixture-catalog', $secondLegacyFile);
+    putFixture('config/plugin-baselines.json', json_encode(catalogDocument('fixture-catalog', [$catalogRecord, $legacyRecord, $secondLegacy])));
+    verifyProof('Even an otherwise recognized old overlay addition cannot bypass an existing installation receipt',
+        str_contains(failureProof(fn() => $probe->probe('fixture-catalog', 'overlay-receipt-conflict')), 'отличается от установленного пакета') && $probe->requests === []);
+    foreach (array_keys($secondLegacyFile) as $path) unlink(ROOT . '/plugins/fixture-catalog/' . $path);
+    unlink(STORAGE . '/component-installations/plugins/fixture-catalog.json');
+    putFixture('config/plugin-baselines.json', json_encode($overlayDocument));
+    putFixture('.git', 'gitdir: /nonexistent/fixture-worktree');
+    verifyProof('Recognized old overlay files never bypass a conflicting Git worktree',
+        str_contains(failureProof(fn() => $probe->probe('fixture-catalog', 'overlay-git-conflict')), 'отличается от установленного пакета') && $probe->requests === []);
+    unlink(ROOT . '/.git');
+    foreach (array_keys($legacyHashes) as $path) unlink(ROOT . '/plugins/fixture-catalog/' . $path);
+    putFixture('config/plugin-baselines.json', json_encode($catalogDocument));
     $installations->record('fixture-catalog', ['kind' => 'catalog-regression-fixture']);
     putFixture('plugins/fixture-catalog/Plugin.php', '<?php return "edited after a receipt";');
     $receiptEdited = $installations->tree(ROOT . '/plugins/fixture-catalog');
@@ -332,6 +477,64 @@ try {
     $productCatalogPath = $project . '/config/plugin-baselines.json';
     $productDocument = json_decode((string)file_get_contents($productCatalogPath), true, 512, JSON_THROW_ON_ERROR);
     $productCatalog = new App\Services\PluginBaselineCatalog($productCatalogPath);
+    // Exercise the production overlay layouts directly from shipped hashes as
+    // well, so these regressions still run in ZIP and shallow distributions.
+    $reelCurrentRecords = array_values(array_filter($productDocument['plugins']['reel-player'] ?? [], fn($record) => $record['version'] === '1.7.6'));
+    verifyProof('The reported reel-player 1.7.6 baseline is available for overlay regressions', $reelCurrentRecords !== []);
+    $reelCurrent = $reelCurrentRecords[0];
+    $reelKnown = $reelCurrent['required_files'] + $reelCurrent['allowed_extras'];
+    $reelConfig = ['repository' => $productDocument['repository'], 'path' => 'plugins/reel-player'];
+    $reelOrigins = array_filter($productDocument['plugins']['reel-player'], fn($record) => $record['version'] === '1.5.1');
+    $reelOverlayOriginCount = 0; $reelOverlayPathCount = 0;
+    foreach ($reelOrigins as $origin) {
+        $retiredAssets = array_filter($origin['required_files'] + $origin['allowed_extras'],
+            fn($path) => str_starts_with($path, 'assets/') && !isset($reelKnown[$path]), ARRAY_FILTER_USE_KEY);
+        if ($retiredAssets === []) continue;
+        ksort($retiredAssets, SORT_STRING);
+        $reelOverlayOriginCount++; $reelOverlayPathCount = max($reelOverlayPathCount, count($retiredAssets));
+        $result = $productCatalog->match('reel-player', '1.7.6', $reelConfig, $reelKnown + $retiredAssets);
+        verifyProof('reel-player 1.7.6 accepts every absent asset from official 1.5.1 commit ' . $origin['commit'],
+            ($result['legacy_extras'] ?? null) === $retiredAssets);
+        foreach ($retiredAssets as $path => $hash) {
+            verifyProof('reel-player preserves a changed historical asset ' . $origin['commit'] . ':' . $path,
+                $productCatalog->match('reel-player', '1.7.6', $reelConfig,
+                    array_replace($reelKnown + $retiredAssets, [$path => hash('sha256', 'customized historical asset ' . $path)])) === null);
+        }
+    }
+    verifyProof('reel-player overlay regressions include all 38 retired assets and all three relevant 1.5.1 layouts',
+        $reelOverlayOriginCount === 3 && $reelOverlayPathCount === 38);
+    $subscriptionsCurrentRecords = array_values(array_filter($productDocument['plugins']['subscriptions'] ?? [], fn($record) => $record['version'] === '1.5.4'));
+    verifyProof('The reported subscriptions 1.5.4 baseline is available for overlay regressions', $subscriptionsCurrentRecords !== []);
+    $subscriptionsCurrent = $subscriptionsCurrentRecords[0];
+    $subscriptionsKnown = $subscriptionsCurrent['required_files'] + $subscriptionsCurrent['allowed_extras'];
+    $subscriptionsConfig = ['repository' => $productDocument['repository'], 'path' => 'plugins/subscriptions'];
+    $backupOrigin = null; $retiredBackups = [];
+    foreach ($productDocument['plugins']['subscriptions'] as $origin) {
+        if ($origin['version'] !== '1.5.0') continue;
+        $backups = array_filter($origin['required_files'] + $origin['allowed_extras'],
+            fn($path) => str_contains($path, '.bak-') && !isset($subscriptionsKnown[$path]), ARRAY_FILTER_USE_KEY);
+        if (count($backups) > count($retiredBackups)) { $retiredBackups = $backups; $backupOrigin = $origin; }
+    }
+    ksort($retiredBackups, SORT_STRING);
+    verifyProof('The subscriptions overlay fixture includes all seven official historical backup files', count($retiredBackups) === 7
+        && isset($retiredBackups['src/Payments/RobokassaGateway.php.bak-20260927-160132'],
+            $retiredBackups['src/Payments/RobokassaGateway.php.bak-20260927-163626'],
+            $retiredBackups['src/Services/MaintenanceService.php.bak-20260927-163626']));
+    $subscriptionsResult = $productCatalog->match('subscriptions', '1.5.4', $subscriptionsConfig, $subscriptionsKnown + $retiredBackups);
+    verifyProof('subscriptions 1.5.4 recognizes all exact older official backup files without a network request',
+        ($subscriptionsResult['legacy_extras'] ?? null) === $retiredBackups);
+    foreach ($retiredBackups as $path => $hash) {
+        verifyProof('subscriptions preserves a changed historical backup: ' . $path,
+            $productCatalog->match('subscriptions', '1.5.4', $subscriptionsConfig,
+                array_replace($subscriptionsKnown + $retiredBackups, [$path => hash('sha256', 'customized historical backup ' . $path)])) === null);
+    }
+    verifyProof('A similarly named but unknown backup is still protected from deletion',
+        $productCatalog->match('subscriptions', '1.5.4', $subscriptionsConfig,
+            $subscriptionsKnown + $retiredBackups + ['src/Payments/RobokassaGateway.php.bak-20261020-000000' => reset($retiredBackups)]) === null);
+    $historical['reel-player-overlay'] = ['version' => '1.7.6', 'older_version' => '1.5.1',
+        'tested_layouts' => $reelOverlayOriginCount, 'largest_retired_asset_set' => $reelOverlayPathCount];
+    $historical['subscriptions-overlay'] = ['version' => '1.5.4', 'older_version' => '1.5.0',
+        'origin_commit' => $backupOrigin['commit'] ?? null, 'historical_backup_files' => count($retiredBackups)];
     foreach (['reel-player' => '1.7.6', 'subscriptions' => '1.5.4', 'toy-car-rental' => '1.1.11'] as $slug => $version) {
         $records = array_values(array_filter($productDocument['plugins'][$slug] ?? [], fn($record) => $record['version'] === $version));
         verifyProof($slug . ' ' . $version . ': the shipped catalog includes the reported production version', $records !== []);

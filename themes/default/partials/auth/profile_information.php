@@ -11,7 +11,7 @@ $showPhone = $identityAvailable && $authPolicy['auth_phone_mode'] !== 'off';
     <?= print_translation('auth_verify_pending') ?> <?= htmlSC($user['pending_email']) ?>
     <a class="alert-link" href="<?= base_href('/verify-email') ?>"><?= print_translation('auth_verify_resend') ?></a>
 </div>
-<?php elseif ($identityAvailable && empty($user['email_verified_at'])): ?>
+<?php elseif ($identityAvailable && empty($user['email_verified_at']) && (new \App\Services\AuthSettings())->emailVerificationRequired($authPolicy)): ?>
 <div class="alert alert-info" role="status">
     <?= print_translation('auth_verify_profile_notice') ?>
     <a class="alert-link" href="<?= base_href('/verify-email') ?>"><?= print_translation('auth_verify_resend') ?></a>

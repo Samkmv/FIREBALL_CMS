@@ -13,8 +13,9 @@ final class PluginBaselineCatalog
     public function __construct(private string $path) {}
 
     /**
-     * Every required archive file and each optional source-only extra must match
-     * ONE official commit. Matching a version number alone never approves code.
+     * The complete active package must match ONE official commit. Files absent
+     * from that commit are accepted only as byte-proven leftovers of an older
+     * official version of the same plugin, never as arbitrary local additions.
      */
     public function match(string $slug, string $version, array $config, array $current): ?array
     {
@@ -42,17 +43,58 @@ final class PluginBaselineCatalog
             if (($record['version'] ?? null) !== $version) continue;
             $required = $record['required_files'] ?? null;
             $extras = $record['allowed_extras'] ?? null;
-            if (!is_string($record['commit'] ?? null) || !preg_match('/^[a-f0-9]{40,64}$/D', $record['commit'])
-                || !$this->validFiles($required, false) || !$this->validFiles($extras, true)
-                || !isset($required['plugin.json']) || count($required) + count($extras) > self::MAX_FILES
-                || array_intersect_key($required, $extras) !== []) {
-                return null;
-            }
+            if (!$this->validRecord($record)) return null;
             if (array_diff_assoc($required, $current) !== []) continue;
-            if (array_diff_assoc(array_diff_key($current, $required), $extras) !== []) continue;
-            return $record;
+            // A changed optional file is a customization, not a legacy leftover.
+            if (array_diff_assoc(array_intersect_key($current, $extras), $extras) !== []) continue;
+            $unconfirmed = array_diff_key($current, $required, $extras);
+            if ($unconfirmed === []) return $record;
+            $legacy = $this->legacyExtras($records, $version, $unconfirmed);
+            if ($legacy !== null) return $record + ['legacy_extras' => $legacy];
         }
         return null;
+    }
+
+    /**
+     * ZIP overlay updates historically left deleted upstream files on disk.
+     * Recognize their exact path AND bytes, including removed scripts/backups;
+     * extensions alone never authorize discarding a local file. The caller must
+     * back up the FULL installed tree before replacing it with the new package.
+     */
+    private function legacyExtras(array $records, string $version, array $unconfirmed): ?array
+    {
+        if (!$this->validVersion($version)) return null;
+        $comparableVersion = explode('+', $version, 2)[0];
+        $legacy = [];
+        foreach ($records as $record) {
+            if (!is_array($record) || !$this->validVersion($record['version'] ?? null)) return null;
+            // Same-version commits cannot contribute a mixture of optional files.
+            if (!version_compare(explode('+', $record['version'], 2)[0], $comparableVersion, '<')) continue;
+            if (!$this->validRecord($record)) return null;
+            $historical = $record['required_files'] + $record['allowed_extras'];
+            foreach ($unconfirmed as $path => $hash) {
+                if (($historical[$path] ?? null) === $hash) $legacy[$path] = $hash;
+            }
+        }
+        if (count($legacy) !== count($unconfirmed)) return null;
+        ksort($legacy, SORT_STRING);
+        return $legacy;
+    }
+
+    private function validVersion(mixed $version): bool
+    {
+        return is_string($version) && strlen($version) <= 128
+            && preg_match('/^\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?(?:\+[a-zA-Z0-9.-]+)?$/D', $version) === 1;
+    }
+
+    private function validRecord(array $record): bool
+    {
+        $required = $record['required_files'] ?? null;
+        $extras = $record['allowed_extras'] ?? null;
+        return is_string($record['commit'] ?? null) && preg_match('/^[a-f0-9]{40,64}$/D', $record['commit']) === 1
+            && $this->validFiles($required, false) && $this->validFiles($extras, true)
+            && isset($required['plugin.json']) && count($required) + count($extras) <= self::MAX_FILES
+            && array_intersect_key($required, $extras) === [];
     }
 
     private function validFiles(mixed $files, bool $allowEmpty): bool

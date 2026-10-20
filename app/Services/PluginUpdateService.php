@@ -394,7 +394,7 @@ class PluginUpdateService extends UpdateCenter
             $packageFiles = $installations->tree($packagePath);
 
             $this->createPreUpdateBackups();
-            $backupFile = $this->createPluginBackup($targetPath, $slug, $fromVersion);
+            $backupFile = $this->createPluginBackup($targetPath, $slug, $fromVersion, $baselineFiles);
             $identifier = bin2hex(random_bytes(8));
             $stagePath = $this->pluginsPath . '/.' . $slug . '.update-' . $identifier;
             $rollbackPath = $this->pluginsPath . '/.' . $slug . '.rollback-' . $identifier;
@@ -994,7 +994,7 @@ class PluginUpdateService extends UpdateCenter
         return version_compare(ltrim($version, 'vV'), $matches[2], $operator);
     }
 
-    private function createPluginBackup(string $source, string $slug, string $version): string
+    private function createPluginBackup(string $source, string $slug, string $version, array $expectedFiles): string
     {
         if (!class_exists(\ZipArchive::class)) {
             throw new RuntimeException(return_translation('admin_plugin_updates_zip_required'));
@@ -1013,6 +1013,9 @@ class PluginUpdateService extends UpdateCenter
             if (!$zip->close()) {
                 throw new RuntimeException(return_translation('admin_plugin_updates_backup_failed'));
             }
+            // Legacy upstream leftovers may be removed by the package swap.
+            // Verify their recovery copy, not merely that a ZIP file exists.
+            $this->assertPluginBackup($file, $slug, $expectedFiles);
         } catch (Throwable $exception) {
             try {
                 $zip->close();
@@ -1022,17 +1025,56 @@ class PluginUpdateService extends UpdateCenter
             @unlink($file);
             throw $exception;
         }
-        if (!is_file($file) || filesize($file) <= 0) {
-            throw new RuntimeException(return_translation('admin_plugin_updates_backup_failed'));
-        }
-
         return $file;
+    }
+
+    private function assertPluginBackup(string $file, string $slug, array $expectedFiles): void
+    {
+        $error = return_translation('admin_plugin_updates_backup_failed');
+        $zip = new \ZipArchive();
+        if (is_link($file) || !is_file($file) || filesize($file) <= 0
+            || $zip->open($file, \ZipArchive::RDONLY | \ZipArchive::CHECKCONS) !== true) {
+            throw new RuntimeException($error);
+        }
+        try {
+            if ($zip->numFiles > self::MAX_ARCHIVE_ENTRIES + 1) throw new RuntimeException($error);
+            $files = [];
+            $prefix = $slug . '/';
+            for ($index = 0; $index < $zip->numFiles; $index++) {
+                $name = $zip->getNameIndex($index);
+                if (!is_string($name) || !str_starts_with($name, $prefix)) throw new RuntimeException($error);
+                $relative = substr($name, strlen($prefix));
+                $directory = str_ends_with($name, '/');
+                $path = $directory ? substr($relative, 0, -1) : $relative;
+                if ($relative !== '' && ($path === '' || preg_match('/[\x00-\x1f\x7f\\\\]/', $path)
+                    || array_intersect(explode('/', $path), ['', '.', '..', '.git']) !== [])) throw new RuntimeException($error);
+                $operatingSystem = 0; $attributes = 0;
+                if (!$zip->getExternalAttributesIndex($index, $operatingSystem, $attributes)) throw new RuntimeException($error);
+                $type = ($attributes >> 16) & 0170000;
+                if ($type !== 0 && $type !== ($directory ? 0040000 : 0100000)) throw new RuntimeException($error);
+                if ($directory) continue;
+                if (!isset($expectedFiles[$relative]) || isset($files[$relative])) throw new RuntimeException($error);
+                $stream = $zip->getStream($name);
+                if (!is_resource($stream)) throw new RuntimeException($error);
+                try {
+                    $hash = hash_init('sha256');
+                    if (hash_update_stream($hash, $stream) === false || !feof($stream)) throw new RuntimeException($error);
+                    $files[$relative] = hash_final($hash);
+                } finally { fclose($stream); }
+            }
+            ksort($files, SORT_STRING);
+            ksort($expectedFiles, SORT_STRING);
+            if ($files !== $expectedFiles) throw new RuntimeException($error);
+        } finally { $zip->close(); }
     }
 
     private function addDirectoryToZip(\ZipArchive $zip, string $source, string $archiveRoot): void
     {
-        $zip->addEmptyDir($archiveRoot);
-        foreach (scandir($source) ?: [] as $entry) {
+        $entries = @scandir($source);
+        if ($entries === false || !$zip->addEmptyDir($archiveRoot)) {
+            throw new RuntimeException(return_translation('admin_plugin_updates_backup_failed'));
+        }
+        foreach ($entries as $entry) {
             if ($entry === '.' || $entry === '..' || $entry === '.git' || $entry === '.DS_Store') {
                 continue;
             }

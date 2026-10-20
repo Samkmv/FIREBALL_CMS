@@ -71,11 +71,13 @@ $errorText = static function (string $field, string $fallback) use ($formErrors)
                     <?php endif; ?>
                 </div>
 
+                <?php if ((new \App\Services\AuthSettings())->emailVerificationRequired($authPolicy)): ?>
                 <p class="text-body-secondary fs-sm mt-4 mb-3">
                     <?= print_translation('auth_verify_login_hint') ?><br>
                     <a href="<?= base_href('/verify-email') ?>"><?= print_translation('auth_verify_resend') ?></a>
                 </p>
-                <p class="text-body-secondary fs-sm mb-0">
+                <?php endif; ?>
+                <p class="text-body-secondary fs-sm mt-4 mb-0">
                     <?= print_translation('auth_login_register_text') ?>
                     <a href="<?= base_href('/register') ?>" class="fw-medium text-decoration-none"><?= print_translation('auth_login_register_link') ?></a>
                 </p>
