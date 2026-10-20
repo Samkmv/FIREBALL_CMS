@@ -19,7 +19,7 @@ $toyRentalHistoryRedirect = static function () use ($toyRentalRedirect): void {
 
 $router->get('/admin/toy-rental/assets/(?P<file>[a-z0-9._-]+)', static function (): never {
     $file = (string)get_route_param('file');
-    if (!in_array($file, ['toy-rental.css', 'toy-rental.js'], true)) {
+    if (!in_array($file, ['toy-rental.css', 'toy-rental.js', 'settings.js'], true)) {
         abort();
     }
 
@@ -34,6 +34,10 @@ $router->get('/admin/toy-rental/assets/(?P<file>[a-z0-9._-]+)', static function 
     header('Cache-Control: public, max-age=3600');
     readfile($real);
     exit;
+})->middleware(['auth', 'admin']);
+
+$router->get('/admin/toy-rental/sound', static function (): never {
+    FireballPluginToyCarRental::serveCustomSound();
 })->middleware(['auth', 'admin']);
 
 $router->get('/admin/toy-rental', static function (): string {
@@ -261,15 +265,20 @@ $router->get('/admin/toy-rental/stats', static function (): string {
 })->middleware(['auth', 'admin']);
 
 $router->get('/admin/toy-rental/settings', static function (): string {
+    $users = FireballPluginToyCarRental::notificationUsers();
     return plugin_view('toy-car-rental', 'settings', FireballPluginToyCarRental::viewData('settings', [
         'title' => FireballPluginToyCarRental::t('toy_rental_settings_title'),
         'operatorRoles' => FireballPluginToyCarRental::operatorRoles(),
+        'notificationUsers' => $users,
+        'selectedNotificationUserIds' => FireballPluginToyCarRental::selectedNotificationUserIds($users),
+        'customSoundUrl' => FireballPluginToyCarRental::customSoundUrl(),
+        'footer_scripts' => [base_href('/admin/toy-rental/assets/settings.js?v=' . filemtime(__DIR__ . '/assets/settings.js'))],
     ]));
 })->middleware(['auth', 'admin']);
 
 $router->post('/admin/toy-rental/settings', static function () use ($toyRentalRedirect): void {
     try {
-        FireballPluginToyCarRental::saveSettings(request()->getData());
+        FireballPluginToyCarRental::saveSettings(request()->getData(), request()->files);
         session()->setFlash('success', FireballPluginToyCarRental::t('toy_rental_flash_settings_saved'));
     } catch (Throwable $exception) {
         log_error_details('Toy rental settings failed', [], $exception);

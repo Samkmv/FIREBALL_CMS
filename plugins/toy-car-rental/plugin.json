@@ -1,10 +1,11 @@
 {
   "name": "Прокат машинок",
   "slug": "toy-car-rental",
-  "version": "1.1.11",
+  "version": "1.1.12",
   "description": "Прокат детских машинок: компактная панель, фиксированные и поминутные поездки, таймеры, оплата и push-уведомления.",
   "author": "FIREBALL CMS",
   "release_notes": [
+    "Administrators can upload an MP3, WAV, OGG or M4A notification sound up to 5 MB, preview it and restore the built-in chime. Website and push recipients are selected individually in a searchable list with names, usernames and roles. After saving, only selected users receive alerts; an empty selection sends none, and creators, administrators and operator roles are not added automatically. Recipient selection does not grant panel access. Previous role and creator recipients remain in effect until the first recipient-list save.",
     "The empty fleet message and Add car button are displayed on separate centered rows, with responsive button sizing on mobile devices.",
     "Mobile operator cards show two per row with compact prices and icon-only start controls; active timers, stop controls and payment summaries align across fixed and per-minute rides on phones and desktop. Administrators can delete closed rides, clear all completed and cancelled history, or recalculate completed rides using saved rates. Per-minute billing rounds each started minute up (9:12 counts as 10 minutes), consistently in live estimates and saved totals. In both public and administration panels, card borders smoothly change color with ride status. Rental expiry alerts in the open panel use a louder, roughly three-second melodic chime; the existing sound toggle is preserved.",
     "Hovering over the duration selector in the public panel smoothly highlights its entire border in the CMS theme color.",
@@ -27,6 +28,7 @@
   ],
   "release_notes_i18n": {
     "ru": [
+      "Администратор может загрузить звук уведомления MP3, WAV, OGG или M4A до 5 МБ, прослушать его и вернуть стандартную мелодию. Получатели уведомлений на сайте и push выбираются поимённо в списке с поиском, логинами и ролями. После сохранения сообщения получают только отмеченные люди; пустой список отключает рассылку, создатель, администраторы и роль операторов автоматически не добавляются. Выбор получателей не даёт доступ к панели. До первого сохранения списка действуют прежние получатели по роли и копии создателю.",
       "В пустом автопарке сообщение и кнопка «Добавить машинку» расположены отдельными строками по центру; кнопка аккуратно помещается на мобильном экране.",
       "На телефоне карточки оператора располагаются по две в строке, с компактными ценами и кнопками запуска без подписей; таймеры, завершение и суммы оплаты выровнены у фиксированных и поминутных поездок на телефоне и компьютере. Администратор может удалить закрытую поездку, очистить всю историю завершённых и отменённых поездок или пересчитать завершённую поездку по сохранённому тарифу. Поминутная оплата округляет каждую начатую минуту вверх (9:12 считается как 10 минут), одинаково в текущем расчёте и сохранённой сумме. В публичной панели и админке рамки карточек плавно меняют цвет при изменении статуса поездки. В открытой панели звук окончания проката стал громче и длится около трёх секунд, с мягкой мелодией; прежний переключатель звука сохранён.",
       "В публичной панели выбор длительности плавно подсвечивает рамку по всему периметру при наведении, в цвете темы CMS.",
@@ -48,6 +50,7 @@
       "При повторной активации плагин теперь восстанавливает отсутствующие таблицы проката и платёжные поля."
     ],
     "en": [
+      "Administrators can upload an MP3, WAV, OGG or M4A notification sound up to 5 MB, preview it and restore the built-in chime. Website and push recipients are selected individually in a searchable list with names, usernames and roles. After saving, only selected users receive alerts; an empty selection sends none, and creators, administrators and operator roles are not added automatically. Recipient selection does not grant panel access. Previous role and creator recipients remain in effect until the first recipient-list save.",
       "The empty fleet message and Add car button are displayed on separate centered rows, with responsive button sizing on mobile devices.",
       "Mobile operator cards show two per row with compact prices and icon-only start controls; active timers, stop controls and payment summaries align across fixed and per-minute rides on phones and desktop. Administrators can delete closed rides, clear all completed and cancelled history, or recalculate completed rides using saved rates. Per-minute billing rounds each started minute up (9:12 counts as 10 minutes), consistently in live estimates and saved totals. In both public and administration panels, card borders smoothly change color with ride status. Rental expiry alerts in the open panel use a louder, roughly three-second melodic chime; the existing sound toggle is preserved.",
       "Hovering over the duration selector in the public panel smoothly highlights its entire border in the CMS theme color.",
@@ -69,6 +72,7 @@
       "Reactivating the plugin now recreates missing rental database tables and billing columns."
     ],
     "de": [
+      "Administratoren können einen Benachrichtigungston als MP3, WAV, OGG oder M4A bis 5 MB hochladen, anhören und den Standardklang wiederherstellen. Empfänger von Website- und Push-Meldungen werden einzeln in einer durchsuchbaren Liste mit Namen, Benutzernamen und Rollen ausgewählt. Nach dem Speichern erhalten nur ausgewählte Benutzer Meldungen; ohne Auswahl werden keine gesendet. Ersteller, Administratoren und Bedienerrollen werden nicht automatisch ergänzt. Die Auswahl gewährt keinen Panelzugriff. Bis zum ersten Speichern der Empfängerliste gelten die bisherigen Rollen- und Erstellerempfänger.",
       "Im leeren Fuhrpark stehen der Hinweis und die Schaltfläche zum Hinzufügen eines Autos auf getrennten, zentrierten Zeilen; die Schaltfläche passt sich mobilen Bildschirmen an.",
       "Auf Mobilgeräten erscheinen zwei Bedienerkarten pro Zeile mit kompakten Preisen und Starttasten ohne Beschriftung; Timer, Stopptasten und Zahlungsübersichten sind bei Festzeit- und Minutenfahrten auf Mobilgeräten und Desktop ausgerichtet. Administratoren können beendete Fahrten löschen, den gesamten Verlauf abgeschlossener und stornierter Fahrten leeren oder abgeschlossene Fahrten mit dem gespeicherten Tarif neu berechnen. Jede angefangene Minute wird aufgerundet (9:12 zählt als 10 Minuten), sowohl bei laufenden Berechnungen als auch beim gespeicherten Betrag. Im öffentlichen Bedienfeld und in der Verwaltung ändern Kartenrahmen ihre Farbe sanft entsprechend dem Fahrtstatus. Ablaufmeldungen im geöffneten Verleihpanel verwenden einen lauteren, etwa drei Sekunden langen melodischen Klang; der vorhandene Tonschalter bleibt erhalten.",
       "Beim Darüberfahren über die Fahrtdauerauswahl im öffentlichen Bedienfeld wird der gesamte Rahmen sanft in der CMS-Themenfarbe hervorgehoben.",
@@ -90,6 +94,7 @@
       "Bei erneuter Aktivierung stellt das Plugin fehlende Verleihtabellen und Abrechnungsspalten wieder her."
     ],
     "zh-cn": [
+      "管理员可以上传最大 5 MB 的 MP3、WAV、OGG 或 M4A 通知声音，进行试听并恢复默认旋律。站内通知和推送接收者可在显示姓名、用户名和角色的可搜索列表中逐人选择。保存后仅向勾选的用户发送；空列表表示不发送，创建者、管理员和操作员角色不会被自动加入。选择接收者不会授予面板访问权限。首次保存接收者列表之前，仍按原角色和创建者副本设置发送。",
       "车辆列表为空时，提示和添加车辆按钮分行居中显示，按钮尺寸适配移动设备屏幕。",
       "手机操作面板每行显示两张卡片，价格更紧凑，启动按钮仅显示图标；固定和按分钟行程的计时器、结束按钮及付款信息在手机和电脑上均保持对齐。管理员可以删除已结束的行程、清空所有已完成和已取消的历史记录，或使用保存的费率重新计算已完成的行程。按分钟计费将每个已开始的分钟向上取整（9:12 按 10 分钟计费），实时预估和保存金额保持一致。 公共面板和后台管理中的卡片边框均会随行程状态平滑改变颜色。 打开的租赁面板中，到期提醒采用音量更大、约三秒的柔和旋律，保留原有声音开关。",
       "公共面板的时长选择框在悬停时，以 CMS 主题色平滑高亮整个边框。",
@@ -119,7 +124,7 @@
     "path": "plugins/toy-car-rental"
   },
   "requires": {
-    "cms": ">=1.7.0"
+    "cms": ">=1.8.6"
   },
   "name_i18n": {
     "ru": "Прокат машинок",

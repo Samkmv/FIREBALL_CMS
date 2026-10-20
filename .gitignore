@@ -34,6 +34,7 @@ storage/logs/*
 !storage/logs/.htaccess
 storage/chat-media/*
 storage/reel-player/
+storage/toy-car-rental/
 storage/sessions/
 
 # Deployment-local content versions, published by assets:rebuild.
@@ -65,6 +66,10 @@ dist/fireball-cms-*.zip*
 !/tests/update_streaming.php
 !/tests/pwa_installation_check.py
 !/tests/pwa_installation_fixture.php
+!/tests/toy-rental-recipients.php
+!/tests/toy-rental-sound-storage.php
+!/tests/toy-rental-audio.js
+!/tests/toy-rental-settings.js
 !/tests/tape_room_playback_source.cjs
 !/tests/tape_room_media_recovery.cjs
 !/tests/tape_room_sync.cjs

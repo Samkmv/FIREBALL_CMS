@@ -2,7 +2,7 @@
   "name": "Tape Room",
   "slug": "reel-player",
   "class": "FireballPluginReelPlayer",
-  "version": "1.8.2",
+  "version": "1.8.4",
   "type": "system",
   "description": "Reel-to-reel player with a shared album catalogue, artists, personal collections, playlists and audio chapters.",
   "name_i18n": {
