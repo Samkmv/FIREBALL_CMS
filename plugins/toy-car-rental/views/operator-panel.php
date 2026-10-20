@@ -72,6 +72,7 @@ $visibleCars = $activeOnly ? array_values(array_filter($cars, static fn(array $c
 <script>
     window.toyRentalSettings = <?= json_encode([
         'soundEnabled' => (bool)$settings['sound_enabled'],
+        'soundUrl' => FireballPluginToyCarRental::customSoundUrl(),
         'autoRefreshSeconds' => (int)$settings['auto_refresh_seconds'],
         'stateUrl' => base_href($operatorBase . '/state'),
         'syncOverdueUrl' => base_href($operatorBase . '/rides/sync-overdue'),

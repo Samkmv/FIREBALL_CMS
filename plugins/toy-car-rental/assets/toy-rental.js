@@ -14,6 +14,9 @@
     let epoch = 0;
     let audioContext;
     let activeAudioCue;
+    let customSoundBuffer;
+    let customSoundLoading = false;
+    let customSoundFailed = false;
 
     const format = (seconds) => {
         const value = Math.max(0, Math.floor(seconds));
@@ -43,6 +46,29 @@
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show, { once: true });
         else show();
     };
+    const prepareCustomSound = async () => {
+        if (!settings.soundUrl || !audioContext || customSoundBuffer || customSoundLoading || customSoundFailed) return;
+        customSoundLoading = true;
+        let timeout;
+        try {
+            const controller = new AbortController();
+            timeout = window.setTimeout(() => controller.abort(), 8000);
+            const url = new URL(settings.soundUrl, window.location.href);
+            if (url.origin !== window.location.origin) throw new Error('Invalid audio URL');
+            const response = await fetch(url.href, { credentials: 'same-origin', cache: 'force-cache', signal: controller.signal });
+            if (!response.ok || Number(response.headers.get('Content-Length')) > 5 * 1024 * 1024) throw new Error('Audio unavailable');
+            const bytes = await response.arrayBuffer();
+            if (!bytes.byteLength || bytes.byteLength > 5 * 1024 * 1024) throw new Error('Invalid audio size');
+            const buffer = await audioContext.decodeAudioData(bytes);
+            if (!(buffer.duration > 0)) throw new Error('Invalid audio duration');
+            customSoundBuffer = buffer;
+        } catch {
+            customSoundFailed = true;
+        } finally {
+            window.clearTimeout(timeout);
+            customSoundLoading = false;
+        }
+    };
     const unlockAudio = (event) => {
         if (settings.soundEnabled === false || !event.isTrusted) return;
         try {
@@ -52,13 +78,14 @@
                 activeAudioCue = null;
             }
             if (audioContext?.state !== 'running') audioContext?.resume().catch(() => {});
+            prepareCustomSound();
         } catch { /* Audio may be unavailable. */ }
     };
     // A real interaction prepares sound silently and can resume it after a browser interruption.
     document.addEventListener('pointerdown', unlockAudio, { passive: true });
     document.addEventListener('pointerup', unlockAudio, { passive: true });
     document.addEventListener('keydown', unlockAudio);
-    const playSound = () => {
+    const playDefaultSound = () => {
         if (settings.soundEnabled === false || audioContext?.state !== 'running' || activeAudioCue) return;
         const cue = new Set();
         activeAudioCue = cue;
@@ -101,6 +128,46 @@
             }
             cue.clear();
             if (activeAudioCue === cue) activeAudioCue = null;
+        }
+    };
+    const playSound = () => {
+        if (settings.soundEnabled === false || audioContext?.state !== 'running' || activeAudioCue) return;
+        if (!customSoundBuffer) { playDefaultSound(); return; }
+        const cue = new Set();
+        activeAudioCue = cue;
+        try {
+            const source = audioContext.createBufferSource();
+            const gain = audioContext.createGain();
+            cue.add({ source, gain });
+            const start = audioContext.currentTime + .01;
+            const duration = Math.min(30, customSoundBuffer.duration);
+            const end = start + duration;
+            source.buffer = customSoundBuffer;
+            gain.gain.value = 0;
+            gain.gain.setValueAtTime(0, start);
+            gain.gain.linearRampToValueAtTime(.85, start + Math.min(.015, duration / 4));
+            gain.gain.setValueAtTime(.85, end - Math.min(.05, duration / 3));
+            gain.gain.linearRampToValueAtTime(0, end);
+            source.connect(gain);
+            gain.connect(audioContext.destination);
+            source.onended = () => {
+                source.disconnect();
+                gain.disconnect();
+                cue.clear();
+                if (activeAudioCue === cue) activeAudioCue = null;
+            };
+            source.start(start, 0, duration);
+            source.stop(end);
+        } catch {
+            for (const { source, gain } of cue) {
+                try { source.stop(); } catch { /* A source may not have started. */ }
+                source.disconnect();
+                gain.disconnect();
+            }
+            customSoundBuffer = null;
+            customSoundFailed = true;
+            if (activeAudioCue === cue) activeAudioCue = null;
+            playDefaultSound();
         }
     };
     const request = async (url, body) => {

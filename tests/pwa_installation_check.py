@@ -18,7 +18,7 @@ import zlib
 
 project = Path(__file__).resolve().parents[1]
 (project / "tests/.tmp").mkdir(parents=True, exist_ok=True)
-scratch = Path(tempfile.mkdtemp(prefix="pwa-installation-", dir=project / "tests/.tmp"))
+
 server = None
 checks = []
 php = os.environ.get("FBL_TEST_PHP", "/Applications/MAMP/bin/php/php8.2.0/bin/php")

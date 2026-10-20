@@ -5,7 +5,12 @@
 
     <?php require __DIR__ . '/tabs.php'; ?>
 
-    <form class="fb-card p-3 p-md-4" action="<?= base_href('/admin/toy-rental/settings') ?>" method="post">
+    <?php
+    $notificationUsers = $notificationUsers ?? [];
+    $selectedNotificationUserIds = array_map('intval', $selectedNotificationUserIds ?? []);
+    $customSoundUrl = (string)($customSoundUrl ?? '');
+    ?>
+    <form class="fb-card p-3 p-md-4 toy-rental-settings" action="<?= base_href('/admin/toy-rental/settings') ?>" method="post" enctype="multipart/form-data">
         <?= get_csrf_field() ?>
         <div class="row g-3">
             <div class="col-12">
@@ -62,14 +67,56 @@
                     <div class="form-text"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_overdue_push_hint')) ?></div>
                 </div>
             </div>
-            <div class="col-md-4">
-                <label class="form-label d-none d-md-block">&nbsp;</label>
-                <div class="form-check form-switch mb-0 py-2">
-                    <input class="form-check-input" type="checkbox" name="creator_notifications_enabled" value="1" id="toyCreatorNotifications" <?= !empty($settings['creator_notifications_enabled']) ? 'checked' : '' ?>>
-                    <label class="form-check-label fw-medium" for="toyCreatorNotifications"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_creator_notifications')) ?></label>
-                    <div class="form-text"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_creator_notifications_hint')) ?></div>
+            <div class="col-12">
+                <label class="form-label" for="toyCustomSound"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_custom_sound')) ?></label>
+                <input class="form-control" id="toyCustomSound" type="file" name="custom_sound" accept=".mp3,.wav,.ogg,.m4a,audio/mpeg,audio/wav,audio/x-wav,audio/ogg,audio/mp4,audio/x-m4a" data-max-size="5242880" aria-describedby="toyCustomSoundHint">
+                <div class="form-text" id="toyCustomSoundHint"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_custom_sound_hint')) ?></div>
+                <div class="d-flex flex-wrap align-items-center gap-3 mt-3">
+                    <button class="btn btn-outline-secondary" type="button" data-toy-rental-sound-preview data-sound-url="<?= htmlSC($customSoundUrl) ?>" data-error-message="<?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_sound_preview_error')) ?>" <?= $customSoundUrl === '' ? 'disabled' : '' ?>>
+                        <i class="ci-play me-2" aria-hidden="true"></i><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_sound_preview')) ?>
+                    </button>
+                    <?php if ($customSoundUrl !== ''): ?>
+                        <span class="small text-body-secondary text-break"><?= htmlSC((string)($settings['custom_sound_name'] ?? '')) ?></span>
+                        <div class="form-check mb-0">
+                            <input class="form-check-input" type="checkbox" name="remove_custom_sound" value="1" id="toyRemoveCustomSound" data-toy-rental-sound-reset>
+                            <label class="form-check-label" for="toyRemoveCustomSound"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_remove_custom_sound')) ?></label>
+                        </div>
+                    <?php endif; ?>
                 </div>
+                <div class="form-text text-danger" data-toy-rental-sound-preview-status role="status" aria-live="polite"></div>
             </div>
+            <fieldset class="col-12">
+                <legend class="form-label fs-6 mb-2" id="toyNotificationUsersLabel"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_notification_users')) ?></legend>
+                <input type="hidden" name="notification_recipients_present" value="1">
+                <div class="form-text mt-0 mb-3" id="toyNotificationUsersHint"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_notification_users_hint')) ?></div>
+                <input class="form-control mb-3" type="search" data-toy-rental-recipient-search placeholder="<?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_notification_users_search')) ?>" aria-label="<?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_notification_users_search')) ?>" aria-describedby="toyNotificationUsersHint" <?= !$notificationUsers ? 'disabled' : '' ?>>
+                <div class="toy-rental-notification-users" data-toy-rental-recipient-list aria-labelledby="toyNotificationUsersLabel">
+                    <?php foreach ($notificationUsers as $notificationUser): ?>
+                        <?php
+                        $notificationUserId = (int)$notificationUser['id'];
+                        $notificationUserLogin = trim((string)($notificationUser['login'] ?? ''));
+                        $notificationUserName = trim((string)($notificationUser['name'] ?? '')) ?: $notificationUserLogin;
+                        $notificationUserRole = FireballPluginToyCarRental::notificationUserRoleLabel($notificationUser);
+                        $notificationUserRoleClass = match ((string)($notificationUser['role'] ?? '')) {
+                            'creator' => 'text-success bg-success-subtle',
+                            'admin' => 'text-warning bg-warning-subtle',
+                            default => 'text-secondary bg-secondary-subtle',
+                        };
+                        ?>
+                        <label class="toy-rental-recipient-row" data-toy-rental-recipient data-search-text="<?= htmlSC($notificationUserName . ' ' . $notificationUserLogin . ' ' . $notificationUserRole) ?>">
+                            <input class="form-check-input m-0" type="checkbox" name="notification_user_ids[]" value="<?= $notificationUserId ?>" <?= in_array($notificationUserId, $selectedNotificationUserIds, true) ? 'checked' : '' ?>>
+                            <span class="toy-rental-recipient-identity">
+                                <span class="d-block fw-medium"><?= htmlSC($notificationUserName) ?></span>
+                                <?php if ($notificationUserLogin !== ''): ?><span class="d-block small text-body-secondary">@<?= htmlSC($notificationUserLogin) ?></span><?php endif; ?>
+                            </span>
+                            <span class="badge toy-rental-recipient-role <?= $notificationUserRoleClass ?>"><?= htmlSC($notificationUserRole) ?></span>
+                        </label>
+                    <?php endforeach; ?>
+                    <?php if (!$notificationUsers): ?><div class="p-3 text-body-secondary"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_notification_users_empty')) ?></div><?php endif; ?>
+                    <div class="p-3 text-body-secondary" data-toy-rental-recipient-no-results hidden><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_notification_users_no_results')) ?></div>
+                </div>
+            </fieldset>
+            <input type="hidden" name="notification_recipients_complete" value="1">
         </div>
         <button class="btn btn-primary mt-4" type="submit"><?= htmlSC(FireballPluginToyCarRental::t('toy_rental_settings_save')) ?></button>
     </form>

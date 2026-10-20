@@ -15,6 +15,11 @@ $router->get('/profile/toy-rental', static function (): string {
     ]));
 })->middleware(['auth']);
 
+$router->get('/profile/toy-rental/sound', static function (): never {
+    FireballPluginToyCarRental::requireOperator();
+    FireballPluginToyCarRental::serveCustomSound();
+})->middleware(['auth']);
+
 $router->get('/profile/toy-rental/assets/(?P<file>[a-z0-9._-]+)', static function (): never {
     FireballPluginToyCarRental::requireOperator();
     $file = (string)get_route_param('file');

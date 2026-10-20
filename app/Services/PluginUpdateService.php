@@ -17,6 +17,8 @@ class PluginUpdateService extends UpdateCenter
     private const MAX_EXTRACTED_BYTES = 536870912;
     private const MAX_ARCHIVE_ENTRIES = 20000;
     private const BACKUP_RETENTION = 3;
+    private const BASELINE_HISTORY_PAGE_SIZE = 50;
+    private const BASELINE_HISTORY_PAGES = 4;
 
     private PluginManager $pluginManager;
     private string $pluginsPath;
@@ -530,33 +532,152 @@ class PluginUpdateService extends UpdateCenter
         $installations = new ManagedPluginInstallations(ROOT);
         try { return $installations->assertReplaceable($slug); }
         catch (RuntimeException $conflict) {
-            if ($installations->receipt($slug) !== null || is_dir(ROOT . '/.git')) throw $conflict;
+            // A worktree's .git is a file, not a directory. Never bypass a Git conflict.
+            if ($installations->receipt($slug) !== null || file_exists(ROOT . '/.git') || is_link(ROOT . '/.git')) throw $conflict;
         }
         $token = trim((string)($this->siteSettings->all()['updater_github_token'] ?? ''));
         $headers = $this->buildGithubHeaders($token);
-        $history = $this->decodeGithubJson($this->httpGet($this->buildGithubApiUrl($config['repository'],
-            '/commits?sha=main&per_page=20&path=' . rawurlencode($config['path'] . '/plugin.json')), $headers));
-        if (!array_is_list($history)) throw new RuntimeException('Invalid legacy plugin history.');
-        $candidates = [(string)($this->storedState($slug)['last_installed_commit'] ?? ''),
-            (string)($this->siteSettings->all()['updater_last_installed_commit'] ?? '')];
-        foreach (array_slice($history, 0, 20) as $commit) if (is_array($commit)) $candidates[] = (string)($commit['sha'] ?? '');
         $current = $installations->tree($this->pluginsPath . '/' . $slug);
-        foreach (array_unique($candidates) as $commit) {
-            if (!preg_match('/^[a-f0-9]{40}$/D', $commit)) continue;
-            $remote = $this->fetchRemotePluginMetadata($config, $slug, $commit);
-            if (($remote['metadata']['version'] ?? '') !== ($metadata['version'] ?? '')) continue;
+        $seen = [];
+        $closest = [];
+        $verify = function (string $commit) use ($slug, $metadata, $config, $workspace, $installations, $current, $token, $headers, &$seen, &$closest): bool {
+            if (!preg_match('/^[a-f0-9]{40}$/D', $commit) || isset($seen[$commit])) return false;
+            $seen[$commit] = true;
+            // A saved CMS commit can belong to another repository or predate this plugin.
+            $remote = $this->fetchRemotePluginMetadata($config, $slug, $commit, true);
+            if (($remote['metadata']['version'] ?? '') !== ($metadata['version'] ?? '')) return false;
             $archive = $workspace . '/baseline.zip';
-            $extract = $workspace . '/baseline-' . $commit;
-            $this->ensureDirectory($extract);
-            $this->downloadFile($this->buildGithubApiUrl($config['repository'], '/zipball/' . $commit), $archive,
-                $this->buildGithubDownloadHeaders($token, 'repository_zipball_api'));
-            if (!is_file($archive) || filesize($archive) <= 0 || filesize($archive) > self::MAX_ARCHIVE_BYTES) throw new RuntimeException('Invalid legacy plugin baseline archive.');
-            $this->extractRepositoryArchive($archive, $extract);
-            $baseline = $this->resolvePluginPackagePath($extract, $config['path']);
-            $baselineMetadata = $this->readPackageMetadata($baseline, $slug);
-            if (($baselineMetadata['version'] ?? '') === ($metadata['version'] ?? '') && $installations->tree($baseline) === $current) return $current;
+            $extract = $workspace . '/baseline';
+            try {
+                $this->ensureDirectory($extract);
+                $this->downloadFile($this->buildGithubApiUrl($config['repository'], '/zipball/' . $commit), $archive,
+                    $this->buildGithubDownloadHeaders($token, 'repository_zipball_api'));
+                if (!is_file($archive) || filesize($archive) <= 0 || filesize($archive) > self::MAX_ARCHIVE_BYTES) throw new RuntimeException(return_translation('admin_plugin_updates_archive_invalid'));
+                $this->extractRepositoryArchive($archive, $extract);
+                $baseline = $this->resolvePluginPackagePath($extract, $config['path']);
+                $baselineMetadata = $this->readPackageMetadata($baseline, $slug);
+                if (($baselineMetadata['version'] ?? '') !== ($metadata['version'] ?? '')) throw new RuntimeException(return_translation('admin_plugin_updates_package_mismatch'));
+                $expected = $installations->tree($baseline);
+                $differences = array_keys(array_diff_assoc($expected, $current) + array_diff_assoc($current, $expected));
+                if ($differences === []) return true;
+
+                // Git checkouts and source archives may contain different development
+                // files (export-ignore). Every archived file is still mandatory and
+                // every extra installed file must match the SAME trusted commit.
+                if (array_diff_assoc($expected, $current) === []) {
+                    $extra = array_keys(array_diff_key($current, $expected));
+                    $source = $this->fetchRemotePluginTree($config, $commit, $headers);
+                    $unconfirmed = [];
+                    foreach ($extra as $path) {
+                        if (!$this->matchesRemotePluginFile($slug, $path, $source[$path] ?? [], $current[$path])) $unconfirmed[] = $path;
+                    }
+                    if ($unconfirmed === []) return true;
+                    $differences = $unconfirmed;
+                }
+                if ($closest === [] || count($differences) < count($closest)) $closest = $differences;
+                return false;
+            } finally {
+                // Do not accumulate full repository archives while searching history.
+                if (is_file($archive)) @unlink($archive);
+                if (is_dir($extract)) $this->deleteDirectory($extract);
+            }
+        };
+
+        foreach ([(string)($this->storedState($slug)['last_installed_commit'] ?? ''),
+            (string)($this->siteSettings->all()['updater_last_installed_commit'] ?? '')] as $commit) {
+            if ($verify($commit)) return $current;
         }
-        throw new RuntimeException('Не удалось подтвердить исходный пакет плагина ' . $slug . '. Локальный код сохранён; обновление остановлено.');
+        // Search the whole plugin directory, not only version-manifest changes:
+        // official fixes can be published without changing plugin.json.
+        for ($page = 1; $page <= self::BASELINE_HISTORY_PAGES; $page++) {
+            $query = http_build_query(['sha' => $config['branch'] ?? 'main', 'per_page' => self::BASELINE_HISTORY_PAGE_SIZE,
+                'page' => $page, 'path' => $config['path']], '', '&', PHP_QUERY_RFC3986);
+            $history = $this->decodeGithubJson($this->httpGet($this->buildGithubApiUrl($config['repository'], '/commits?' . $query), $headers));
+            if (!array_is_list($history) || count($history) > self::BASELINE_HISTORY_PAGE_SIZE) throw new RuntimeException(return_translation('admin_plugin_updates_remote_invalid'));
+            foreach ($history as $commit) {
+                if (!is_array($commit) || !preg_match('/^[a-f0-9]{40}$/D', (string)($commit['sha'] ?? ''))) throw new RuntimeException(return_translation('admin_plugin_updates_remote_invalid'));
+                if ($verify($commit['sha'])) return $current;
+            }
+            if (count($history) < self::BASELINE_HISTORY_PAGE_SIZE) break;
+        }
+        if ($closest !== []) {
+            throw new RuntimeException(sprintf(return_translation('admin_plugin_updates_baseline_files_differ'),
+                $slug, implode(', ', array_slice($closest, 0, 3))));
+        }
+        throw new RuntimeException(sprintf(return_translation('admin_plugin_updates_baseline_not_found'), $slug));
+    }
+
+    /** Fetch only this plugin's Git tree, not the full repository or one request per file. */
+    private function fetchRemotePluginTree(array $config, string $commit, array $headers): array
+    {
+        $fetch = function (string $sha, bool $recursive = false) use ($config, $headers): array {
+            $payload = $this->decodeGithubJson($this->httpGet($this->buildGithubApiUrl($config['repository'],
+                '/git/trees/' . $sha . ($recursive ? '?recursive=1' : '')), $headers));
+            if (($payload['truncated'] ?? null) !== false || !is_array($payload['tree'] ?? null)
+                || !array_is_list($payload['tree']) || count($payload['tree']) > self::MAX_ARCHIVE_ENTRIES) {
+                throw new RuntimeException(return_translation('admin_plugin_updates_remote_invalid'));
+            }
+            return $payload['tree'];
+        };
+        $sha = $commit;
+        foreach (explode('/', $config['path']) as $segment) {
+            $next = '';
+            foreach ($fetch($sha) as $entry) {
+                if (!is_array($entry) || ($entry['path'] ?? '') !== $segment) continue;
+                if (($entry['type'] ?? '') !== 'tree' || ($entry['mode'] ?? '') !== '040000'
+                    || !preg_match('/^[a-f0-9]{40}$/D', (string)($entry['sha'] ?? ''))) {
+                    throw new RuntimeException(return_translation('admin_plugin_updates_remote_invalid'));
+                }
+                $next = $entry['sha'];
+            }
+            if ($next === '') throw new RuntimeException(return_translation('admin_plugin_updates_remote_invalid'));
+            $sha = $next;
+        }
+        $files = [];
+        foreach ($fetch($sha, true) as $entry) {
+            if (!is_array($entry)) throw new RuntimeException(return_translation('admin_plugin_updates_remote_invalid'));
+            $path = (string)($entry['path'] ?? '');
+            if ($path === '' || str_starts_with($path, '/') || preg_match('/[\x00-\x1f\x7f\\\\]/', $path)
+                || array_intersect(explode('/', $path), ['', '.', '..', '.git']) || isset($files[$path])) {
+                throw new RuntimeException(return_translation('admin_plugin_updates_remote_invalid'));
+            }
+            if (($entry['type'] ?? '') === 'tree' && ($entry['mode'] ?? '') === '040000') continue;
+            if (($entry['type'] ?? '') !== 'blob' || !in_array($entry['mode'] ?? '', ['100644', '100755'], true)
+                || !preg_match('/^[a-f0-9]{40}$/D', (string)($entry['sha'] ?? '')) || !is_int($entry['size'] ?? null) || $entry['size'] < 0) {
+                throw new RuntimeException(return_translation('admin_plugin_updates_remote_invalid'));
+            }
+            $files[$path] = $entry;
+        }
+        return $files;
+    }
+
+    /** Confirm a source-archive omission; never approve an unknown or edited extra file. */
+    private function matchesRemotePluginFile(string $slug, string $path, array $file, string $snapshotHash): bool
+    {
+        if ($file === []) return false;
+        $absolute = $this->pluginsPath . '/' . $slug . '/' . $path;
+        $handle = @fopen($absolute, 'rb');
+        if (!is_resource($handle)) return false;
+        try {
+            $size = fstat($handle)['size'] ?? null;
+            if ($size !== $file['size']) return false;
+            $gitHash = hash_init('sha1');
+            $localHash = hash_init('sha256');
+            hash_update($gitHash, 'blob ' . $size . "\0");
+            $bytes = 0;
+            while (!feof($handle)) {
+                $chunk = fread($handle, 65536);
+                if ($chunk === false || ($chunk === '' && !feof($handle))) return false;
+                $bytes += strlen($chunk);
+                if ($bytes > $size) return false;
+                hash_update($gitHash, $chunk);
+                hash_update($localHash, $chunk);
+            }
+            // Both proofs must describe the SAME bytes, including the initial
+            // SHA-256 snapshot rechecked immediately before the atomic swap.
+            return $bytes === $size && hash_equals($file['sha'], hash_final($gitHash))
+                && hash_equals($snapshotHash, hash_final($localHash));
+        } finally { fclose($handle); }
     }
 
     private function installedPlugin(string $slug): array
@@ -597,7 +718,7 @@ class PluginUpdateService extends UpdateCenter
         ];
     }
 
-    private function fetchRemotePluginMetadata(array $config, string $slug, ?string $knownCommit = null): array
+    private function fetchRemotePluginMetadata(array $config, string $slug, ?string $knownCommit = null, bool $allowMissing = false): array
     {
         $token = trim((string)($this->siteSettings->all()['updater_github_token'] ?? ''));
         $headers = array_merge($this->buildGithubHeaders($token), [
@@ -624,6 +745,9 @@ class PluginUpdateService extends UpdateCenter
             ),
             $headers
         );
+        if ($allowMissing && (int)($manifestResponse['status_code'] ?? 0) === 404) {
+            return ['metadata' => [], 'commit' => $commit];
+        }
         $manifestPayload = $this->decodeGithubJson($manifestResponse);
         $encoded = str_replace(["\r", "\n"], '', (string)($manifestPayload['content'] ?? ''));
         $json = base64_decode($encoded, true);

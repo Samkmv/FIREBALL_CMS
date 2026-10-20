@@ -3,6 +3,8 @@
 use App\Services\SqlFileRunner;
 use FBL\Plugins\PluginInterface;
 
+require_once __DIR__ . '/SoundStorage.php';
+
 final class FireballPluginToyCarRental implements PluginInterface
 {
     public const SLUG = 'toy-car-rental';
@@ -129,6 +131,9 @@ final class FireballPluginToyCarRental implements PluginInterface
             'creator_notifications_enabled' => true,
             'auto_refresh_seconds' => 0,
             'operator_role_id' => 0,
+            'notification_user_ids' => null,
+            'custom_sound_file' => '',
+            'custom_sound_name' => '',
         ];
     }
 
@@ -158,11 +163,15 @@ final class FireballPluginToyCarRental implements PluginInterface
         $settings['creator_notifications_enabled'] = (bool)$settings['creator_notifications_enabled'];
         $settings['auto_refresh_seconds'] = max(0, (int)$settings['auto_refresh_seconds']);
         $settings['operator_role_id'] = max(0, (int)$settings['operator_role_id']);
+        $settings['notification_user_ids'] = $settings['notification_user_ids'] === null
+            ? null : self::notificationUserIds($settings['notification_user_ids']);
+        $settings['custom_sound_file'] = FireballToyRentalSoundStorage::validFilename((string)$settings['custom_sound_file']) ? (string)$settings['custom_sound_file'] : '';
+        $settings['custom_sound_name'] = mb_substr((string)$settings['custom_sound_name'], 0, 255);
 
         return $settings;
     }
 
-    public static function saveSettings(array $data): void
+    public static function saveSettings(array $data, array $files = []): void
     {
         $roleId = filter_var($data['operator_role_id'] ?? 0, FILTER_VALIDATE_INT);
         if ($roleId === false || $roleId < 0 || ($roleId > 0 && !self::operatorRole($roleId))) {
@@ -177,6 +186,21 @@ final class FireballPluginToyCarRental implements PluginInterface
         if (max($durations) > $maxMinutes) {
             throw new RuntimeException(self::t('toy_rental_error_ride_limit'));
         }
+        $previous = self::settings();
+        $recipientIds = $previous['notification_user_ids'];
+        if (!empty($data['notification_recipients_present'])) {
+            // PHP may truncate a large checkbox form at max_input_vars.
+            if (empty($data['notification_recipients_complete'])) {
+                throw new RuntimeException(self::t('toy_rental_error_notification_users'));
+            }
+            $recipientIds = self::notificationUserIds($data['notification_user_ids'] ?? [], true);
+            if ($recipientIds) {
+                $existing = db()->query('SELECT id FROM users WHERE id IN (' . implode(',', array_fill(0, count($recipientIds), '?')) . ')', $recipientIds)->get() ?: [];
+                if (count($existing) !== count($recipientIds)) {
+                    throw new RuntimeException(self::t('toy_rental_error_notification_users'));
+                }
+            }
+        }
         $settings = [
             'default_duration' => $defaultDuration,
             'fixed_durations' => $durations,
@@ -188,15 +212,102 @@ final class FireballPluginToyCarRental implements PluginInterface
             'creator_notifications_enabled' => !empty($data['creator_notifications_enabled']),
             'auto_refresh_seconds' => max(0, min(3600, (int)($data['auto_refresh_seconds'] ?? 0))),
             'operator_role_id' => $roleId,
+            'notification_user_ids' => $recipientIds,
+            'custom_sound_file' => $previous['custom_sound_file'],
+            'custom_sound_name' => $previous['custom_sound_name'],
         ];
 
         if ($settings['currency'] === '') {
             $settings['currency'] = '₽';
         }
 
-        foreach ($settings as $key => $value) {
-            plugin_setting_set(self::SLUG, $key, $value);
+        $storage = new FireballToyRentalSoundStorage();
+        $newSound = null;
+        $file = $files['custom_sound'] ?? null;
+        if ($file !== null && (!is_array($file) || !isset($file['error']) || !is_scalar($file['error']))) {
+            throw new RuntimeException(self::t('toy_rental_error_sound_type'));
         }
+        if (is_array($file) && (int)$file['error'] !== UPLOAD_ERR_NO_FILE) {
+            $newSound = $storage->upload($file);
+            $settings['custom_sound_file'] = $newSound['file'];
+            $settings['custom_sound_name'] = $newSound['name'];
+        } elseif (!empty($data['remove_custom_sound'])) {
+            $settings['custom_sound_file'] = $settings['custom_sound_name'] = '';
+        }
+        $ownTransaction = !db()->inTransaction();
+        try {
+            if ($ownTransaction) db()->beginTransaction();
+            foreach ($settings as $key => $value) plugin_setting_set(self::SLUG, $key, $value);
+            if ($ownTransaction) db()->commit();
+        } catch (Throwable $exception) {
+            if ($ownTransaction && db()->inTransaction()) db()->rollBack();
+            if ($newSound !== null) $storage->delete($newSound['file']);
+            throw $exception;
+        }
+        if ($ownTransaction && $previous['custom_sound_file'] !== $settings['custom_sound_file']) {
+            $storage->delete($previous['custom_sound_file']);
+        }
+    }
+
+    private static function notificationUserIds(mixed $values, bool $strict = false): array
+    {
+        if (!is_array($values) || count($values) > 10000) {
+            if ($strict) throw new RuntimeException(self::t('toy_rental_error_notification_users'));
+            return [];
+        }
+        $ids = [];
+        foreach ($values as $value) {
+            $id = is_scalar($value) ? filter_var($value, FILTER_VALIDATE_INT) : false;
+            if ($id === false || $id <= 0) {
+                if ($strict) throw new RuntimeException(self::t('toy_rental_error_notification_users'));
+                continue;
+            }
+            $ids[] = $id;
+        }
+        return array_values(array_unique($ids));
+    }
+
+    public static function notificationUsers(): array
+    {
+        return db()->query('SELECT u.id, u.name, u.login, u.role, r.name AS role_name FROM users u LEFT JOIN user_roles r ON r.slug = u.role ORDER BY u.name ASC, u.id ASC')->get() ?: [];
+    }
+
+    public static function notificationUserRoleLabel(array $user): string
+    {
+        return match ((string)($user['role'] ?? '')) {
+            'creator' => self::t('toy_rental_role_creator'),
+            'admin' => self::t('toy_rental_role_admin'),
+            'moderator' => self::t('toy_rental_role_moderator'),
+            'user' => self::t('toy_rental_role_user'),
+            default => (string)($user['role_name'] ?? $user['role'] ?? ''),
+        };
+    }
+
+    public static function selectedNotificationUserIds(?array $users = null): array
+    {
+        $settings = self::settings();
+        if ($settings['notification_user_ids'] !== null) return $settings['notification_user_ids'];
+        $role = self::operatorRole();
+        $ids = [];
+        foreach ($users ?? self::notificationUsers() as $user) {
+            if (($role !== null && $user['role'] === $role['slug'])
+                || ($settings['creator_notifications_enabled'] && $user['role'] === 'creator')) $ids[] = (int)$user['id'];
+        }
+        return $ids;
+    }
+
+    public static function customSoundUrl(): string
+    {
+        $filename = self::settings()['custom_sound_file'];
+        return (new FireballToyRentalSoundStorage())->asset($filename) === null
+            ? '' : base_href(self::operatorBasePath() . '/sound?v=' . rawurlencode($filename));
+    }
+
+    public static function serveCustomSound(): never
+    {
+        $filename = self::settings()['custom_sound_file'];
+        if ((string)request()->get('v', $filename) !== $filename) abort();
+        (new FireballToyRentalSoundStorage())->serve($filename);
     }
 
     public static function operatorRoles(): array
@@ -933,34 +1044,39 @@ final class FireballPluginToyCarRental implements PluginInterface
         try {
             $carLabel = trim((string)($ride['car_name'] ?? '') . ' №' . (string)($ride['car_number'] ?? ''));
 
-            $role = self::operatorRole();
             $settings = self::settings();
-            $conditions = $role ? ['role = ?'] : [];
-            if ($settings['creator_notifications_enabled']) $conditions[] = "role = 'creator'";
-            if (!$conditions) return;
-            $operators = db()->query('SELECT id, locale FROM users WHERE ' . implode(' OR ', $conditions) . ' ORDER BY id ASC', $role ? [$role['slug']] : [])->get() ?: [];
-            $byLocale = [];
-            foreach ($operators as $operator) {
-                $locale = \FBL\Localization::normalizeLocale((string)($operator['locale'] ?? '')) ?: \FBL\Localization::siteLocale();
-                $byLocale[$locale][] = (int)$operator['id'];
+            $recipientIds = self::selectedNotificationUserIds();
+            if (!$recipientIds) return;
+            $placeholders = implode(',', array_fill(0, count($recipientIds), '?'));
+            $recipients = db()->query("SELECT id, role, locale FROM users WHERE id IN ({$placeholders}) ORDER BY id ASC", $recipientIds)->get() ?: [];
+            $role = self::operatorRole();
+            $groups = [];
+            foreach ($recipients as $recipient) {
+                $locale = \FBL\Localization::normalizeLocale((string)($recipient['locale'] ?? '')) ?: \FBL\Localization::siteLocale();
+                $canOperate = in_array((string)$recipient['role'], ['creator', 'admin'], true)
+                    || ($role !== null && (string)$recipient['role'] === (string)$role['slug']);
+                $actionUrl = $canOperate ? '/profile/toy-rental' : '/profile';
+                $groups[$locale][$actionUrl][] = (int)$recipient['id'];
             }
-            foreach ($byLocale as $locale => $userIds) {
-                \App\Services\NotificationService::createForUsers($userIds, [
-                    'title' => self::t($limitReached ? 'toy_rental_notification_limit_title' : 'toy_rental_notification_overdue_title', [], $locale),
-                    'message' => self::t($limitReached ? 'toy_rental_notification_limit_text' : 'toy_rental_time_up_message', ['car' => $carLabel], $locale),
-                    'type' => 'toy_rental',
-                    'action_url' => '/profile/toy-rental',
-                    'source' => self::SLUG,
-                    'priority' => 'high',
-                    'metadata' => [
-                        'ride_id' => (int)($ride['id'] ?? 0),
-                        'car_id' => (int)($ride['car_id'] ?? 0),
-                        'event' => $limitReached ? 'limit_reached' : 'time_up',
-                        'car_label' => $carLabel,
-                    ],
-                    'store_unread' => true,
-                    'push_notification' => (bool)$settings['overdue_push_enabled'],
-                ]);
+            foreach ($groups as $locale => $byActionUrl) {
+                foreach ($byActionUrl as $actionUrl => $userIds) {
+                    \App\Services\NotificationService::createForUsers($userIds, [
+                        'title' => self::t($limitReached ? 'toy_rental_notification_limit_title' : 'toy_rental_notification_overdue_title', [], $locale),
+                        'message' => self::t($limitReached ? 'toy_rental_notification_limit_text' : 'toy_rental_time_up_message', ['car' => $carLabel], $locale),
+                        'type' => 'toy_rental',
+                        'action_url' => $actionUrl,
+                        'source' => self::SLUG,
+                        'priority' => 'high',
+                        'metadata' => [
+                            'ride_id' => (int)($ride['id'] ?? 0),
+                            'car_id' => (int)($ride['car_id'] ?? 0),
+                            'event' => $limitReached ? 'limit_reached' : 'time_up',
+                            'car_label' => $carLabel,
+                        ],
+                        'store_unread' => true,
+                        'push_notification' => (bool)$settings['overdue_push_enabled'],
+                    ]);
+                }
             }
         } catch (Throwable $exception) {
             log_error_details('Toy rental overdue notification dispatch failed', [
@@ -973,7 +1089,7 @@ final class FireballPluginToyCarRental implements PluginInterface
     {
         if ((string)($row['source'] ?? $item['source'] ?? '') === self::SLUG) {
             $item['source_label'] = self::t('toy_rental_notification_source');
-            $item['url'] = base_href('/profile/toy-rental');
+            $item['url'] = base_href(self::canOperate() ? '/profile/toy-rental' : '/profile');
             $metadata = $row['metadata'] ?? [];
             if (is_string($metadata)) $metadata = json_decode($metadata, true);
             if (is_array($metadata) && in_array($metadata['event'] ?? '', ['time_up', 'limit_reached'], true) && isset($metadata['car_label'])) {
