@@ -4,7 +4,13 @@ declare(strict_types=1);
 $project=dirname(__DIR__);require $project.'/vendor/autoload.php';
 $scratch=__DIR__.'/.tmp/update-recovery-'.bin2hex(random_bytes(8));mkdir($scratch,0700,true);
 define('ROOT',$scratch.'/installation');define('CONFIG',ROOT.'/config');define('WWW',ROOT.'/public');define('STORAGE',ROOT.'/storage');define('PLUGINS',ROOT.'/plugins');define('CACHE',ROOT.'/tmp/cache');
-$local=require $project.'/config/config.local.php';$connection=$local['DB_SETTINGS']??[];
+$testPort=getenv('FIREBALL_TEST_DB_PORT');
+if($testPort!==false){
+    if(!ctype_digit($testPort)||(int)$testPort<1024||(int)$testPort>65535)throw new RuntimeException('Invalid isolated MySQL test port.');
+    $connection=['host'=>'127.0.0.1','port'=>(int)$testPort,'username'=>'root','password'=>''];
+}else{
+    $local=require $project.'/config/config.local.php';$connection=$local['DB_SETTINGS']??[];
+}
 $databaseName='fbl_update_test_'.bin2hex(random_bytes(8));$created=false;
 $dsn='mysql:host='.($connection['host']??'127.0.0.1').';port='.(int)($connection['port']??3306).';charset=utf8mb4';
 define('DB_SETTINGS',array_replace($connection,['database'=>$databaseName,'charset'=>'utf8mb4','options'=>[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]]));
@@ -39,6 +45,7 @@ final class PackageUpdater extends App\Services\PluginUpdateService {
     public bool $race=false;
     public function __construct(FBL\Plugins\PluginManager $manager,App\Models\SiteSetting $settings,private array $metadata,private string $archive,private ?array $baselineMetadata=null,private string $baselineArchive=''){parent::__construct($manager);$this->siteSettings=$settings;}
     protected function httpGet(string $url,array $headers=[]): array{
+        if(str_starts_with($url,'https://raw.githubusercontent.com/')||str_contains($url,'.git/info/refs?'))return ['status_code'=>404,'body'=>'Not public'];
         if(str_contains($url,'/commits?'))$body=[['sha'=>str_repeat('b',40)]];
         elseif(str_contains($url,'/commits/'))$body=['sha'=>str_repeat('a',40)];
         else $body=['content'=>base64_encode(json_encode(str_contains($url,'ref='.str_repeat('b',40))?$this->baselineMetadata:$this->metadata))];

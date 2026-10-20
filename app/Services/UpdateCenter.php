@@ -1616,6 +1616,7 @@ class UpdateCenter
             $body = '';
             $bytes = 0;
             $location = '';
+            $responseHeaders = [];
             $ch = curl_init($url);
             try {
                 curl_setopt_array($ch, [
@@ -1626,8 +1627,17 @@ class UpdateCenter
                     CURLOPT_TIMEOUT => $timeout,
                     CURLOPT_CONNECTTIMEOUT => min(10, $timeout),
                     CURLOPT_MAXFILESIZE_LARGE => $limit,
-                    CURLOPT_HEADERFUNCTION => static function ($handle, string $line) use (&$location): int {
+                    CURLOPT_HEADERFUNCTION => static function ($handle, string $line) use (&$location, &$responseHeaders): int {
+                        if (str_starts_with($line, 'HTTP/')) {
+                            $location = '';
+                            $responseHeaders = [];
+                        }
                         if (str_starts_with(strtolower($line), 'location:')) $location = trim(substr($line, 9));
+                        $parts = explode(':', $line, 2);
+                        $name = strtolower(trim($parts[0]));
+                        if (count($parts) === 2 && in_array($name, ['retry-after', 'x-ratelimit-remaining', 'x-ratelimit-reset'], true)) {
+                            $responseHeaders[$name] = substr(trim($parts[1]), 0, 80);
+                        }
                         return strlen($line);
                     },
                     CURLOPT_WRITEFUNCTION => static function ($handle, string $chunk) use (&$body, &$bytes, $output, $limit): int {
@@ -1652,7 +1662,7 @@ class UpdateCenter
                     ? 'https://' . parse_url($url, PHP_URL_HOST) . $location : $location;
                 continue;
             }
-            return ['body' => $body, 'status_code' => $status];
+            return ['body' => $body, 'status_code' => $status, 'headers' => $responseHeaders];
         }
         throw new RuntimeException('Too many GitHub redirects.');
     }

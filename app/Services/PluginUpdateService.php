@@ -19,10 +19,16 @@ class PluginUpdateService extends UpdateCenter
     private const BACKUP_RETENTION = 3;
     private const BASELINE_HISTORY_PAGE_SIZE = 50;
     private const BASELINE_HISTORY_PAGES = 4;
+    private const FAILED_CHECK_RETRY_SECONDS = 300;
 
     private PluginManager $pluginManager;
     private string $pluginsPath;
     private string $workspaceRoot;
+    // Request-local only: one immutable repository revision for a batch of plugins.
+    private array $remoteBranchHeads = [];
+    private array $remoteMetadata = [];
+    private array $publicRepositories = [];
+    private int $retryNotBefore = 0;
 
     public function __construct(
         ?PluginManager $pluginManager = null,
@@ -199,6 +205,7 @@ class PluginUpdateService extends UpdateCenter
                 'update_available' => $comparison < 0,
                 'source_older' => $comparison > 0,
                 'checked_at' => date('Y-m-d H:i:s'),
+                'retry_after' => '',
                 'last_updated_at' => (string)($previousState['last_updated_at'] ?? ''),
                 'backup_file' => (string)($previousState['backup_file'] ?? ''),
                 'release_notes' => $this->normalizeReleaseNotes($releaseNotes),
@@ -213,6 +220,7 @@ class PluginUpdateService extends UpdateCenter
                 'message' => $this->safeError($exception, 'admin_plugin_updates_check_failed'),
                 'error_stage' => 'check',
                 'checked_at' => date('Y-m-d H:i:s'),
+                'retry_after' => $this->retryNotBefore > time() ? date('Y-m-d H:i:s', $this->retryNotBefore) : '',
                 'update_available' => false,
                 'source_older' => false,
             ]);
@@ -369,16 +377,7 @@ class PluginUpdateService extends UpdateCenter
                 $maintenanceOwned = true;
             }
 
-            $token = trim((string)($this->siteSettings->all()['updater_github_token'] ?? ''));
-            $downloadUrl = $this->buildGithubApiUrl(
-                $config['repository'],
-                '/zipball/' . rawurlencode($remoteCommit)
-            );
-            $this->downloadFile(
-                $downloadUrl,
-                $archivePath,
-                $this->buildGithubDownloadHeaders($token, 'repository_zipball_api')
-            );
+            $this->downloadPluginArchive($config, $remoteCommit, $archivePath);
             if (!is_file($archivePath) || filesize($archivePath) <= 0
                 || filesize($archivePath) > self::MAX_ARCHIVE_BYTES) {
                 throw new RuntimeException(return_translation('admin_plugin_updates_archive_invalid'));
@@ -540,7 +539,7 @@ class PluginUpdateService extends UpdateCenter
         $current = $installations->tree($this->pluginsPath . '/' . $slug);
         $seen = [];
         $closest = [];
-        $verify = function (string $commit) use ($slug, $metadata, $config, $workspace, $installations, $current, $token, $headers, &$seen, &$closest): bool {
+        $verify = function (string $commit) use ($slug, $metadata, $config, $workspace, $installations, $current, $headers, &$seen, &$closest): bool {
             if (!preg_match('/^[a-f0-9]{40}$/D', $commit) || isset($seen[$commit])) return false;
             $seen[$commit] = true;
             // A saved CMS commit can belong to another repository or predate this plugin.
@@ -550,8 +549,7 @@ class PluginUpdateService extends UpdateCenter
             $extract = $workspace . '/baseline';
             try {
                 $this->ensureDirectory($extract);
-                $this->downloadFile($this->buildGithubApiUrl($config['repository'], '/zipball/' . $commit), $archive,
-                    $this->buildGithubDownloadHeaders($token, 'repository_zipball_api'));
+                $this->downloadPluginArchive($config, $commit, $archive);
                 if (!is_file($archive) || filesize($archive) <= 0 || filesize($archive) > self::MAX_ARCHIVE_BYTES) throw new RuntimeException(return_translation('admin_plugin_updates_archive_invalid'));
                 $this->extractRepositoryArchive($archive, $extract);
                 $baseline = $this->resolvePluginPackagePath($extract, $config['path']);
@@ -592,7 +590,7 @@ class PluginUpdateService extends UpdateCenter
         for ($page = 1; $page <= self::BASELINE_HISTORY_PAGES; $page++) {
             $query = http_build_query(['sha' => $config['branch'] ?? 'main', 'per_page' => self::BASELINE_HISTORY_PAGE_SIZE,
                 'page' => $page, 'path' => $config['path']], '', '&', PHP_QUERY_RFC3986);
-            $history = $this->decodeGithubJson($this->httpGet($this->buildGithubApiUrl($config['repository'], '/commits?' . $query), $headers));
+            $history = $this->decodeGithubJson($this->pluginMetadataRequest($this->buildGithubApiUrl($config['repository'], '/commits?' . $query), $headers));
             if (!array_is_list($history) || count($history) > self::BASELINE_HISTORY_PAGE_SIZE) throw new RuntimeException(return_translation('admin_plugin_updates_remote_invalid'));
             foreach ($history as $commit) {
                 if (!is_array($commit) || !preg_match('/^[a-f0-9]{40}$/D', (string)($commit['sha'] ?? ''))) throw new RuntimeException(return_translation('admin_plugin_updates_remote_invalid'));
@@ -611,7 +609,7 @@ class PluginUpdateService extends UpdateCenter
     private function fetchRemotePluginTree(array $config, string $commit, array $headers): array
     {
         $fetch = function (string $sha, bool $recursive = false) use ($config, $headers): array {
-            $payload = $this->decodeGithubJson($this->httpGet($this->buildGithubApiUrl($config['repository'],
+            $payload = $this->decodeGithubJson($this->pluginMetadataRequest($this->buildGithubApiUrl($config['repository'],
                 '/git/trees/' . $sha . ($recursive ? '?recursive=1' : '')), $headers));
             if (($payload['truncated'] ?? null) !== false || !is_array($payload['tree'] ?? null)
                 || !array_is_list($payload['tree']) || count($payload['tree']) > self::MAX_ARCHIVE_ENTRIES) {
@@ -727,49 +725,154 @@ class PluginUpdateService extends UpdateCenter
         ]);
         $commit = trim((string)$knownCommit);
         if ($commit === '') {
-            $commitResponse = $this->httpGet(
-                $this->buildGithubApiUrl($config['repository'], '/commits/' . rawurlencode($config['branch'])),
-                $headers
-            );
-            $commitPayload = $this->decodeGithubJson($commitResponse);
-            $commit = trim((string)($commitPayload['sha'] ?? ''));
+            $commit = $this->remotePluginBranchHead($config, $headers);
         }
-        if (preg_match('/^[a-f0-9]{40,64}$/i', $commit) !== 1) {
+        if (preg_match('/^[a-f0-9]{40,64}$/iD', $commit) !== 1) {
             throw new RuntimeException(return_translation('admin_plugin_updates_remote_invalid'));
         }
 
-        $manifestResponse = $this->httpGet(
-            $this->buildGithubApiUrl(
-                $config['repository'],
-                '/contents/' . $config['path'] . '/plugin.json?ref=' . rawurlencode($commit)
-            ),
-            $headers
-        );
-        if ($allowMissing && (int)($manifestResponse['status_code'] ?? 0) === 404) {
-            return ['metadata' => [], 'commit' => $commit];
+        $cacheKey = $config['repository'] . '/' . $commit . '/' . $config['path'];
+        if (isset($this->remoteMetadata[$cacheKey])) {
+            return $this->remoteMetadata[$cacheKey];
         }
-        $manifestPayload = $this->decodeGithubJson($manifestResponse);
-        $encoded = str_replace(["\r", "\n"], '', (string)($manifestPayload['content'] ?? ''));
-        $json = base64_decode($encoded, true);
-        if ($json === false || strlen($json) > self::MAX_MANIFEST_BYTES) {
-            throw new RuntimeException(return_translation('admin_plugin_updates_remote_invalid'));
+
+        // Public sources must not depend on a site's API quota or stale token.
+        // Always pin raw files and archives to the SAME SHA, never a moving branch.
+        try {
+            $publicResponse = $this->httpGet('https://raw.githubusercontent.com/'
+                . str_replace('%2F', '/', rawurlencode($config['repository'])) . '/' . $commit . '/'
+                . $this->encodeGithubPath($config['path'] . '/plugin.json'), [
+                    'User-Agent: FIREBALL_CMS-Updater', 'Accept: application/json', 'Cache-Control: no-cache',
+                ]);
+        } catch (Throwable) {
+            $publicResponse = ['status_code' => 0, 'body' => ''];
         }
-        $metadata = json_decode($json, true);
+        $publicStatus = (int)($publicResponse['status_code'] ?? 0);
+        if ($publicStatus >= 200 && $publicStatus < 300) {
+            $metadata = $this->decodeGithubJson($publicResponse);
+        } else {
+            if ($publicStatus === 404 && !empty($this->publicRepositories[$config['repository']])) {
+                if ($allowMissing) return ['metadata' => [], 'commit' => $commit];
+                throw new RuntimeException(return_translation('admin_plugin_updates_remote_missing'));
+            }
+            $manifestResponse = $this->pluginMetadataRequest(
+                $this->buildGithubApiUrl(
+                    $config['repository'],
+                    '/contents/' . $config['path'] . '/plugin.json?ref=' . rawurlencode($commit)
+                ),
+                $headers
+            );
+            if ($allowMissing && (int)($manifestResponse['status_code'] ?? 0) === 404) {
+                return ['metadata' => [], 'commit' => $commit];
+            }
+            $manifestPayload = $this->decodeGithubJson($manifestResponse);
+            $encoded = str_replace(["\r", "\n"], '', (string)($manifestPayload['content'] ?? ''));
+            $json = base64_decode($encoded, true);
+            if ($json === false || strlen($json) > self::MAX_MANIFEST_BYTES) {
+                throw new RuntimeException(return_translation('admin_plugin_updates_remote_invalid'));
+            }
+            $metadata = json_decode($json, true);
+        }
         if (!is_array($metadata)
             || (string)($metadata['slug'] ?? '') !== $slug
             || trim((string)($metadata['version'] ?? '')) === '') {
             throw new RuntimeException(return_translation('admin_plugin_updates_remote_invalid'));
         }
+        if ($publicStatus >= 200 && $publicStatus < 300) {
+            $this->publicRepositories[$config['repository']] = true;
+        }
 
-        return ['metadata' => $metadata, 'commit' => $commit];
+        return $this->remoteMetadata[$cacheKey] = ['metadata' => $metadata, 'commit' => $commit];
+    }
+
+    private function remotePluginBranchHead(array $config, array $headers): string
+    {
+        $key = $config['repository'] . '/' . $config['branch'];
+        if (isset($this->remoteBranchHeads[$key])) {
+            if ($this->remoteBranchHeads[$key] instanceof Throwable) throw $this->remoteBranchHeads[$key];
+            return $this->remoteBranchHeads[$key];
+        }
+        try {
+            // Public discovery never sends the optional private-repository token.
+            $commit = $this->fetchPublicBranchHead($config['repository'], $config['branch']);
+            if ($commit !== '') {
+                $this->publicRepositories[$config['repository']] = true;
+            } else {
+                $payload = $this->decodeGithubJson($this->pluginMetadataRequest(
+                    $this->buildGithubApiUrl($config['repository'], '/commits/' . rawurlencode($config['branch'])), $headers));
+                $commit = trim((string)($payload['sha'] ?? ''));
+            }
+            if (preg_match('/^[a-f0-9]{40,64}$/iD', $commit) !== 1) {
+                throw new RuntimeException(return_translation('admin_plugin_updates_remote_invalid'));
+            }
+            return $this->remoteBranchHeads[$key] = $commit;
+        } catch (Throwable $exception) {
+            $this->remoteBranchHeads[$key] = $exception;
+            throw $exception;
+        }
+    }
+
+    /** Retain authenticated API support for private repositories and blocked raw hosts. */
+    private function pluginMetadataRequest(string $url, array $headers): array
+    {
+        try {
+            return $this->httpGet($url, $headers);
+        } catch (Throwable $exception) {
+            throw new RuntimeException(return_translation('admin_plugin_updates_remote_network_error'), 0, $exception);
+        }
+    }
+
+    protected function downloadPluginArchive(array $config, string $commit, string $destination): void
+    {
+        if (preg_match('/^[a-f0-9]{40,64}$/iD', $commit) !== 1) {
+            throw new RuntimeException(return_translation('admin_plugin_updates_remote_invalid'));
+        }
+        $token = trim((string)($this->siteSettings->all()['updater_github_token'] ?? ''));
+        if ($token === '' || !empty($this->publicRepositories[$config['repository']])) {
+            try {
+                $this->downloadFile('https://codeload.github.com/'
+                    . str_replace('%2F', '/', rawurlencode($config['repository'])) . '/zip/' . $commit,
+                    $destination, $this->buildGithubDownloadHeaders());
+                return;
+            } catch (Throwable) {
+                // API fallback may work when an outgoing proxy blocks codeload.
+                // The transfer still enforces HTTPS, host, size and redirect limits.
+            }
+        }
+        $this->downloadFile($this->buildGithubApiUrl($config['repository'], '/zipball/' . $commit),
+            $destination, $this->buildGithubDownloadHeaders($token, 'repository_zipball_api'));
     }
 
     private function decodeGithubJson(array $response): array
     {
         $status = (int)($response['status_code'] ?? 0);
         $body = (string)($response['body'] ?? '');
-        if ($status < 200 || $status >= 300 || $body === '' || strlen($body) > self::MAX_MANIFEST_BYTES) {
-            throw new RuntimeException(return_translation('admin_plugin_updates_remote_unavailable'));
+        if ($status < 200 || $status >= 300) {
+            // Classify safely; never expose arbitrary response bodies or credentials.
+            $payload = strlen($body) <= self::MAX_MANIFEST_BYTES ? json_decode($body, true) : null;
+            $responseHeaders = is_array($response['headers'] ?? null) ? $response['headers'] : [];
+            if ($this->isGithubRateLimitResponse($status, $payload)
+                || ($status === 403 && ($responseHeaders['x-ratelimit-remaining'] ?? '') === '0')) {
+                $now = time();
+                $retry = trim((string)($responseHeaders['retry-after'] ?? ''));
+                $retryAt = ctype_digit($retry) ? $now + min(86400, (int)$retry) : ($retry !== '' ? strtotime($retry) : false);
+                $reset = trim((string)($responseHeaders['x-ratelimit-reset'] ?? ''));
+                $resetAt = ($responseHeaders['x-ratelimit-remaining'] ?? '') === '0' && ctype_digit($reset) ? (int)$reset : 0;
+                $this->retryNotBefore = max($this->retryNotBefore,
+                    min($now + 86400, max($now + self::FAILED_CHECK_RETRY_SECONDS, (int)$retryAt, $resetAt)));
+                throw new RuntimeException(return_translation('admin_update_github_rate_limit'));
+            }
+            $key = match ($status) {
+                0 => 'admin_plugin_updates_remote_network_error',
+                401 => 'admin_plugin_updates_remote_auth_failed',
+                403 => 'admin_plugin_updates_remote_forbidden',
+                404 => 'admin_plugin_updates_remote_missing',
+                default => 'admin_plugin_updates_remote_http_error',
+            };
+            throw new RuntimeException(sprintf(return_translation($key), $status));
+        }
+        if ($body === '' || strlen($body) > self::MAX_MANIFEST_BYTES) {
+            throw new RuntimeException(return_translation('admin_plugin_updates_remote_invalid'));
         }
         $decoded = json_decode($body, true);
         if (!is_array($decoded)) {
@@ -1149,7 +1252,11 @@ class PluginUpdateService extends UpdateCenter
 
         $age = time() - $timestamp;
 
-        return $age < 0 || $age >= self::AUTO_CHECK_INTERVAL_SECONDS;
+        $checkFailed = ($state['status'] ?? '') === 'error' && ($state['error_stage'] ?? 'check') === 'check';
+        $retryAt = $checkFailed ? strtotime((string)($state['retry_after'] ?? '')) : false;
+        if ($retryAt !== false && $retryAt > time() && $retryAt <= time() + 86400) return false;
+        $interval = $checkFailed ? self::FAILED_CHECK_RETRY_SECONDS : self::AUTO_CHECK_INTERVAL_SECONDS;
+        return $age < 0 || $age >= $interval;
     }
 
     private function safeError(Throwable $exception, string $fallbackKey): string

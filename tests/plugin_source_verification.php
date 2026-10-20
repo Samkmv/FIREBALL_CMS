@@ -51,6 +51,11 @@ final class SourceProofProbe extends App\Services\PluginUpdateService {
     protected function httpGet(string $url, array $headers = []): array {
         $this->requests[] = $url;
         if ($this->forcedResponse !== null) return $this->forcedResponse;
+        // These fixtures exercise the authenticated API fallback; public sources
+        // are covered independently by plugin_update_transport.php.
+        if (str_starts_with($url, 'https://raw.githubusercontent.com/') || str_contains($url, '.git/info/refs?')) {
+            return ['status_code' => 404, 'body' => 'Not public'];
+        }
         parse_str((string)parse_url($url, PHP_URL_QUERY), $query);
         if (str_contains($url, '/git/trees/')) {
             if ($this->onGitTree !== null) { $callback = $this->onGitTree; $this->onGitTree = null; $callback(); }
@@ -144,7 +149,8 @@ try {
     verifyProof('Baseline archives and extracted repositories are removed immediately', glob(ROOT . '/work/old-second-page/*') === []);
     $settings->values['updater_last_installed_commit'] = $oldSha;
     $probe->requests = [];
-    verifyProof('Known source commit is verified first without any history request', $probe->probe('fixture-history', 'old-known-commit') === $before && count($probe->requests) === 1);
+    verifyProof('Known source commit is verified first without any history request', $probe->probe('fixture-history', 'old-known-commit') === $before
+        && !array_filter($probe->requests, fn($url) => str_contains($url, '/commits?')));
     $settings->values['updater_last_installed_commit'] = str_repeat('f', 40);
     verifyProof('A stale source commit missing from this repository falls back to history', $probe->probe('fixture-history', 'unknown-known-commit') === $before);
     $settings->values = [];
@@ -196,7 +202,7 @@ try {
     verifyProof('A Git worktree pointer cannot enter the ZIP-installation fallback', str_contains(failureProof(fn() => $probe->probe('fixture-history', 'git-pointer')), 'отличается от установленного пакета') && $probe->requests === []);
     unlink(ROOT . '/.git');
     $probe->forcedResponse = ['status_code' => 403, 'body' => '{"message":"API rate limit exceeded"}'];
-    verifyProof('Network or rate-limit failures never approve an unverified package', str_contains(failureProof(fn() => $probe->probe('fixture-history', 'api-rate-limit')), 'недоступен'));
+    verifyProof('Network or rate-limit failures never approve an unverified package', str_contains(failureProof(fn() => $probe->probe('fixture-history', 'api-rate-limit')), 'GitHub временно ограничил'));
     $probe->forcedResponse = ['status_code' => 200, 'body' => '{"unexpected":"history"}'];
     verifyProof('Malformed history fails closed', str_contains(failureProof(fn() => $probe->probe('fixture-history', 'invalid-history')), 'некорректны'));
     $probe->forcedResponse = null;
