@@ -245,9 +245,12 @@ final class PlanController
             $repository = new PlanReconciliationRepository();
             $count = $repository->obsoleteSubscriptionCount($id);
             $service = new VpnPlanSubscriptionReconciler();
+            $localOnly = request()->post('local_only') === '1';
+            $options = ['local_only' => $localOnly, 'batch_size' => 20];
             $result = $count > VpnPlanSubscriptionReconciler::SYNC_THRESHOLD
-                ? $service->queueObsoleteRemoval($id, $this->adminId(), ['batch_size' => 20])
-                : $service->removeObsoleteNodes($id, $this->adminId());
+                ? $service->queueObsoleteRemoval($id, $this->adminId(), $options)
+                : $service->removeObsoleteNodes($id, $this->adminId(), $options);
+            cache()->remove('vpn-v2:plan-preview:' . $id);
             if ($result->queued) {
                 session()->setFlash('success', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_remove_obsolete_queued'));
             } elseif ($result->failed > 0) {
@@ -255,7 +258,7 @@ final class PlanController
             } elseif ($result->removed === 0) {
                 session()->setFlash('info', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_remove_obsolete_none'));
             } else {
-                session()->setFlash('success', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_remove_obsolete_success'));
+                session()->setFlash('success', \FireballPluginVpnManagerV2::t($localOnly ? 'vpn_manager_v2_obsolete_local_done' : 'vpn_manager_v2_flash_remove_obsolete_success'));
             }
         } catch (VpnManagerV2Exception $exception) {
             session()->setFlash('error', $exception->getMessage());

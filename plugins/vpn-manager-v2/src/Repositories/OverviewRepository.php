@@ -221,20 +221,37 @@ final class OverviewRepository
                 'errors' => null,
             ];
         }
+        $availableSubscription = "sub.status IN ('active', 'partial_sync', 'sync_error')
+            AND sub.starts_at <= NOW() AND (sub.expires_at IS NULL OR sub.expires_at > NOW())
+            AND (sub.traffic_limit_bytes IS NULL OR sub.traffic_limit_bytes = 0
+                 OR COALESCE(sub.traffic_used_bytes, 0) < sub.traffic_limit_bytes)";
         if (in_array('vpn_v2_subscriptions', $presentTables, true)) {
             $data['subscriptions'] = [
-                'total' => $this->safeCount('SELECT COUNT(*) FROM vpn_v2_subscriptions'),
-                'active' => $this->safeCount("SELECT COUNT(*) FROM vpn_v2_subscriptions WHERE status = 'active'"),
+                'total' => $this->safeCount("SELECT COUNT(*) FROM vpn_v2_subscriptions WHERE status <> 'deleted'"),
+                'active' => $this->safeCount("SELECT COUNT(*) FROM vpn_v2_subscriptions sub WHERE {$availableSubscription}"),
                 'enabled' => null,
-                'errors' => $this->safeCount("SELECT COUNT(*) FROM vpn_v2_subscriptions WHERE status IN ('provisioning_failed', 'sync_error', 'delete_failed')"),
+                'errors' => $this->safeCount("SELECT COUNT(*) FROM vpn_v2_subscriptions WHERE status IN ('provisioning_failed', 'partial_sync', 'sync_error', 'delete_failed')"),
             ];
         }
         if (in_array('vpn_v2_subscription_nodes', $presentTables, true)) {
+            $currentConnections = "FROM vpn_v2_subscription_nodes n
+                INNER JOIN vpn_v2_subscriptions sub ON sub.id = n.subscription_id
+                INNER JOIN vpn_v2_servers s ON s.id = n.server_id
+                INNER JOIN vpn_v2_inbounds i ON i.id = n.inbound_id AND i.server_id = n.server_id
+                WHERE sub.status <> 'deleted' AND n.status <> 'deleted' AND i.status <> 'archived'
+                  AND (n.is_obsolete = 0 OR EXISTS (
+                      SELECT 1 FROM vpn_v2_plan_nodes pn
+                      WHERE pn.plan_id = sub.plan_id AND pn.server_id = n.server_id
+                        AND pn.inbound_id = n.inbound_id AND pn.is_enabled = 1
+                  ))";
             $data['connections'] = [
-                'total' => $this->safeCount('SELECT COUNT(*) FROM vpn_v2_subscription_nodes'),
-                'active' => $this->safeCount("SELECT COUNT(*) FROM vpn_v2_subscription_nodes WHERE status = 'active'"),
+                'total' => $this->safeCount("SELECT COUNT(*) {$currentConnections}"),
+                'active' => $this->safeCount("SELECT COUNT(*) {$currentConnections}
+                    AND {$availableSubscription} AND n.status = 'active' AND s.is_enabled = 1
+                    AND s.maintenance_mode = 0 AND i.is_enabled = 1 AND i.status = 'active'"),
                 'enabled' => null,
-                'errors' => $this->safeCount("SELECT COUNT(*) FROM vpn_v2_subscription_nodes WHERE status IN ('create_failed', 'sync_error', 'delete_failed')"),
+                'errors' => $this->safeCount("SELECT COUNT(*) {$currentConnections}
+                    AND n.status IN ('create_failed', 'sync_error', 'delete_failed')"),
             ];
         }
 

@@ -85,6 +85,11 @@ $summaryCards = [
                         <span class="display-6 fw-semibold lh-1"><?= htmlSC($metric($item['active'] ?? null)) ?></span>
                         <span class="text-body-secondary text-nowrap mb-1">/ <?= htmlSC($metric($item['total'] ?? null)) ?></span>
                     </div>
+                    <?php if (in_array($key, ['subscriptions', 'connections'], true)): ?>
+                        <div class="small text-body-secondary mt-2">
+                            <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_available_current')) ?>
+                        </div>
+                    <?php endif; ?>
                     <div class="small mt-2 <?= $hasErrors ? 'text-warning' : 'text-body-secondary' ?>">
                         <?php if ($errors !== null): ?>
                             <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_errors')) ?>: <?= htmlSC($metric($errors)) ?>

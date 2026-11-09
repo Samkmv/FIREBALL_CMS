@@ -1,6 +1,12 @@
 <?php
 
 return [
+    'vpn_manager_v2_obsolete_local_action' => '仅从 CMS 移除多余连接',
+    'vpn_manager_v2_obsolete_local_confirm' => '从 CMS 移除列出的多余连接？旧 3x-UI 面板中的记录会保留，其他订阅正在使用的连接也会保留。',
+    'vpn_manager_v2_obsolete_local_done' => '已从 CMS 移除多余连接。',
+    'vpn_manager_v2_obsolete_local_shared' => '其他有效订阅仍在使用此连接。',
+    'vpn_manager_v2_obsolete_last_cleanup' => '最近一次连接清理',
+    'vpn_manager_v2_overview_available_current' => '可用 / 当前记录',
     'vpn_manager_v2_reconcile_sync_guidance' => '同步会创建缺失连接或更新客户端参数。清理操作单独执行。',
     'vpn_manager_v2_reconcile_cleanup_guidance' => '无需创建或更新连接。若不再需要下方列出的连接，请选择移除多余连接。',
     'vpn_manager_v2_reconcile_review_guidance' => '请检查错误、不可用服务器和冲突后重新检查。',

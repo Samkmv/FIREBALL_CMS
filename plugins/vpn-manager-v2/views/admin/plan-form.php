@@ -388,8 +388,11 @@ $renderNodeRow = static function (array $node, string|int $index) use ($servers,
                 <?php endif; ?>
             </div>
             <?php if ($latestReconciliation !== null): ?>
+                <?php $operationOptions = json_decode((string)($latestReconciliation['options_json'] ?? ''), true); ?>
+
                 <div class="small text-body-secondary text-md-end">
-                    <div><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_last_reconciliation')) ?>:
+                    <div><?= htmlSC(FireballPluginVpnManagerV2::t(!empty($operationOptions['remove_obsolete'])
+                        ? 'vpn_manager_v2_obsolete_last_cleanup' : 'vpn_manager_v2_last_reconciliation')) ?>:
                         <?= htmlSC((string)($latestReconciliation['finished_at'] ?? $latestReconciliation['started_at'] ?? '—')) ?></div>
                     <div><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_operation_status')) ?>:
                         <span class="fw-semibold text-body"><?= htmlSC(FireballPluginVpnManagerV2::t(
@@ -458,6 +461,17 @@ $renderNodeRow = static function (array $node, string|int $index) use ($servers,
                 <button class="btn btn-outline-danger rounded-pill d-inline-flex align-items-center gap-2" type="submit">
                     <i class="ci-trash" aria-hidden="true"></i>
                     <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_remove_obsolete')) ?>
+                </button>
+            </form>
+            <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/plans/' . $planId . '/remove-obsolete')) ?>"
+                  data-admin-delete-form
+                  data-delete-message="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_obsolete_local_confirm')) ?>"
+                  data-delete-item="#<?= $planId ?>"
+                  data-delete-confirm-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_obsolete_local_action')) ?>">
+                <?= get_csrf_field() ?>
+                <input type="hidden" name="local_only" value="1">
+                <button class="btn btn-outline-warning rounded-pill" type="submit">
+                    <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_obsolete_local_action')) ?>
                 </button>
             </form>
             <?php endif; ?>

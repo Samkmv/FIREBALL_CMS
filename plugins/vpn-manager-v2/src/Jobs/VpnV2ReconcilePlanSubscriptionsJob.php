@@ -86,7 +86,7 @@ final class VpnV2ReconcilePlanSubscriptionsJob
                             ? $reconciler->removeObsoleteNodesForSubscription(
                                 $cursor,
                                 $adminId,
-                                ['authorized' => true]
+                                ['authorized' => true, 'local_only' => !empty($options['local_only'])]
                             )
                             : $reconciler->reconcileSubscription($cursor, [
                                 'initiated_by' => $adminId,

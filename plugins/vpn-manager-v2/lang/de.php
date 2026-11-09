@@ -1,6 +1,12 @@
 <?php
 
 return [
+    'vpn_manager_v2_obsolete_local_action' => 'Überzählige Einträge nur aus der CMS entfernen',
+    'vpn_manager_v2_obsolete_local_confirm' => 'Alle aufgeführten Einträge aus der CMS entfernen? Einträge im alten 3x-UI-Panel bleiben erhalten. Gemeinsam genutzte Verbindungen bleiben erhalten.',
+    'vpn_manager_v2_obsolete_local_done' => 'Überzählige Verbindungen aus der CMS entfernt.',
+    'vpn_manager_v2_obsolete_local_shared' => 'Ein anderes aktives Abonnement nutzt diese Verbindung.',
+    'vpn_manager_v2_obsolete_last_cleanup' => 'Letzte Verbindungsbereinigung',
+    'vpn_manager_v2_overview_available_current' => 'Verfügbar / aktuelle Einträge',
     'vpn_manager_v2_reconcile_sync_guidance' => 'Die Synchronisierung erstellt fehlende Verbindungen oder aktualisiert Client-Einstellungen. Die Bereinigung erfolgt separat.',
     'vpn_manager_v2_reconcile_cleanup_guidance' => 'Es sind keine neuen Verbindungen oder Änderungen nötig. Entfernen Sie bei Bedarf die aufgeführten Verbindungen.',
     'vpn_manager_v2_reconcile_review_guidance' => 'Prüfen Sie Fehler, nicht erreichbare Server und Konflikte und wiederholen Sie die Prüfung.',

@@ -1,6 +1,12 @@
 <?php
 
 return [
+    'vpn_manager_v2_obsolete_local_action' => 'Remove obsolete entries from CMS only',
+    'vpn_manager_v2_obsolete_local_confirm' => 'Remove all listed obsolete connections from CMS? Records on the old 3x-UI panel will remain. Connections used by other subscriptions will be kept.',
+    'vpn_manager_v2_obsolete_local_done' => 'Obsolete connections removed from CMS.',
+    'vpn_manager_v2_obsolete_local_shared' => 'Another active subscription uses this connection.',
+    'vpn_manager_v2_obsolete_last_cleanup' => 'Last connection cleanup',
+    'vpn_manager_v2_overview_available_current' => 'Available / current records',
     'vpn_manager_v2_reconcile_sync_guidance' => 'Synchronization creates missing connections or updates client settings. Cleanup is separate.',
     'vpn_manager_v2_reconcile_cleanup_guidance' => 'No connections need to be created or updated. If the listed connections are no longer needed, choose Remove obsolete connections.',
     'vpn_manager_v2_reconcile_review_guidance' => 'Review errors, unavailable servers and conflicts, then run the check again.',

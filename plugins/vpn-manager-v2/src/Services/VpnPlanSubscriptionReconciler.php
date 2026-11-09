@@ -530,18 +530,18 @@ final class VpnPlanSubscriptionReconciler
         return new ReconcileResult($planId, operationId: $operationId, queued: true);
     }
 
-    public function removeObsoleteNodes(int $planId, int $adminId): ReconcileResult
+    public function removeObsoleteNodes(int $planId, int $adminId, array $options = []): ReconcileResult
     {
         Permissions::authorize(Permissions::DELETE_CONNECTIONS);
         $repository = $this->repository();
 
-        return ($this->lock ?? new VpnReconciliationLock())->plan($planId, function () use ($repository, $planId, $adminId): ReconcileResult {
+        return ($this->lock ?? new VpnReconciliationLock())->plan($planId, function () use ($repository, $planId, $adminId, $options): ReconcileResult {
             $checked = $removed = $failed = $changed = 0;
             foreach ($repository->obsoleteSubscriptions($planId) as $subscription) {
                 $result = $this->removeObsoleteNodesForSubscription(
                     (int)$subscription['id'],
                     $adminId,
-                    ['authorized' => true]
+                    ['authorized' => true] + $options
                 );
                 $checked += $result->subscriptionsChecked;
                 $removed += $result->removed;
@@ -581,16 +581,28 @@ final class VpnPlanSubscriptionReconciler
                 continue;
             }
             try {
-                ($this->remoteDeletion ?? new RemoteClientDeletionService())->delete($node);
-                $this->events()->markNodeDeleted((int)$node['id']);
+                $localOnly = !empty($options['local_only']);
+                if ($localOnly) {
+                    if ((new VpnV2SubscriptionDependencyService())->countActiveConsumers((int)$node['id'], $subscriptionId) > 0) {
+                        throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_obsolete_local_shared'));
+                    }
+                    if (!$repository->archiveObsoleteLocally((int)$node['id'])) {
+                        continue;
+                    }
+                } else {
+                    ($this->remoteDeletion ?? new RemoteClientDeletionService())->delete($node);
+                    $this->events()->markNodeDeleted((int)$node['id']);
+                }
                 $removed++;
                 $this->events()->logEvent('obsolete_subscription_node_removed',
                     $subscriptionId, (int)$node['id'], (int)$node['server_id'],
                     (int)$node['user_id'], $adminId,
-                    ['plan_id' => $planId, 'inbound_id' => (int)$node['inbound_id']]);
+                    ['plan_id' => $planId, 'inbound_id' => (int)$node['inbound_id'], 'local_only' => $localOnly]);
             } catch (\Throwable $exception) {
                 $failed++;
-                $this->events()->markNodeDeleteFailed((int)$node['id'], $this->safeError($exception));
+                if (empty($options['local_only'])) {
+                    $this->events()->markNodeDeleteFailed((int)$node['id'], $this->safeError($exception));
+                }
             }
         }
         if ($removed > 0) {

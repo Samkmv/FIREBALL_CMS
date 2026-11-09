@@ -553,6 +553,22 @@ final class PlanReconciliationRepository
         )->get() ?: [];
     }
 
+    public function archiveObsoleteLocally(int $nodeId): bool
+    {
+        db()->query(
+            "UPDATE vpn_v2_subscription_nodes n
+             INNER JOIN vpn_v2_subscriptions sub ON sub.id = n.subscription_id
+             LEFT JOIN vpn_v2_plan_nodes pn ON pn.plan_id = sub.plan_id
+                 AND pn.server_id = n.server_id AND pn.inbound_id = n.inbound_id AND pn.is_enabled = 1
+             SET n.status = 'deleted', n.desired_enabled = 0, n.sync_status = 'archived_locally',
+                 n.last_error = NULL, n.sync_error = NULL, n.updated_at = ?
+             WHERE n.id = ? AND n.is_obsolete = 1 AND n.status NOT IN ('deleted', 'deleting') AND pn.id IS NULL",
+            [date('Y-m-d H:i:s'), $nodeId]
+        );
+
+        return db()->rowCount() === 1;
+    }
+
     public function obsoleteNodesForSubscription(int $subscriptionId): array
     {
         return db()->query(
@@ -706,7 +722,7 @@ final class PlanReconciliationRepository
     {
         $row = db()->query(
             'SELECT operation_id, status, total_count, processed_count, success_count,
-                    failure_count, skipped_count, started_at, finished_at, created_at
+                    failure_count, skipped_count, started_at, finished_at, created_at, options_json
              FROM vpn_v2_reconcile_operations WHERE plan_id = ? ORDER BY id DESC LIMIT 1',
             [$planId]
         )->getOne();
