@@ -18,6 +18,7 @@ final class SettingsService
         'support_url',
         'happ_routing_enabled',
         'happ_routing_link',
+        'incy_routing_enabled', 'incy_routing_link',
         'happ_server_settings_policy',
         'smart_connect_enabled', 'smart_connect_mode', 'smart_connect_happ_enabled',
         'smart_connect_happ_provider_id', 'smart_connect_happ_ping_on_open',
@@ -70,6 +71,8 @@ final class SettingsService
             'show_qr_in_profile' => true,
             'happ_routing_enabled' => false,
             'happ_routing_link' => '',
+            'incy_routing_enabled' => false,
+            'incy_routing_link' => '',
             'happ_server_settings_policy' => 'default',
         ], \Fireball\VpnManagerV2\DTO\SmartConnectData::defaults());
     }

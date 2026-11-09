@@ -8,7 +8,7 @@ final class HappRoutingProfile
     public const MAX_LINK_BYTES = 4096;
     public const MAX_INPUT_BYTES = 65536;
 
-    public function normalize(mixed $input): string
+    public function normalize(mixed $input, bool $incy = false): string
     {
         if (!is_string($input) || strlen($input) > self::MAX_INPUT_BYTES) {
             throw new \InvalidArgumentException('Invalid Happ routing input.');
@@ -18,9 +18,11 @@ final class HappRoutingProfile
             return '';
         }
 
+        $scheme = $incy ? 'incy' : 'happ';
+        $inputScheme = $incy ? '(?:incy)?' : 'happ';
         if (str_starts_with($input, '{')) {
             $json = $input;
-        } elseif (preg_match('~\Ahapp://routing/(?:onadd|add)/([A-Za-z0-9+/]+={0,2})\z~D', $input, $matches) === 1) {
+        } elseif (preg_match('~\A' . $inputScheme . '://routing/(?:onadd|add)/([A-Za-z0-9+/]+={0,2})\z~D', $input, $matches) === 1) {
             $json = base64_decode($matches[1], true);
             if ($json === false) {
                 throw new \InvalidArgumentException('Invalid Happ routing encoding.');
@@ -62,7 +64,7 @@ final class HappRoutingProfile
             $profile->$key = in_array($profile->$key, [true, 'true'], true) ? 'true' : 'false';
         }
 
-        $link = 'happ://routing/onadd/' . base64_encode(json_encode(
+        $link = $scheme . '://routing/onadd/' . base64_encode(json_encode(
             $profile, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
         ));
         if (strlen($link) > self::MAX_LINK_BYTES) {

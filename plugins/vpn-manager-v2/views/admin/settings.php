@@ -152,6 +152,14 @@ $switch = static function (string $key, string $label, string $help = '') use ($
         </div>
     </section>
 
+    <section class="border rounded-5 p-3 p-md-4 mb-4" id="incy-routing">
+        <h2 class="h5 mb-3"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_incy_routing_title')) ?></h2>
+        <?= $switch('incy_routing_enabled', FireballPluginVpnManagerV2::t('vpn_manager_v2_incy_routing_enabled')) ?>
+        <label class="form-label mt-3" for="vpnV2IncyRouting"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_incy_routing_field')) ?></label>
+        <textarea class="form-control font-monospace" id="vpnV2IncyRouting" name="incy_routing_link"
+                  rows="4" maxlength="65536" spellcheck="false" placeholder="incy://routing/onadd/…"><?= htmlSC((string)($settings['incy_routing_link'] ?? '')) ?></textarea>
+    </section>
+
     <section class="border rounded-5 p-3 p-md-4 mb-4">
         <div class="d-flex align-items-center gap-2 mb-3">
             <i class="ci-refresh-cw fs-4 text-body-secondary" aria-hidden="true"></i>

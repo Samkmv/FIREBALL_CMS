@@ -137,6 +137,21 @@ check(str_contains($mixed->body, 'healthy.example') && !str_contains($mixed->bod
 
 check(str_contains(rawurldecode($mixed->body), 'Netherlands · На сервере ведутся технические работы'),
     'The maintenance server should remain visible by name.');
+$routingJson = '{"Name":"Fixture routing","LastUpdated":1700000000}';
+$incySettings = (new SettingsValidator())->validate([
+    'happ_routing_enabled' => true, 'happ_routing_link' => $routingJson,
+    'incy_routing_enabled' => true, 'incy_routing_link' => '://routing/onadd/' . base64_encode($routingJson),
+], SettingsService::defaults())->toArray();
+cache()->set('vpn-v2:settings:v1', $incySettings, 300);
+$happ = $endpoint->respond($token, 'plain', requestHeaders: ['User-Agent' => 'Happ/1']);
+$incy = $endpoint->respond($token, 'plain', $happ->headers['ETag'], requestHeaders: ['User-Agent' => 'INCY/1/iOS']);
+check(str_starts_with($happ->headers['routing'], 'happ://'), 'Happ lost its routing profile.');
+check($incy->status === 200 && str_starts_with($incy->headers['routing'], 'incy://')
+    && $incy->headers['ETag'] !== $happ->headers['ETag'], 'Incy must receive its own routing profile and validator.');
+$incyByClientHeader = $endpoint->respond($token, 'plain', requestHeaders: ['X-Client' => 'INCY']);
+check($incyByClientHeader->headers['routing'] === $incy->headers['routing'], 'The INCY client header must also select its routing.');
+
+
 $fixtureDb->nodes = [];
 $empty = $endpoint->respond($token, 'plain', $mixed->headers['ETag'] ?? '');
 check($empty->status === 200 && $empty->headers['X-Fireball-VPN-Status'] === 'no_servers'

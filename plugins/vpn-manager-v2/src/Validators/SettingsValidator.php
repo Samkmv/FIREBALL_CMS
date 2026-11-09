@@ -36,6 +36,7 @@ final class SettingsValidator
         'public_account_enabled',
         'show_qr_in_profile',
         'happ_routing_enabled',
+        'incy_routing_enabled',
         'smart_connect_enabled', 'smart_connect_happ_enabled', 'smart_connect_happ_ping_on_open',
         'smart_connect_happ_sort_ping', 'smart_connect_happ_autoconnect',
         'smart_connect_singbox_enabled', 'smart_connect_health_enabled',
@@ -102,6 +103,15 @@ final class SettingsValidator
         if ($routingEnabled && $routingLink === '') {
             $routingEnabled = $this->invalid($strict, 'vpn_manager_v2_error_happ_routing_required', false);
         }
+        try {
+            $incyLink = (new HappRoutingProfile())->normalize($data['incy_routing_link'] ?? '', incy: true);
+        } catch (\InvalidArgumentException) {
+            $incyLink = $this->invalid($strict, 'vpn_manager_v2_incy_routing_invalid', '');
+        }
+        $incyEnabled = $this->boolean($data['incy_routing_enabled'] ?? false);
+        if ($incyEnabled && $incyLink === '') {
+            $incyEnabled = $this->invalid($strict, 'vpn_manager_v2_incy_routing_invalid', false);
+        }
         $serverSettingsPolicy = $data['happ_server_settings_policy'] ?? 'default';
         if (!is_string($serverSettingsPolicy) || !in_array($serverSettingsPolicy, ['default', 'hide', 'show'], true)) {
             $serverSettingsPolicy = $this->invalid($strict, 'vpn_manager_v2_happ_protection_invalid', 'default');
@@ -151,6 +161,8 @@ final class SettingsValidator
             $routingLink,
             $smartConnect,
             $serverSettingsPolicy,
+            $incyEnabled,
+            $incyLink,
         );
     }
 

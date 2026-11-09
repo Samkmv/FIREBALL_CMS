@@ -37,6 +37,8 @@ final readonly class VpnSettingsData
         public string $happRoutingLink = '',
         public array $smartConnect = [],
         public string $happServerSettingsPolicy = 'default',
+        public bool $incyRoutingEnabled = false,
+        public string $incyRoutingLink = '',
     ) {
     }
 
@@ -74,6 +76,8 @@ final readonly class VpnSettingsData
             'happ_routing_enabled' => $this->happRoutingEnabled,
             'happ_routing_link' => $this->happRoutingLink,
             'happ_server_settings_policy' => $this->happServerSettingsPolicy,
+            'incy_routing_enabled' => $this->incyRoutingEnabled,
+            'incy_routing_link' => $this->incyRoutingLink,
         ], $this->smartConnect);
     }
 }

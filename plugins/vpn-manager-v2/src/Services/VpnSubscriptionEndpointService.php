@@ -97,6 +97,11 @@ final class VpnSubscriptionEndpointService
             $headers['Cache-Control'] = 'private, no-store, must-revalidate';
         }
 
+        $incy = $format !== 'singbox' && (
+            strcasecmp(trim((string)($requestHeaders['X-Client'] ?? '')), 'INCY') === 0
+            || preg_match('~^INCY/~i', (string)($requestHeaders['User-Agent'] ?? '')) === 1
+        );
+        $headers['Vary'] = 'User-Agent, X-Client';
         $metadata = $this->metadata ?? new VpnSubscriptionMetadataService();
         $subscriptionName = $metadata->profileTitle($subscription, $settings);
         if ($subscriptionName !== '') {
@@ -106,6 +111,13 @@ final class VpnSubscriptionEndpointService
             $headers,
             $metadata->headers($subscription, $settings, $repository->trafficBreakdown((int)$subscription['id']))
         );
+        if ($incy) {
+            unset($headers['routing'], $headers['routing-enable']);
+            if (!empty($settings['incy_routing_link'])) {
+                $headers['routing'] = !empty($settings['incy_routing_enabled'])
+                    ? $settings['incy_routing_link'] : 'off';
+            }
+        }
         if ($format === 'singbox') {
             // A full JSON profile is exportable; do not imply Happ UI restrictions apply to it.
             unset($headers['hide-settings']);
@@ -116,7 +128,7 @@ final class VpnSubscriptionEndpointService
             );
         }
         $revision = max(1, (int)$subscription['revision']);
-        $etag = $this->etag($token, $revision, $format);
+        $etag = $this->etag($token, $revision, $format . ($incy ? '-incy' : ''));
         $modifiedTimestamp = $this->modifiedTimestamp($subscription);
         $cache = $this->subscriptionCache ?? new VpnSubscriptionCache();
         $cached = null;
@@ -124,7 +136,7 @@ final class VpnSubscriptionEndpointService
             $headers['ETag'] = $etag;
             $headers['Last-Modified'] = gmdate('D, d M Y H:i:s', $modifiedTimestamp) . ' GMT';
             if ($this->etagMatches($ifNoneMatch, $etag)
-                || (trim($ifNoneMatch) === '' && $this->notModifiedSince($ifModifiedSince, $modifiedTimestamp))) {
+                || (!$incy && trim($ifNoneMatch) === '' && $this->notModifiedSince($ifModifiedSince, $modifiedTimestamp))) {
                 return new SubscriptionEndpointResponse(304, '', $headers);
             }
             $cached = $cache->get($token, $revision, $format);

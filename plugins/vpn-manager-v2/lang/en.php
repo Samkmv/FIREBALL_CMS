@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'vpn_manager_v2_incy_routing_title' => 'Incy routing',
+    'vpn_manager_v2_incy_routing_enabled' => 'Enable Incy routing',
+    'vpn_manager_v2_incy_routing_field' => 'Incy link or JSON profile',
+    'vpn_manager_v2_incy_routing_invalid' => 'Enter a valid Incy profile with a Name field.',
     'vpn_manager_v2_obsolete_local_action' => 'Remove obsolete entries from CMS only',
     'vpn_manager_v2_obsolete_local_confirm' => 'Remove all listed obsolete connections from CMS? Records on the old 3x-UI panel will remain. Connections used by other subscriptions will be kept.',
     'vpn_manager_v2_obsolete_local_done' => 'Obsolete connections removed from CMS.',

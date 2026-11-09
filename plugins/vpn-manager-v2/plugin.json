@@ -1,7 +1,7 @@
 {
   "name": "Управление VPN",
   "slug": "vpn-manager-v2",
-  "version": "3.1.6",
+  "version": "3.1.7",
   "type": "system",
   "description": "Управление VPN-серверами, тарифами, подписками и подключениями с двусторонней синхронизацией с панелью 3x-ui и поддержкой Happ.",
   "description_i18n": {
@@ -19,6 +19,7 @@
   },
   "auto_migrate": true,
   "release_notes": [
+    "Separate Incy routing profile on the existing subscription URL.",
     "Remove obsolete entries from CMS only",
     "Overview excludes deleted subscriptions and obsolete connections from current totals.",
     "Plan checks explain whether synchronization or cleanup is needed.",
@@ -36,6 +37,7 @@
   ],
   "release_notes_i18n": {
     "en": [
+      "Separate Incy routing profile on the existing subscription URL.",
       "Remove obsolete entries from CMS only",
       "Overview excludes deleted subscriptions and obsolete connections from current totals.",
       "Plan checks explain whether synchronization or cleanup is needed.",
@@ -52,6 +54,7 @@
       "Added quick server replacement and Happ notices for expiry and maintenance."
     ],
     "ru": [
+      "Поддержка отдельного профиля маршрутизации Incy по действующей ссылке подписки.",
       "Убрать лишние только из CMS",
       "Обзор исключает удалённые подписки и устаревшие подключения из текущих счётчиков.",
       "Отчёт сверки подсказывает, когда синхронизировать тариф, а когда удалить лишние подключения.",
@@ -68,6 +71,7 @@
       "Добавлены быстрая замена сервера и уведомления об истечении подписки и техработах в Happ."
     ],
     "de": [
+      "Separates Incy-Routing-Profil für die vorhandene Abonnement-URL.",
       "Überzählige Einträge nur aus der CMS entfernen",
       "Die Übersicht schließt gelöschte Abonnements und veraltete Verbindungen aus.",
       "Tarifprüfungen zeigen, ob Synchronisierung oder Bereinigung nötig ist.",
@@ -84,6 +88,7 @@
       "Schneller Serverwechsel und Happ-Hinweise zu Ablauf und Wartung hinzugefügt."
     ],
     "zh-cn": [
+      "现有订阅链接支持独立的 Incy 路由配置。",
       "仅从 CMS 移除多余连接",
       "概览统计排除已删除的订阅和过时的连接。",
       "套餐检查说明应同步还是清理。",

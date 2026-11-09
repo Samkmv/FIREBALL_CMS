@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'vpn_manager_v2_incy_routing_title' => 'Incy-Routing',
+    'vpn_manager_v2_incy_routing_enabled' => 'Incy-Routing aktivieren',
+    'vpn_manager_v2_incy_routing_field' => 'Incy-Link oder JSON-Profil',
+    'vpn_manager_v2_incy_routing_invalid' => 'Geben Sie ein gültiges Incy-Profil mit einem Name-Feld ein.',
     'vpn_manager_v2_obsolete_local_action' => 'Überzählige Einträge nur aus der CMS entfernen',
     'vpn_manager_v2_obsolete_local_confirm' => 'Alle aufgeführten Einträge aus der CMS entfernen? Einträge im alten 3x-UI-Panel bleiben erhalten. Gemeinsam genutzte Verbindungen bleiben erhalten.',
     'vpn_manager_v2_obsolete_local_done' => 'Überzählige Verbindungen aus der CMS entfernt.',

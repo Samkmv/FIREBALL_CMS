@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'vpn_manager_v2_incy_routing_title' => 'Incy 路由',
+    'vpn_manager_v2_incy_routing_enabled' => '启用 Incy 路由',
+    'vpn_manager_v2_incy_routing_field' => 'Incy 链接或 JSON 配置',
+    'vpn_manager_v2_incy_routing_invalid' => '请输入包含 Name 字段的有效 Incy 配置。',
     'vpn_manager_v2_obsolete_local_action' => '仅从 CMS 移除多余连接',
     'vpn_manager_v2_obsolete_local_confirm' => '从 CMS 移除列出的多余连接？旧 3x-UI 面板中的记录会保留，其他订阅正在使用的连接也会保留。',
     'vpn_manager_v2_obsolete_local_done' => '已从 CMS 移除多余连接。',

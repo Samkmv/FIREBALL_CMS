@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'vpn_manager_v2_incy_routing_title' => 'Маршрутизация Incy',
+    'vpn_manager_v2_incy_routing_enabled' => 'Включить маршрутизацию Incy',
+    'vpn_manager_v2_incy_routing_field' => 'Ссылка Incy или JSON-профиль',
+    'vpn_manager_v2_incy_routing_invalid' => 'Укажите корректный профиль Incy с полем Name.',
     'vpn_manager_v2_obsolete_local_action' => 'Убрать лишние только из CMS',
     'vpn_manager_v2_obsolete_local_confirm' => 'Убрать все перечисленные лишние подключения из CMS? Записи на старой панели 3x-UI останутся. Подключения, которыми пользуются другие подписки, будут сохранены.',
     'vpn_manager_v2_obsolete_local_done' => 'Лишние подключения убраны из CMS.',

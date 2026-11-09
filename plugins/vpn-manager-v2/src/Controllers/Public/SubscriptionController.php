@@ -28,6 +28,7 @@ final class SubscriptionController
                 'X-Device-OS' => (string)request()->header('X-Device-OS', ''),
                 'X-Ver-OS' => (string)request()->header('X-Ver-OS', ''),
                 'X-Device-Model' => (string)request()->header('X-Device-Model', ''),
+                'X-Client' => (string)request()->header('X-Client', ''),
                 'User-Agent' => (string)request()->header('User-Agent', ''),
             ]
         );
