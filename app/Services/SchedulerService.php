@@ -53,6 +53,13 @@ final class SchedulerService
             }
 
             $summary['due']++;
+            // Let the current job finish, then give a pending updater the runtime.
+            if (defined('STORAGE') && is_resource($GLOBALS['fireball_runtime_lock'] ?? null)
+                && \FBL\UpdateLock::pending(STORAGE)) {
+                $summary['skipped']++;
+                $summary['jobs'][$name] = ['status' => 'update_pending'];
+                continue;
+            }
             $result = $this->execute($name, $definition, $now);
             $summary['jobs'][$name] = $result;
 
