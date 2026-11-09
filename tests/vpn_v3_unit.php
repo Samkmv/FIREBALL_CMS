@@ -118,7 +118,7 @@ check(str_contains(rawurldecode(base64_decode($expired->body)), 'Подписк�
 
 $fixtureDb->subscription['expires_at'] = null;
 $fixtureDb->nodes = [[
-    'node_id' => 42, 'server_id' => 1, 'client_sub_id' => 'a', 'maintenance_mode' => 1,
+    'node_id' => 42, 'server_id' => 1, 'server_name' => 'Netherlands', 'client_sub_id' => 'a', 'maintenance_mode' => 1,
     'protocol' => 'vless', 'network' => 'tcp', 'security' => 'none', 'port' => 443,
     'stream_settings_json' => '{"network":"tcp","security":"none"}',
     'client_uuid' => '70cc48c5-b2f4-4fc7-a4dd-123456789abc',
@@ -134,6 +134,13 @@ $fixtureDb->nodes[] = array_replace($fixtureDb->nodes[0], [
 $mixed = $endpoint->respond($token, 'plain');
 check($mixed->status === 200 && isset($mixed->headers['announce']), 'Maintenance notice missing for a mixed subscription.');
 check(str_contains($mixed->body, 'healthy.example') && !str_contains($mixed->body, 'maintenance.example'), 'Maintenance filtered the wrong connections.');
+
+check(str_contains(rawurldecode($mixed->body), 'Netherlands · На сервере ведутся технические работы'),
+    'The maintenance server should remain visible by name.');
+$fixtureDb->nodes = [];
+$empty = $endpoint->respond($token, 'plain', $mixed->headers['ETag'] ?? '');
+check($empty->status === 200 && $empty->headers['X-Fireball-VPN-Status'] === 'no_servers'
+    && !str_contains($empty->body, 'healthy.example'), 'An empty plan must replace the previous client list.');
 
 $topology = new ServerRecoveryRepository();
 $old = ['id' => 1, 'protocol' => 'vless', 'port' => 443, 'network' => 'tcp', 'security' => 'reality'];

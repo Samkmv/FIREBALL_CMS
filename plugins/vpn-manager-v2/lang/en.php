@@ -1,6 +1,12 @@
 <?php
 
 return [
+    'vpn_manager_v2_reconcile_sync_guidance' => 'Synchronization creates missing connections or updates client settings. Cleanup is separate.',
+    'vpn_manager_v2_reconcile_cleanup_guidance' => 'No connections need to be created or updated. If the listed connections are no longer needed, choose Remove obsolete connections.',
+    'vpn_manager_v2_reconcile_review_guidance' => 'Review errors, unavailable servers and conflicts, then run the check again.',
+    'vpn_manager_v2_reconcile_no_sync_work' => 'Synchronization has nothing to create or update.',
+    'vpn_manager_v2_plan_order_shared' => 'Servers follow the current numeric plan order. External sources follow in their saved order.',
+    'vpn_manager_v2_subscription_notice_no_servers' => 'No servers available in this subscription',
     'vpn_manager_v2_discrepancies_title' => 'Discrepancies',
     'vpn_manager_v2_discrepancies_help' => 'Compare plan assignments with the last confirmed state in CMS. This page does not query 3x-UI.',
     'vpn_manager_v2_discrepancies_show' => 'Show',
@@ -777,7 +783,7 @@ return [
     'vpn_manager_v2_action_preview_reconciliation' => 'Check discrepancies',
     'vpn_manager_v2_action_reconcile' => 'Synchronize subscriptions with plan',
     'vpn_manager_v2_action_create_missing' => 'Create missing connection',
-    'vpn_manager_v2_action_remove_obsolete' => 'Remove server from existing subscriptions',
+    'vpn_manager_v2_action_remove_obsolete' => 'Remove obsolete connections',
     'vpn_manager_v2_confirm_remove_obsolete' => 'Delete %2$d confirmed clients from %1$d subscriptions in 3x-ui? Existing subscriptions will be affected.',
     'vpn_manager_v2_by_plan' => 'By plan',
     'vpn_manager_v2_actually_created' => 'Active on servers',

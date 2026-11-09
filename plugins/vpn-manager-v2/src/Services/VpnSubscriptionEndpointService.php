@@ -64,12 +64,16 @@ final class VpnSubscriptionEndpointService
         // Run native 3x-ui HWID registration/enforcement before ETag/cache handling.
         $allNodes = $dependencies->collectEffectiveConnections($subscription);
         $effectiveNodes = array_filter($allNodes, static fn(array $node): bool => empty($node['maintenance_mode']));
-        $hasMaintenance = count($effectiveNodes) < count($allNodes);
+        $maintenanceNodes = array_filter($allNodes, static fn(array $node): bool => !empty($node['maintenance_mode']));
+        $hasMaintenance = $maintenanceNodes !== [];
         $maintenanceOnly = $hasMaintenance && $effectiveNodes === [];
-        if ($maintenanceOnly && (new ExternalVpnSourceService())->configCountForSubscriptions(
+        if ($effectiveNodes === [] && (new ExternalVpnSourceService())->configCountForSubscriptions(
             $dependencies->collectEffectiveSubscriptionIds($subscription)
         ) === 0) {
-            return $this->inactiveResponse($subscription, $settings, $format, $headers, 'maintenance');
+            return $this->inactiveResponse(
+                $subscription, $settings, $format, $headers,
+                $maintenanceOnly ? 'maintenance' : 'no_servers', $maintenanceNodes
+            );
         }
         $gate = ($this->hwidGateway ?? new SubscriptionHwidGatewayService())->enforce(
             $subscription,
@@ -78,7 +82,7 @@ final class VpnSubscriptionEndpointService
         );
         $headers = array_replace($headers, $gate['headers']);
         if ($maintenanceOnly && (!$gate['allowed'] || isset($gate['verified_targets']))) {
-            return $this->inactiveResponse($subscription, $settings, $format, $headers, 'maintenance');
+            return $this->inactiveResponse($subscription, $settings, $format, $headers, 'maintenance', $maintenanceNodes);
         }
         if (!$gate['allowed']) {
             return new SubscriptionEndpointResponse((int)$gate['status'], '', $headers);
@@ -135,11 +139,14 @@ final class VpnSubscriptionEndpointService
             );
         }
 
+        $maintenanceEntries = $format === 'singbox' ? [] : $this->maintenanceEntries($maintenanceNodes);
+        $orderedNodes = $maintenanceEntries === [] ? $effectiveNodes
+            : array_intersect_key($allNodes, $effectiveNodes + $maintenanceNodes);
         try {
             $uris = ($this->builder ?? new VpnSubscriptionBuilder(
                 repository: $repository,
                 dependencies: $dependencies
-            ))->build($subscription, $effectiveNodes, includeExternal: !$partial);
+            ))->build($subscription, $orderedNodes, includeExternal: !$partial, maintenanceEntries: $maintenanceEntries);
         } catch (VpnManagerV2Exception) {
             unset($headers['ETag'], $headers['Last-Modified']);
             $headers['Cache-Control'] = 'private, no-store';
@@ -147,7 +154,7 @@ final class VpnSubscriptionEndpointService
         }
         if ($uris === []) {
             if ($hasMaintenance) {
-                return $this->inactiveResponse($subscription, $settings, $format, $headers, 'maintenance');
+                return $this->inactiveResponse($subscription, $settings, $format, $headers, 'maintenance', $maintenanceNodes);
             }
             unset($headers['ETag'], $headers['Last-Modified']);
             $headers['Cache-Control'] = 'private, no-store';
@@ -186,7 +193,7 @@ final class VpnSubscriptionEndpointService
 
     public function etag(string $token, int $revision, string $format): string
     {
-        return '"vpn-v3-' . hash('sha256', hash('sha256', $token) . '|' . max(1, $revision) . '|' . $format) . '"';
+        return '"vpn-v5-' . hash('sha256', hash('sha256', $token) . '|' . max(1, $revision) . '|' . $format) . '"';
     }
 
     private function baseHeaders(): array
@@ -225,7 +232,8 @@ final class VpnSubscriptionEndpointService
         array $settings,
         string $format,
         array $headers,
-        string $state = 'inactive'
+        string $state = 'inactive',
+        array $maintenanceNodes = []
     ): SubscriptionEndpointResponse {
         $metadata = $this->metadata ?? new VpnSubscriptionMetadataService();
         // Preserve the profile identity and real expiration, but do not apply
@@ -246,9 +254,8 @@ final class VpnSubscriptionEndpointService
         $notice = \FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_notice_' . $state);
         $headers['announce'] = 'base64:' . base64_encode($notice);
 
-        $placeholder = 'vless://00000000-0000-4000-8000-000000000000@192.0.2.1:1?encryption=none&security=none&type=tcp#'
-            . rawurlencode($notice);
-        $plain = $placeholder . "\n";
+        $entries = $maintenanceNodes === [] ? [$this->placeholder($notice)] : $this->maintenanceEntries($maintenanceNodes);
+        $plain = implode("\n", $entries) . "\n";
         $body = $format === 'singbox' ? (new SingBoxSubscriptionBuilder())->inactive()
             : ($format === 'base64' ? base64_encode($plain) : $plain);
 
@@ -256,9 +263,28 @@ final class VpnSubscriptionEndpointService
             200,
             $body,
             $headers,
-            $format === 'singbox' ? 0 : 1,
+            $format === 'singbox' ? 0 : count($entries),
             false
         );
+    }
+
+    private function maintenanceEntries(array $nodes): array
+    {
+        $entries = [];
+        $notice = \FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_notice_maintenance');
+        foreach ($nodes as $node) {
+            $id = (int)$node['server_id'];
+            $name = trim((string)($node['server_name'] ?? '')) ?: '#' . $id;
+            $entries[$id] = $this->placeholder($name . ' · ' . $notice, $id);
+        }
+
+        return $entries;
+    }
+
+    private function placeholder(string $notice, int $serverId = 0): string
+    {
+        return 'vless://00000000-0000-4000-8000-' . sprintf('%012x', $serverId)
+            . '@192.0.2.1:1?encryption=none&security=none&type=tcp#' . rawurlencode($notice);
     }
 
     private function modifiedTimestamp(array $subscription): int

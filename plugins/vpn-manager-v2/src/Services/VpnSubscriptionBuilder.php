@@ -18,7 +18,7 @@ final class VpnSubscriptionBuilder
     ) {
     }
 
-    public function build(array $subscription, ?array $nodes = null, bool $includeExternal = true): array
+    public function build(array $subscription, ?array $nodes = null, bool $includeExternal = true, array $maintenanceEntries = []): array
     {
         $dependencies = $this->dependencies ?? new VpnV2SubscriptionDependencyService(
             config: $this->repository ?? new SubscriptionConfigRepository()
@@ -36,7 +36,8 @@ final class VpnSubscriptionBuilder
         $firstPartyUris = $this->buildFromNodes(
             $subscription,
             $nodes ?? $dependencies->collectEffectiveConnections($subscription),
-            skipInvalid: true
+            skipInvalid: true,
+            maintenanceEntries: $maintenanceEntries
         );
         if (!$includeExternal) {
             return $this->mergeUris($firstPartyUris, []);
@@ -74,7 +75,7 @@ final class VpnSubscriptionBuilder
         return array_values($unique);
     }
 
-    public function buildFromNodes(array $subscription, array $nodes, bool $skipInvalid = false): array
+    public function buildFromNodes(array $subscription, array $nodes, bool $skipInvalid = false, array $maintenanceEntries = []): array
     {
         if ((int)($subscription['id'] ?? 0) <= 0) {
             throw new \Fireball\VpnManagerV2\Exceptions\VpnConfigValidationException(
@@ -91,6 +92,10 @@ final class VpnSubscriptionBuilder
                 );
             }
             if (!empty($node['maintenance_mode'])) {
+                $entry = $maintenanceEntries[(int)$node['server_id']] ?? null;
+                if ($entry !== null) {
+                    $uris[$entry] = $entry;
+                }
                 continue;
             }
             try {

@@ -76,9 +76,10 @@ foreach ($externalSourceItems as $sourceItem) {
                     <button class="btn btn-dark rounded-pill text-wrap" type="submit"><?= htmlSC($externalT('vpn_manager_v2_save_external_order')) ?></button>
                 </div>
                 <div class="list-group list-group-flush border rounded-4 overflow-hidden" data-vpn-v2-connection-order-list>
-                    <?php foreach ($externalSourceItems as $sourceItem): ?>
+                    <?php foreach (array_values($externalSourceItems) as $position => $sourceItem): ?>
                         <div class="list-group-item d-flex align-items-center gap-2 py-3" draggable="true" data-vpn-v2-connection-order-item>
                             <input type="hidden" name="external_source_order[]" value="<?= (int)$sourceItem['id'] ?>">
+                            <span class="badge text-bg-secondary" data-vpn-v2-order-position><?= $position + 1 ?></span>
                             <i class="ci-menu text-body-tertiary" aria-hidden="true"></i>
                             <div class="flex-grow-1 text-break" style="min-width:0"><?= htmlSC((string)$sourceItem['name']) ?></div>
                             <div class="btn-group flex-shrink-0" role="group" aria-label="<?= htmlSC($externalT('vpn_manager_v2_external_order_actions')) ?>">

@@ -57,7 +57,7 @@ final class SubscriptionConfigRepository
         }
         $placeholders = implode(',', array_fill(0, count($subscriptionIds), '?'));
         $rows = db()->query(
-            "SELECT n.id AS node_id, n.subscription_id, n.sort_order, n.remote_client_id,
+            "SELECT n.id AS node_id, n.subscription_id, COALESCE(pn.sort_order, n.sort_order) AS sort_order, n.remote_client_id,
                     n.client_uuid, n.encrypted_client_credential,
                     n.client_email,
                     n.client_sub_id, n.flow, n.traffic_limit_bytes, n.sync_status,
@@ -73,9 +73,13 @@ final class SubscriptionConfigRepository
              FROM vpn_v2_subscription_nodes n
              INNER JOIN vpn_v2_servers s ON s.id = n.server_id
              INNER JOIN vpn_v2_inbounds i ON i.id = n.inbound_id AND i.server_id = n.server_id
+             INNER JOIN vpn_v2_subscriptions sub ON sub.id = n.subscription_id
+             LEFT JOIN vpn_v2_plan_nodes pn ON pn.plan_id = sub.plan_id
+               AND pn.server_id = n.server_id AND pn.inbound_id = n.inbound_id AND pn.is_enabled = 1
              WHERE n.subscription_id IN (" . $placeholders . ") AND n.status = 'active'
+               AND (n.is_obsolete = 0 OR pn.id IS NOT NULL)
                AND s.is_enabled = 1 AND i.is_enabled = 1 AND i.status = 'active'
-             ORDER BY n.sort_order ASC, n.id ASC",
+             ORDER BY COALESCE(pn.sort_order, n.sort_order) ASC, pn.id ASC, n.id ASC",
             $subscriptionIds
         )->get() ?: [];
 

@@ -13,7 +13,7 @@ final class PlanValidator
     {
     }
 
-    public function validate(array $input, array $topology, array $existingNodes = []): PlanData
+    public function validate(array $input, array $topology, array $existingNodes = [], bool $allowEmpty = false): PlanData
     {
         $name = mb_substr(trim((string)($input['name'] ?? '')), 0, 255);
         if ($name === '') {
@@ -22,7 +22,8 @@ final class PlanValidator
 
         $durationDays = $this->integer($input['duration_days'] ?? 30, 1, 36500, 'vpn_manager_v2_error_plan_duration');
         $deviceLimit = $this->integer($input['device_limit'] ?? 1, 1, 100000, 'vpn_manager_v2_error_plan_device_limit');
-        $nodes = $this->validateNodes($input['nodes'] ?? [], $topology, $existingNodes);
+        $nodeInput = $input['nodes'] ?? [];
+        $nodes = $allowEmpty && $nodeInput === [] ? [] : $this->validateNodes($nodeInput, $topology, $existingNodes);
 
         return new PlanData(
             $name,

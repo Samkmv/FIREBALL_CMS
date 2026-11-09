@@ -1,6 +1,12 @@
 <?php
 
 return [
+    'vpn_manager_v2_reconcile_sync_guidance' => 'Die Synchronisierung erstellt fehlende Verbindungen oder aktualisiert Client-Einstellungen. Die Bereinigung erfolgt separat.',
+    'vpn_manager_v2_reconcile_cleanup_guidance' => 'Es sind keine neuen Verbindungen oder Änderungen nötig. Entfernen Sie bei Bedarf die aufgeführten Verbindungen.',
+    'vpn_manager_v2_reconcile_review_guidance' => 'Prüfen Sie Fehler, nicht erreichbare Server und Konflikte und wiederholen Sie die Prüfung.',
+    'vpn_manager_v2_reconcile_no_sync_work' => 'Es gibt nichts zu erstellen oder zu aktualisieren.',
+    'vpn_manager_v2_plan_order_shared' => 'Server folgen der aktuellen numerischen Tarifreihenfolge. Externe Quellen folgen in ihrer gespeicherten Reihenfolge.',
+    'vpn_manager_v2_subscription_notice_no_servers' => 'Keine Server in diesem Abonnement verfügbar',
     'vpn_manager_v2_discrepancies_title' => 'Abweichungen',
     'vpn_manager_v2_discrepancies_help' => 'Vergleich der Tarifzuordnungen mit dem zuletzt in der CMS bestätigten Stand. Diese Seite fragt 3x-UI nicht ab.',
     'vpn_manager_v2_discrepancies_show' => 'Anzeigen',
@@ -777,7 +783,7 @@ return [
     'vpn_manager_v2_action_preview_reconciliation' => 'Abweichungen prüfen',
     'vpn_manager_v2_action_reconcile' => 'Abonnements mit Tarif synchronisieren',
     'vpn_manager_v2_action_create_missing' => 'Fehlende Verbindung erstellen',
-    'vpn_manager_v2_action_remove_obsolete' => 'Server aus bestehenden Abonnements entfernen',
+    'vpn_manager_v2_action_remove_obsolete' => 'Überzählige Verbindungen entfernen',
     'vpn_manager_v2_confirm_remove_obsolete' => '%2$d bestätigte Clients aus %1$d Abonnements in 3x-ui löschen?',
     'vpn_manager_v2_by_plan' => 'Laut Tarif',
     'vpn_manager_v2_actually_created' => 'Auf Servern aktiv',

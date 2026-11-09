@@ -1,6 +1,12 @@
 <?php
 
 return [
+    'vpn_manager_v2_reconcile_sync_guidance' => '同步会创建缺失连接或更新客户端参数。清理操作单独执行。',
+    'vpn_manager_v2_reconcile_cleanup_guidance' => '无需创建或更新连接。若不再需要下方列出的连接，请选择移除多余连接。',
+    'vpn_manager_v2_reconcile_review_guidance' => '请检查错误、不可用服务器和冲突后重新检查。',
+    'vpn_manager_v2_reconcile_no_sync_work' => '没有需要创建或更新的内容。',
+    'vpn_manager_v2_plan_order_shared' => '服务器按套餐当前的数字顺序排列，外部来源按保存的顺序列在其后。',
+    'vpn_manager_v2_subscription_notice_no_servers' => '此订阅没有可用服务器',
     'vpn_manager_v2_discrepancies_title' => '差异',
     'vpn_manager_v2_discrepancies_help' => '将套餐分配与 CMS 中最近一次确认的状态进行比较。此页面不访问 3x-UI。',
     'vpn_manager_v2_discrepancies_show' => '查看',
@@ -777,7 +783,7 @@ return [
     'vpn_manager_v2_action_preview_reconciliation' => '检查差异',
     'vpn_manager_v2_action_reconcile' => '将订阅与套餐同步',
     'vpn_manager_v2_action_create_missing' => '创建缺失连接',
-    'vpn_manager_v2_action_remove_obsolete' => '从现有订阅移除服务器',
+    'vpn_manager_v2_action_remove_obsolete' => '移除多余连接',
     'vpn_manager_v2_confirm_remove_obsolete' => '从 3x-ui 中删除 %1$d 个订阅的 %2$d 个已确认客户端？',
     'vpn_manager_v2_by_plan' => '套餐数量',
     'vpn_manager_v2_actually_created' => '服务器上已激活',

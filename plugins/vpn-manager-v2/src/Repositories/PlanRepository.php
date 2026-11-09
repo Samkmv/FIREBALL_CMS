@@ -62,6 +62,18 @@ final class PlanRepository
         )->get() ?: [];
     }
 
+    public function hasServerSyncSince(int $planId, string $checkedAt): bool
+    {
+        return (bool)db()->query(
+            'SELECT 1 FROM vpn_v2_plan_nodes pn
+             INNER JOIN vpn_v2_servers s ON s.id = pn.server_id
+             WHERE pn.plan_id = ? AND pn.is_enabled = 1
+               AND (s.last_sync_at >= ? OR s.last_success_at >= ?)
+             LIMIT 1',
+            [$planId, $checkedAt, $checkedAt]
+        )->getColumn();
+    }
+
     public function serversForForm(): array
     {
         return db()->query(
@@ -164,8 +176,20 @@ final class PlanRepository
                     $id,
                 ]
             );
+            $before = $this->nodes($id);
             $database->query('DELETE FROM vpn_v2_plan_nodes WHERE plan_id = ?', [$id]);
             $this->insertNodes($id, $plan->nodes, $now);
+            $targets = [];
+            foreach ($plan->nodes as $node) {
+                $targets[$node->serverId . ':' . $node->inboundId] = true;
+            }
+            $reconciliation = new PlanReconciliationRepository();
+            foreach ($before as $node) {
+                if (!isset($targets[$node['server_id'] . ':' . $node['inbound_id']])) {
+                    $reconciliation->markTargetObsolete($id, (int)$node['server_id'], (int)$node['inbound_id']);
+                }
+            }
+            (new \Fireball\VpnManagerV2\Services\VpnSubscriptionRevisionService())->touchByPlan($id);
             $this->logEvent('plan.updated', $id, count($plan->nodes));
             $database->commit();
         } catch (\Throwable $exception) {

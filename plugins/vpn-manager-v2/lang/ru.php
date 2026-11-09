@@ -1,6 +1,12 @@
 <?php
 
 return [
+    'vpn_manager_v2_reconcile_sync_guidance' => 'Синхронизация создаст недостающие подключения или обновит параметры клиентов. Лишние подключения удаляются отдельно.',
+    'vpn_manager_v2_reconcile_cleanup_guidance' => 'Создавать подключения и менять параметры не требуется. Если перечисленные ниже подключения больше не нужны этому тарифу, нажмите «Удалить лишние подключения».',
+    'vpn_manager_v2_reconcile_review_guidance' => 'Проверьте ошибки, недоступные серверы и конфликты, затем повторите проверку.',
+    'vpn_manager_v2_reconcile_no_sync_work' => 'Синхронизации нечего создавать или обновлять.',
+    'vpn_manager_v2_plan_order_shared' => 'Серверы сортируются по текущему числовому порядку тарифа. Внешние источники идут следом в сохранённом порядке.',
+    'vpn_manager_v2_subscription_notice_no_servers' => 'В подписке нет доступных серверов',
     'vpn_manager_v2_discrepancies_title' => 'Расхождения',
     'vpn_manager_v2_discrepancies_help' => 'Сравнение назначений тарифа с последним подтверждённым состоянием в CMS. Эта страница не обращается к панели 3x-UI.',
     'vpn_manager_v2_discrepancies_show' => 'Показать',
@@ -777,7 +783,7 @@ return [
     'vpn_manager_v2_action_preview_reconciliation' => 'Проверить расхождения',
     'vpn_manager_v2_action_reconcile' => 'Синхронизировать подписки с тарифом',
     'vpn_manager_v2_action_create_missing' => 'Создать отсутствующее подключение',
-    'vpn_manager_v2_action_remove_obsolete' => 'Удалить сервер из существующих подписок',
+    'vpn_manager_v2_action_remove_obsolete' => 'Удалить лишние подключения',
     'vpn_manager_v2_confirm_remove_obsolete' => 'Удалить %2$d подтверждённых клиентов из %1$d подписок в 3x-ui? Действие затронет существующие подписки.',
     'vpn_manager_v2_by_plan' => 'По тарифу',
     'vpn_manager_v2_actually_created' => 'Активно на серверах',

@@ -56,8 +56,8 @@ $assert(str_contains($migration, 'ADD COLUMN sort_order')
     && str_contains($migration, 'idx_vpn_v2_sub_nodes_order')
     && str_contains($migration, 'SET sort_order = id'),
     'The order migration is not upgrade-safe or does not backfill existing connections.');
-$assert(str_contains($configRepository, 'ORDER BY n.sort_order ASC, n.id ASC'),
-    'Public subscription nodes do not use the saved order.');
+$assert(str_contains($configRepository, 'ORDER BY COALESCE(pn.sort_order, n.sort_order) ASC, pn.id ASC, n.id ASC'),
+    'Public subscription nodes do not prioritize the current tariff order.');
 $assert(str_contains($subscriptionRepository, 'revision = revision + 1')
     && str_contains($subscriptionRepository, 'subscription.connection_order_changed'),
     'Reordering does not atomically update revision and audit state.');

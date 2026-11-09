@@ -1,7 +1,7 @@
 {
   "name": "Управление VPN",
   "slug": "vpn-manager-v2",
-  "version": "3.1.0",
+  "version": "3.1.4",
   "type": "system",
   "description": "Управление VPN-серверами, тарифами, подписками и подключениями с двусторонней синхронизацией с панелью 3x-ui и поддержкой Happ.",
   "description_i18n": {
@@ -19,6 +19,10 @@
   },
   "auto_migrate": true,
   "release_notes": [
+    "Plan checks explain whether synchronization or cleanup is needed.",
+    "After server synchronization, outdated plan checks require a fresh comparison.",
+    "Servers follow the current numeric plan order. External sources follow in their saved order.",
+    "Plan removals take effect on the next refresh. Maintenance servers remain visible as unavailable.",
     "Added per-server discrepancy view and recovery guidance.",
     "Remove missing inbounds from CMS while retaining subscriptions.",
     "Restore available inbounds when some replacement targets are missing.",
@@ -30,6 +34,10 @@
   ],
   "release_notes_i18n": {
     "en": [
+      "Plan checks explain whether synchronization or cleanup is needed.",
+      "After server synchronization, outdated plan checks require a fresh comparison.",
+      "Servers follow the current numeric plan order. External sources follow in their saved order.",
+      "Plan removals take effect on the next refresh. Maintenance servers remain visible as unavailable.",
       "Added per-server discrepancy view and recovery guidance.",
       "Remove missing inbounds from CMS while retaining subscriptions.",
       "Restore available inbounds when some replacement targets are missing.",
@@ -40,6 +48,10 @@
       "Added quick server replacement and Happ notices for expiry and maintenance."
     ],
     "ru": [
+      "Отчёт сверки подсказывает, когда синхронизировать тариф, а когда удалить лишние подключения.",
+      "После синхронизации сервера устаревшая проверка тарифа требует повторной сверки.",
+      "Серверы сортируются по текущему числовому порядку тарифа. Внешние источники идут следом в сохранённом порядке.",
+      "Удалённые из тарифа серверы сразу исключаются из подписки. Серверы на техработах показываются как недоступные.",
       "Добавлен экран расхождений по серверам и подсказки при восстановлении.",
       "Добавлено удаление отсутствующих входящих подключений из CMS с сохранением подписок.",
       "Восстановление доступных подключений при отсутствии части входящих подключений на новой панели.",
@@ -50,6 +62,10 @@
       "Добавлены быстрая замена сервера и уведомления об истечении подписки и техработах в Happ."
     ],
     "de": [
+      "Tarifprüfungen zeigen, ob Synchronisierung oder Bereinigung nötig ist.",
+      "Nach der Serversynchronisierung müssen veraltete Tarifprüfungen wiederholt werden.",
+      "Server folgen der aktuellen numerischen Tarifreihenfolge. Externe Quellen folgen in ihrer gespeicherten Reihenfolge.",
+      "Tarifänderungen greifen beim nächsten Abruf. Server in Wartung bleiben als nicht verfügbar sichtbar.",
       "Abweichungsübersicht pro Server und Hinweise zur Wiederherstellung hinzugefügt.",
       "Fehlende Inbounds aus der CMS entfernen und Abonnements behalten.",
       "Verfügbare Inbounds wiederherstellen, wenn einzelne Ziele fehlen.",
@@ -60,6 +76,10 @@
       "Schneller Serverwechsel und Happ-Hinweise zu Ablauf und Wartung hinzugefügt."
     ],
     "zh-cn": [
+      "套餐检查说明应同步还是清理。",
+      "服务器同步后，已过时的套餐检查需重新运行。",
+      "服务器按套餐当前的数字顺序排列，外部来源按保存的顺序列在其后。",
+      "套餐移除的服务器在下次刷新时生效。维护中的服务器仍显示为不可用。",
       "新增按服务器查看差异及恢复指引。",
       "可从 CMS 移除缺失入站并保留订阅。",
       "部分入站缺失时可恢复其余可用入站。",

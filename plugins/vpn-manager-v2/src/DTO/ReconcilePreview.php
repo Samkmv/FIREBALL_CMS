@@ -20,6 +20,11 @@ final readonly class ReconcilePreview
     ) {
     }
 
+    public static function hasSyncWork(int $missingConnections, array $parameterCounts): bool
+    {
+        return $missingConnections > 0 || array_sum(array_map('intval', $parameterCounts)) > 0;
+    }
+
     public function hasDifferences(): bool
     {
         return $this->missingConnections > 0

@@ -53,7 +53,14 @@ $previewHasDifferences = $reconciliationPreview !== null
         ? !empty($reconciliationPreview['has_differences'])
         : $previewFallbackDifferences);
 
-$manualReconcileEnabled = $reconciliationPreview !== null && $previewHasDifferences;
+$manualReconcileEnabled = $reconciliationPreview !== null
+    && \Fireball\VpnManagerV2\DTO\ReconcilePreview::hasSyncWork($previewMissingConnections, $previewParameterCounts);
+$previewGuidance = match (true) {
+    $manualReconcileEnabled => 'vpn_manager_v2_reconcile_sync_guidance',
+    $obsoleteConnectionCount > 0 => 'vpn_manager_v2_reconcile_cleanup_guidance',
+    $previewHasDifferences => 'vpn_manager_v2_reconcile_review_guidance',
+    default => 'vpn_manager_v2_reconcile_all_matches',
+};
 $planId = (int)($plan['id'] ?? 0);
 $action = $editing
     ? base_href('/admin/plugins/vpn-manager-v2/plans/edit/' . $planId)
@@ -240,6 +247,7 @@ $renderNodeRow = static function (array $node, string|int $index) use ($servers,
             </div>
         <?php endif; ?>
 
+        <p class="small text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_plan_order_shared')) ?></p>
         <div class="d-grid gap-3" data-vpn-v2-plan-node-list>
             <?php foreach ($selectedNodes as $index => $node): ?>
                 <?= $renderNodeRow((array)$node, $index) ?>
@@ -362,11 +370,7 @@ $renderNodeRow = static function (array $node, string|int $index) use ($servers,
                         </div>
 
                         <div class="alert alert-<?= $previewHasDifferences ? 'warning' : 'success' ?> rounded-4 mt-3 mb-0 py-2 px-3">
-                            <?= htmlSC(FireballPluginVpnManagerV2::t(
-                                $previewHasDifferences
-                                    ? 'vpn_manager_v2_reconcile_differences_found'
-                                    : 'vpn_manager_v2_reconcile_all_matches'
-                            )) ?>
+                            <?= htmlSC(FireballPluginVpnManagerV2::t($previewGuidance)) ?>
                         </div>
                     </div>
                 <?php endif; ?>
@@ -426,9 +430,9 @@ $renderNodeRow = static function (array $node, string|int $index) use ($servers,
                         title="<?= htmlSC(FireballPluginVpnManagerV2::t(
                             $reconciliationPreview === null
                                 ? 'vpn_manager_v2_reconcile_check_first'
-                                : ($previewHasDifferences
-                                    ? 'vpn_manager_v2_action_reconcile'
-                                    : 'vpn_manager_v2_reconcile_all_matches')
+                                : ($manualReconcileEnabled
+                                    ? 'vpn_manager_v2_reconcile_sync_guidance'
+                                    : 'vpn_manager_v2_reconcile_no_sync_work')
                         )) ?>">
                     <i class="ci-refresh-cw" aria-hidden="true"></i>
                     <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_reconcile')) ?>

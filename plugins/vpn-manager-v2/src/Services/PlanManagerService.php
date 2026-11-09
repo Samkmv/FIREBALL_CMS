@@ -44,7 +44,8 @@ final class PlanManagerService
         $plan = ($this->validator ?? new PlanValidator())->validate(
             $input,
             $repository->topologyForInboundIds($this->inboundIds($input)),
-            $before
+            $before,
+            allowEmpty: true
         );
         $repository->update($id, $plan);
         $after = $repository->nodes($id);
@@ -67,13 +68,6 @@ final class PlanManagerService
         }
 
         $reconciliationRepository = $this->reconciliationRepository ?? new PlanReconciliationRepository();
-        foreach ($diff['removed'] as $removedNode) {
-            $reconciliationRepository->markTargetObsolete(
-                $id,
-                (int)$removedNode['server_id'],
-                (int)$removedNode['inbound_id']
-            );
-        }
         $affected = $reconciliationRepository->eligibleSubscriptionCount($id);
         $reconciliation = null;
         $reconciler = $this->reconciler ?? new VpnPlanSubscriptionReconciler();

@@ -420,6 +420,10 @@
         function updateButtons() {
             var items = list.querySelectorAll('[data-vpn-v2-connection-order-item]');
             Array.prototype.forEach.call(items, function (item, index) {
+                var position = item.querySelector('[data-vpn-v2-order-position]');
+                if (position) {
+                    position.textContent = String(index + 1);
+                }
                 var up = item.querySelector('[data-vpn-v2-order-move="up"]');
                 var down = item.querySelector('[data-vpn-v2-order-move="down"]');
                 if (up) {

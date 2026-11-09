@@ -123,10 +123,12 @@ final class PlanController
         Permissions::authorize(Permissions::RECONCILE);
         $id = (int)get_route_param('id');
         try {
+            $startedAt = date('Y-m-d H:i:s');
             $preview = (new VpnPlanSubscriptionReconciler())->previewPlanReconciliation($id);
             // FIREBALL_VPN_HWID_RECONCILIATION_FINISH_V1: persist sanitized preview for the edit page.
             cache()->set('vpn-v2:plan-preview:' . $id, [
                 'checked_at' => $preview->checkedAt,
+                'started_at' => $startedAt,
                 'subscriptions_checked' => $preview->subscriptionsChecked,
                 'matching_subscriptions' => $preview->matchingSubscriptions,
                 'missing_connections' => $preview->missingConnections,
@@ -188,7 +190,7 @@ final class PlanController
             // FIREBALL_VPN_RECONCILIATION_UI_V141
             // Это ограничение относится только к ручной кнопке.
             // Автосинхронизация после сохранения тарифа работает как раньше.
-            $previewState = cache()->get('vpn-v2:plan-preview:' . $id, null);
+            $previewState = $this->currentPreview($id);
 
             if (!is_array($previewState)) {
                 session()->setFlash(
@@ -198,10 +200,13 @@ final class PlanController
                 $this->redirect('/admin/plugins/vpn-manager-v2/plans/edit/' . $id);
             }
 
-            if (empty($previewState['has_differences'])) {
+            if (!\Fireball\VpnManagerV2\DTO\ReconcilePreview::hasSyncWork(
+                (int)($previewState['missing_connections'] ?? 0),
+                (array)($previewState['parameter_counts'] ?? [])
+            )) {
                 session()->setFlash(
                     'info',
-                    \FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_all_matches')
+                    \FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_no_sync_work')
                 );
                 $this->redirect('/admin/plugins/vpn-manager-v2/plans/edit/' . $id);
             }
@@ -262,6 +267,20 @@ final class PlanController
         $this->redirect('/admin/plugins/vpn-manager-v2/plans/edit/' . $id);
     }
 
+    private function currentPreview(int $planId): ?array
+    {
+        $preview = cache()->get('vpn-v2:plan-preview:' . $planId, null);
+        if (!is_array($preview)) {
+            return null;
+        }
+        $startedAt = (string)($preview['started_at'] ?? $preview['checked_at'] ?? '');
+        if ($startedAt === '' || (new PlanRepository())->hasServerSyncSince($planId, $startedAt)) {
+            return null;
+        }
+
+        return $preview;
+    }
+
     private function form(?array $plan, array $selectedNodes = []): string
     {
         $repository = new PlanRepository();
@@ -285,7 +304,7 @@ final class PlanController
             'servers' => $repository->serversForForm(),
             'inbounds' => $inbounds,
             'affectedSubscriptions' => $plan ? $reconciliation->eligibleSubscriptionCount((int)$plan['id']) : 0,
-            'reconciliationPreview' => $plan ? cache()->get('vpn-v2:plan-preview:' . (int)$plan['id'], null) : null,
+            'reconciliationPreview' => $plan ? $this->currentPreview((int)$plan['id']) : null,
             'missingConnectionCount' => $plan ? $reconciliation->missingNodeCountForPlan((int)$plan['id']) : 0,
             'latestReconciliation' => $plan ? $reconciliation->latestOperation((int)$plan['id']) : null,
             'obsoleteConnectionCount' => $plan ? $reconciliation->obsoleteNodeCount((int)$plan['id']) : 0,
