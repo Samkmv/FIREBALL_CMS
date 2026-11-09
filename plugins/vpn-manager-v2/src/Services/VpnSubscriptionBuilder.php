@@ -2,6 +2,7 @@
 
 namespace Fireball\VpnManagerV2\Services;
 
+use Fireball\VpnManagerV2\Exceptions\VpnConfigValidationException;
 use Fireball\VpnManagerV2\Repositories\SubscriptionConfigRepository;
 
 final class VpnSubscriptionBuilder
@@ -17,7 +18,7 @@ final class VpnSubscriptionBuilder
     ) {
     }
 
-    public function build(array $subscription): array
+    public function build(array $subscription, ?array $nodes = null, bool $includeExternal = true): array
     {
         $dependencies = $this->dependencies ?? new VpnV2SubscriptionDependencyService(
             config: $this->repository ?? new SubscriptionConfigRepository()
@@ -34,8 +35,12 @@ final class VpnSubscriptionBuilder
 
         $firstPartyUris = $this->buildFromNodes(
             $subscription,
-            $dependencies->collectEffectiveConnections($subscription)
+            $nodes ?? $dependencies->collectEffectiveConnections($subscription),
+            skipInvalid: true
         );
+        if (!$includeExternal) {
+            return $this->mergeUris($firstPartyUris, []);
+        }
         $external = $this->externalSources ?? new ExternalVpnSourceService();
         $externalUris = [];
         foreach ($dependencies->collectEffectiveSubscriptionIds($subscription) as $subscriptionId) {
@@ -69,7 +74,7 @@ final class VpnSubscriptionBuilder
         return array_values($unique);
     }
 
-    public function buildFromNodes(array $subscription, array $nodes): array
+    public function buildFromNodes(array $subscription, array $nodes, bool $skipInvalid = false): array
     {
         if ((int)($subscription['id'] ?? 0) <= 0) {
             throw new \Fireball\VpnManagerV2\Exceptions\VpnConfigValidationException(
@@ -85,7 +90,17 @@ final class VpnSubscriptionBuilder
                     \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_config_invalid')
                 );
             }
-            $uri = $this->buildNode($node, $settings);
+            if (!empty($node['maintenance_mode'])) {
+                continue;
+            }
+            try {
+                $uri = $this->buildNode($node, $settings);
+            } catch (VpnConfigValidationException $exception) {
+                if (!$skipInvalid) {
+                    throw $exception;
+                }
+                continue;
+            }
             $uris[$uri] = $uri;
         }
 

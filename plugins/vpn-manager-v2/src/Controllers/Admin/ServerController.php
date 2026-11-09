@@ -64,9 +64,17 @@ final class ServerController
         Permissions::authorize(Permissions::MANAGE_SERVERS);
 
         $id = (int)get_route_param('id');
+        $input = request()->getData();
+        $quickReplace = !empty($input['quick_replace']);
+        if ($quickReplace) {
+            Permissions::authorize(Permissions::RECONCILE);
+        }
         try {
-            (new ServerManagerService())->update($id, request()->getData());
+            (new ServerManagerService())->update($id, $input, $quickReplace);
             session()->setFlash('success', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_server_updated'));
+            if ($quickReplace) {
+                (new ServerRecoveryController())->quickReplace($id);
+            }
             $this->redirect('/admin/plugins/vpn-manager-v2/servers/' . $id . '/recovery');
         } catch (VpnManagerV2Exception $exception) {
             session()->setFlash('error', $exception->getMessage());

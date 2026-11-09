@@ -240,9 +240,11 @@ $pendingAccessRequest = is_array($pendingAccessRequest ?? null) ? $pendingAccess
                                                     : FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_location_unknown')) ?></div>
                                                 <div class="small mt-1 <?= (string)($server['status'] ?? '') === 'active' ? 'text-success' : 'text-body-secondary' ?>">
                                                     <?= htmlSC(FireballPluginVpnManagerV2::t(
-                                                        (string)($server['status'] ?? '') === 'active'
-                                                            ? 'vpn_manager_v2_server_status_available'
-                                                            : 'vpn_manager_v2_server_status_disabled'
+                                                        match ((string)($server['status'] ?? '')) {
+                                                            'active' => 'vpn_manager_v2_server_status_available',
+                                                            'maintenance' => 'vpn_manager_v2_subscription_notice_maintenance',
+                                                            default => 'vpn_manager_v2_server_status_disabled',
+                                                        }
                                                     )) ?>
                                                 </div>
                                             </div>
@@ -260,6 +262,7 @@ $pendingAccessRequest = is_array($pendingAccessRequest ?? null) ? $pendingAccess
                             <h2 class="h5 mb-2"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_access_title')) ?></h2>
                             <p class="text-body-secondary mb-3"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_access_help')) ?></p>
                             <?php if ($linkReady): ?>
+                                <p class="small text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_happ_update')) ?></p>
                                 <?php require __DIR__ . '/../partials/smart-connect-access.php'; ?>
                             <?php endif; ?>
                             <?php if ($localSubscriptionUrl && $linkReady): ?>

@@ -35,11 +35,11 @@ final class ExternalSourceRepository
         )->get() ?: [];
     }
 
-    public function find(int $parentId, int $id): ?array
+    public function find(int $parentId, int $id, bool $forUpdate = false): ?array
     {
         $row = $this->ownedQuery(
             'SELECT * FROM vpn_v2_external_sources
-             WHERE id = ? AND parent_subscription_id = ? AND deleted_at IS NULL LIMIT 1',
+             WHERE id = ? AND parent_subscription_id = ? AND deleted_at IS NULL LIMIT 1' . ($forUpdate ? ' FOR UPDATE' : ''),
             [$id, $parentId]
         )->getOne();
 
@@ -243,10 +243,14 @@ final class ExternalSourceRepository
 
     public function syncCandidates(int $limit = 20): array
     {
+        $cutoff = date('Y-m-d H:i:s', time() - 300);
+
         return db()->query(
-            'SELECT * FROM vpn_v2_external_sources
-             WHERE source_type = \'subscription_url\' AND is_enabled = 1 AND deleted_at IS NULL
-             ORDER BY COALESCE(last_sync_at, created_at) ASC, id ASC LIMIT ' . max(1, min(200, $limit))
+            "SELECT * FROM vpn_v2_external_sources
+             WHERE source_type = 'subscription_url' AND is_enabled = 1 AND deleted_at IS NULL
+               AND updated_at <= ?
+             ORDER BY updated_at ASC, id ASC LIMIT " . max(1, min(200, $limit)),
+            [$cutoff]
         )->get() ?: [];
     }
 

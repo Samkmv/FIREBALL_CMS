@@ -54,6 +54,9 @@ final class SubscriptionDeviceService
                 }
                 $client->deleteClientDevice((string)$node['client_email'], $deviceId);
             }
+            (new SubscriptionHwidGatewayService())->invalidateDevices(
+                (int)$node['server_id'], trim((string)($node['client_sub_id'] ?? ''))
+            );
             $this->log($node, $metadata + ['success' => true]);
         } catch (\Throwable $exception) {
             $this->log($node, $metadata + ['success' => false, 'error_type' => (new \ReflectionClass($exception))->getShortName()]);

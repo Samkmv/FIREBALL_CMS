@@ -14,7 +14,6 @@ final class SettingsController
     {
         Permissions::authorize(Permissions::MANAGE_SETTINGS);
         $settings = (new SettingsService())->current();
-        $servers = (new \Fireball\VpnManagerV2\Repositories\ServerRepository())->all();
         $health = [];
         $healthReady = true;
         try {
@@ -35,7 +34,6 @@ final class SettingsController
                 'title' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_settings_title'),
                 'subtitle' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_settings_subtitle'),
                 'settings' => $settings,
-                'smartServers' => $servers,
                 'serverHealth' => $health,
                 'healthReady' => $healthReady,
                 'mailEnabled' => $mailEnabled,
@@ -50,7 +48,7 @@ final class SettingsController
         $data = request()->getData();
         $fields = SettingsService::safeFieldNames($data);
         try {
-            (new SettingsService())->save($data);
+            (new SettingsService())->save($data, manageSmartConnect: false);
             session()->setFlash('success', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_settings_saved'));
         } catch (ValidationException $exception) {
             session()->setFlash('error', $exception->getMessage());

@@ -110,13 +110,7 @@ $switch = static function (string $key, string $label, string $help = '') use ($
                        value="<?= htmlSC((string)($settings['subscription_name'] ?? 'VPN V2')) ?>">
                 <div class="form-text"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_setting_subscription_name_help')) ?></div>
             </div>
-            <div class="col-12 col-lg-4">
-                <label class="form-label" for="vpnV2ExpiredBehavior"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_setting_expired_behavior')) ?></label>
-                <select class="form-select" id="vpnV2ExpiredBehavior" name="expired_subscription_behavior">
-                    <option value="inactive" <?= ($settings['expired_subscription_behavior'] ?? 'inactive') === 'inactive' ? 'selected' : '' ?>><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_expired_behavior_inactive')) ?></option>
-                    <option value="not_found" <?= ($settings['expired_subscription_behavior'] ?? '') === 'not_found' ? 'selected' : '' ?>><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_expired_behavior_not_found')) ?></option>
-                </select>
-            </div>
+            <input type="hidden" name="expired_subscription_behavior" value="inactive">
             <div class="col-12 col-lg-4">
                 <label class="form-label" for="vpnV2SubscriptionCache"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_setting_subscription_cache_ttl')) ?></label>
                 <input class="form-control" id="vpnV2SubscriptionCache" type="number" name="subscription_cache_ttl_seconds" min="30" max="3600" step="1"
@@ -130,7 +124,7 @@ $switch = static function (string $key, string $label, string $help = '') use ($
         </div>
     </section>
 
-    <?php require __DIR__ . '/partials/smart-connect-settings.php'; ?>
+    <?php require __DIR__ . '/partials/server-health-settings.php'; ?>
 
     <section class="border rounded-5 p-3 p-md-4 mb-4" id="happ-routing">
         <h2 class="h5 mb-3"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_title')) ?></h2>
@@ -200,9 +194,10 @@ $switch = static function (string $key, string $label, string $help = '') use ($
                     <?php endforeach; ?>
                 </select>
                 <div class="form-text" id="vpnV2HappProtectionHelp"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_protection_help')) ?></div>
-                <a class="btn btn-sm btn-outline-secondary rounded-pill mt-3" href="#vpnSmartProvider">
-                    <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_protection_configure_provider')) ?>
-                </a>
+                <label class="form-label mt-3" for="vpnV2HappProvider">Provider ID</label>
+                <input class="form-control font-monospace" id="vpnV2HappProvider" name="smart_connect_happ_provider_id"
+                       type="text" maxlength="128" autocomplete="off" spellcheck="false"
+                       value="<?= htmlSC((string)($settings['smart_connect_happ_provider_id'] ?? '')) ?>">
                 <p class="small text-body-secondary mt-3 mb-0"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_protection_limit')) ?></p>
             </div>
             <div class="alert alert-info rounded-4 mb-0 small">

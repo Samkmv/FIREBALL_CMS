@@ -71,7 +71,8 @@
                 }
 
                 var matches = serverId !== '' && option.getAttribute('data-server-id') === serverId;
-                var eligible = option.getAttribute('data-eligible') === '1';
+                var eligible = option.getAttribute('data-eligible') === '1'
+                    || (option.defaultSelected && option.value === current);
                 option.hidden = !matches;
                 option.disabled = !matches || !eligible;
             });
@@ -774,6 +775,10 @@
                 start(form, false);
             });
         });
+        if (container.dataset.autoResume === '1') {
+            var pending = container.querySelector('[data-vpn-recovery-resume][data-retry="0"]:not([hidden])');
+            if (pending) start(pending, false);
+        }
     }
 
     function setupClientInspection(button) {

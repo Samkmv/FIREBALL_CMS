@@ -137,7 +137,7 @@ final class SettingsService
         ];
     }
 
-    public function save(array $input): array
+    public function save(array $input, bool $manageSmartConnect = true): array
     {
         $repository = $this->repository();
         $repository->assertStorageReady();
@@ -152,7 +152,7 @@ final class SettingsService
 
         try {
             $before = $this->normalize(array_replace(self::defaults(), $repository->stored(true)));
-            $expected = ($this->validator ?? new SettingsValidator())->validate($input, $before)->toArray();
+            $expected = ($this->validator ?? new SettingsValidator())->validate($input, $before, $manageSmartConnect)->toArray();
             $changedKeys = $this->changedKeys($before, $expected);
             $metadata = $this->subscriptionRepository()->activeRevisionMetadata();
             $repository->write($expected);

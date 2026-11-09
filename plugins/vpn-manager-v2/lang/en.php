@@ -1,13 +1,21 @@
 <?php
 
 return [
+    'vpn_manager_v2_recovery_quick' => 'Save and replace server',
+    'vpn_manager_v2_recovery_quick_help' => 'Enter the new panel address and credentials on this server. Recovery starts immediately when inbound matching is unambiguous.',
+    'vpn_manager_v2_recovery_choose_targets' => 'The new panel was checked. Choose the inbounds for your plans.',
+    'vpn_manager_v2_subscription_notice_expired' => 'Subscription expired',
+    'vpn_manager_v2_subscription_notice_maintenance' => 'Server maintenance in progress',
+    'vpn_manager_v2_subscription_notice_inactive' => 'VPN subscription inactive',
+    'vpn_manager_v2_sync_status_value_replacement_pending' => 'Awaiting recovery on the replacement panel',
+    'vpn_manager_v2_profile_happ_update' => 'Open the menu of your existing subscription in Happ and select Update. The same link works after a server replacement.',
     'vpn_manager_v2_happ_protection_title' => 'Connection protection in Happ',
     'vpn_manager_v2_happ_protection_policy' => 'View and export individual connections',
     'vpn_manager_v2_happ_protection_default' => 'Leave app settings unchanged',
     'vpn_manager_v2_happ_protection_hide' => 'Disable viewing and export',
     'vpn_manager_v2_happ_protection_show' => 'Allow viewing and export',
-    'vpn_manager_v2_happ_protection_help' => 'A valid Happ Provider ID is required. Enter it under Smart Connect → Happ, then update the regular subscription in the app. Happ should hide viewing, editing and exporting connections. Smart Connect does not need to be enabled.',
-    'vpn_manager_v2_happ_protection_provider_required' => 'To control viewing and export in Happ, enter a Provider ID under Smart Connect → Happ.',
+    'vpn_manager_v2_happ_protection_help' => 'Enter your Provider ID here to control viewing and exporting connections in Happ. An empty Provider ID uses the app settings.',
+    'vpn_manager_v2_happ_protection_provider_required' => 'Enter a Provider ID under Connection protection in Happ.',
     'vpn_manager_v2_happ_protection_configure_provider' => 'Configure Happ Provider ID',
     'vpn_manager_v2_happ_protection_limit' => 'This is a Happ interface restriction. Previously copied credentials are not revoked and may work until expiration or server-side client disablement. Other apps may ignore the setting. Device limits check subscription downloads, not every VPN session.',
     'vpn_manager_v2_happ_protection_invalid' => 'Choose a supported connection viewing and export policy for Happ.',

@@ -11,6 +11,10 @@ $actions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center
 
 $statusBadge = static function (array $server): string {
     $status = empty($server['is_enabled']) ? 'disabled' : (string)($server['status'] ?? 'unchecked');
+    if ($status !== 'disabled' && !empty($server['maintenance_mode'])) {
+        return '<span class="badge rounded-pill text-bg-warning">'
+            . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_notice_maintenance')) . '</span>';
+    }
     $classes = [
         'online' => 'text-bg-success',
         'offline' => 'text-bg-danger',

@@ -9,6 +9,7 @@ use Fireball\VpnManagerV2\Jobs\VpnV2ReconcilePlanSubscriptionsJob;
 use Fireball\VpnManagerV2\Jobs\VpnV2SendExpirationNotificationsJob;
 use Fireball\VpnManagerV2\Jobs\VpnV2SyncTrafficJob;
 use Fireball\VpnManagerV2\Jobs\VpnV2SyncConfigurationJob;
+use Fireball\VpnManagerV2\Jobs\VpnV2SyncExternalSourcesJob;
 use Fireball\VpnManagerV2\Jobs\VpnV2FullReconcileJob;
 use Fireball\VpnManagerV2\Jobs\VpnV2ProvisionMissingClientsJob;
 use Fireball\VpnManagerV2\Services\SettingsService;
@@ -344,6 +345,11 @@ final class FireballPluginVpnManagerV2 implements PluginInterface, \FBL\Plugins\
             'vpn_v2_provision_missing_clients' => [
                 'class' => VpnV2ProvisionMissingClientsJob::class,
                 'schedule' => '5-59/10 * * * *',
+                'plugin' => self::SLUG,
+            ],
+            'vpn_v2_sync_external_sources' => [
+                'class' => VpnV2SyncExternalSourcesJob::class,
+                'schedule' => '*/5 * * * *',
                 'plugin' => self::SLUG,
             ],
             'vpn_v2_full_reconcile' => [

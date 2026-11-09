@@ -25,6 +25,11 @@ final class VpnReconciliationLock
         );
     }
 
+    public function externalSource(int $sourceId, callable $callback): mixed
+    {
+        return $this->within('vpn_v2:external_source:' . $sourceId, $callback, 0);
+    }
+
     private function within(string $name, callable $callback, int $timeout): mixed
     {
         $timeout = max(0, min(15, $timeout));

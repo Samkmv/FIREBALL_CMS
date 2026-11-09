@@ -354,7 +354,8 @@ final class VpnV2SubscriptionDependencyService
         $unique = [];
         foreach ($nodes as $node) {
             $key = $this->technicalKey($node);
-            if (!isset($unique[$key])) {
+            if (!isset($unique[$key])
+                || (!empty($unique[$key]['maintenance_mode']) && empty($node['maintenance_mode']))) {
                 $unique[$key] = $node;
             }
         }

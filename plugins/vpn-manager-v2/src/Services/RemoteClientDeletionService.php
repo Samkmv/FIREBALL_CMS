@@ -6,6 +6,8 @@ use Fireball\VpnManagerV2\Clients\ThreeXuiClient;
 use Fireball\VpnManagerV2\Clients\ThreeXuiClientInterface;
 use Fireball\VpnManagerV2\Exceptions\ClientVerificationException;
 use Fireball\VpnManagerV2\Exceptions\ProvisioningException;
+use Fireball\VpnManagerV2\Exceptions\ThreeXuiHttpException;
+use Fireball\VpnManagerV2\Exceptions\ThreeXuiResponseException;
 use Fireball\VpnManagerV2\Repositories\ServerRepository;
 use Fireball\VpnManagerV2\Repositories\SubscriptionRepository;
 
@@ -31,7 +33,28 @@ final class RemoteClientDeletionService
 
         $client = $this->client($server, $inbound, $node);
         $remoteInboundId = (int)$inbound['remote_inbound_id'];
-        $before = $client->getInbound($remoteInboundId);
+        try {
+            $before = $client->getInbound($remoteInboundId);
+            if ((int)($before['id'] ?? $remoteInboundId) !== $remoteInboundId || empty($before['settings'])) {
+                throw new ThreeXuiResponseException(
+                    \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_invalid_inbound_response')
+                );
+            }
+        } catch (ThreeXuiHttpException|ThreeXuiResponseException $exception) {
+            if ($exception instanceof ThreeXuiHttpException && $exception->httpStatus() !== 404) {
+                throw $exception;
+            }
+            // A missing inbound after panel replacement is confirmed by the inventory,
+            // including checking that the client did not move to another inbound.
+            foreach ($client->listInbounds() as $remoteInbound) {
+                if ((int)($remoteInbound['id'] ?? 0) <= 0 || (int)$remoteInbound['id'] === $remoteInboundId
+                    || $this->matches($remoteInbound, $node) !== []) {
+                    throw $exception;
+                }
+            }
+
+            return ['deleted' => true, 'already_absent' => true];
+        }
         $matches = $this->matches($before, $node);
         if ($matches === []) {
             return ['deleted' => true, 'already_absent' => true];

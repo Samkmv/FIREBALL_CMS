@@ -87,6 +87,10 @@ final class ConfigurationSyncService
                 }
                 if (!is_array($match['remote'])) {
                     $counts['missing']++;
+                    if (!empty($server['maintenance_mode']) || (string)($node['sync_status'] ?? '') === 'replacement_pending') {
+                        // The recovery workflow remaps targets before recreating clients.
+                        continue;
+                    }
 
                     // Раньше подтверждённый клиент, исчезнувший из успешной
                     // инвентаризации 3x-ui, считается удалённым на стороне 3x-ui.
@@ -420,6 +424,7 @@ final class ConfigurationSyncService
     {
         $candidates = [];
         $localCredential = (new RemoteClientCredentialService())->credential($node);
+        $replacing = ($node['sync_status'] ?? '') === 'replacement_pending';
         $expectedName = trim((string)($node['remote_client_name'] ?? ''))
             ?: trim((string)($node['client_email'] ?? ''));
         foreach ($remoteClients as $remote) {
@@ -428,7 +433,9 @@ final class ConfigurationSyncService
                 && hash_equals($localCredential, (string)$identity['uuid']);
             $nameMatches = $expectedName !== '' && hash_equals($expectedName, (string)$identity['name']);
             // A shared subId or a reused numeric REST id cannot identify a client.
-            if (!$credentialMatches && !$nameMatches) { continue; }
+            if (!$credentialMatches && ($replacing || !$nameMatches)) {
+                continue;
+            }
             $score = $credentialMatches ? 90 : 60;
             if ($credentialMatches && $nameMatches) { $score += 20; }
             if (trim((string)($node['remote_client_id'] ?? '')) !== ''

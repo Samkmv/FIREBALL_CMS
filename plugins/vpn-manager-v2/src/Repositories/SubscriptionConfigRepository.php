@@ -64,7 +64,7 @@ final class SubscriptionConfigRepository
                     n.lkg_snapshot_json, n.lkg_snapshot_hash, n.lkg_validity,
                     n.updated_at AS node_updated_at,
                     s.id AS server_id, s.name AS server_name, s.code AS server_code,
-                    s.panel_url, s.country_code, s.country_name, s.city, s.show_flag,
+                    s.panel_url, s.country_code, s.country_name, s.city, s.show_flag, s.maintenance_mode,
                     s.updated_at AS server_updated_at,
                     i.id AS inbound_id, i.remote_inbound_id, i.name AS inbound_name,
                     i.remark AS inbound_remark, i.protocol, i.port, i.network, i.security,
@@ -145,7 +145,7 @@ final class SubscriptionConfigRepository
             "SELECT DISTINCT sub.id
              FROM vpn_v2_subscriptions sub
              INNER JOIN vpn_v2_subscription_nodes n ON n.subscription_id = sub.id
-             WHERE n.server_id = ? AND sub.status = 'active'
+             WHERE n.server_id = ? AND sub.status IN ('active', 'partial_sync', 'sync_error')
                AND sub.starts_at <= NOW()
                AND (sub.expires_at IS NULL OR sub.expires_at > NOW())",
             [$serverId]

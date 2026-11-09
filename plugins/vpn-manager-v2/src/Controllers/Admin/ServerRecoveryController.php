@@ -33,6 +33,7 @@ final class ServerRecoveryController
             'recoveryOperations' => $repository->operations($id),
             'recoverySignature' => $this->signature($id),
             'inspected' => $this->inspected($id),
+            'autoResume' => (bool)session()->getFlash('vpn_recovery_autorun_' . $id),
         ]));
     }
 
@@ -41,8 +42,7 @@ final class ServerRecoveryController
         Permissions::authorize(Permissions::RECONCILE);
         $id = (int)get_route_param('id');
         try {
-            (new InboundSyncService())->sync($id);
-            session()->set('vpn_recovery_' . $id, ['signature' => $this->signature($id), 'at' => time()]);
+            $this->inspectServer($id);
             session()->setFlash('success', \FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_inspected'));
         } catch (\Throwable $exception) {
             session()->remove('vpn_recovery_' . $id);
@@ -56,30 +56,64 @@ final class ServerRecoveryController
         Permissions::authorize(Permissions::RECONCILE);
         $id = (int)get_route_param('id');
         try {
-            $server = (new ServerRepository())->find($id);
-            if (!$this->inspected($id) || !$server || empty($server['is_enabled']) || !empty($server['maintenance_mode'])
-                || empty($server['allow_new_connections'])) {
-                throw new \Fireball\VpnManagerV2\Exceptions\ValidationException(
-                    \FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_check_required'));
-            }
-            $repository = new ServerRecoveryRepository();
             $mapping = request()->post('mapping', []);
-            if (!is_array($mapping)) { $mapping = []; }
-            $repository->remap($id, $mapping);
-            $queue = new OperationQueueRepository();
-            $user = get_user();
-            $operations = [];
-            $signature = $this->signature($id);
-            foreach ($repository->subscriptions($id) as $subscription) {
-                $operation = $queue->enqueue('sync_subscription', 'manual_sync', $id,
-                    (int)$subscription['id'], null,
-                    ['repair_server_id' => $id, 'repair_server_signature' => $signature], (int)($user['id'] ?? 0));
-                $operations[] = (string)$operation['operation_id'];
-            }
+            $operations = $this->startRecovery($id, is_array($mapping) ? $mapping : []);
             $this->json(['operation_ids' => $operations, 'message' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_started')]);
         } catch (\Throwable $exception) {
             $this->json(['error' => $this->safeError($exception)], 422);
         }
+    }
+
+    public function quickReplace(int $id): void
+    {
+        Permissions::authorize(Permissions::RECONCILE);
+        try {
+            $repository = new ServerRecoveryRepository();
+            $targets = $repository->targets($id);
+            $this->inspectServer($id);
+            $mapping = $repository->suggestMapping($targets, (new InboundRepository())->forServer($id));
+            if ($mapping === null) {
+                session()->setFlash('success', \FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_choose_targets'));
+                return;
+            }
+            $operations = $this->startRecovery($id, $mapping);
+            session()->setFlash('vpn_recovery_autorun_' . $id, $operations !== []);
+            session()->setFlash('success', \FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_started'));
+        } catch (\Throwable $exception) {
+            session()->setFlash('error', $this->safeError($exception));
+        }
+    }
+
+    private function inspectServer(int $id): void
+    {
+        session()->remove('vpn_recovery_' . $id);
+        $signature = $this->signature($id);
+        (new InboundSyncService())->sync($id);
+        session()->set('vpn_recovery_' . $id, ['signature' => $signature, 'at' => time()]);
+    }
+
+    private function startRecovery(int $id, array $mapping): array
+    {
+        $server = (new ServerRepository())->find($id);
+        if (!$this->inspected($id) || !$server || empty($server['is_enabled']) || !empty($server['maintenance_mode'])
+            || empty($server['allow_new_connections'])) {
+            throw new \Fireball\VpnManagerV2\Exceptions\ValidationException(
+                \FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_check_required'));
+        }
+        $signature = $this->signature($id);
+        $repository = new ServerRecoveryRepository();
+        $repository->remap($id, $mapping);
+        $queue = new OperationQueueRepository();
+        $user = get_user();
+        $operations = [];
+        foreach ($repository->subscriptions($id) as $subscription) {
+            $operation = $queue->enqueue('sync_subscription', 'manual_sync', $id,
+                (int)$subscription['id'], null,
+                ['repair_server_id' => $id, 'repair_server_signature' => $signature], (int)($user['id'] ?? 0));
+            $operations[] = (string)$operation['operation_id'];
+        }
+
+        return $operations;
     }
 
     public function process(): never

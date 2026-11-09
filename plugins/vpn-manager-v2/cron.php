@@ -40,6 +40,8 @@ try {
     if ($arguments === [] || in_array('--reconcile-only', $arguments, true)) {
         $result['reconciliation'] = (new \Fireball\VpnManagerV2\Jobs\VpnV2ReconcilePlanSubscriptionsJob())->handle();
         $failed = $failed || (int)($result['reconciliation']['failure'] ?? 0) > 0;
+        $result['external_sources'] = (new \Fireball\VpnManagerV2\Jobs\VpnV2SyncExternalSourcesJob())->handle();
+        $failed = $failed || (int)$result['external_sources']['failed'] > 0;
     }
     if ($arguments === [] || in_array('--notifications-only', $arguments, true)) {
         $result['notifications'] = (new \Fireball\VpnManagerV2\Services\NotificationMaintenanceService())->runDue(true);

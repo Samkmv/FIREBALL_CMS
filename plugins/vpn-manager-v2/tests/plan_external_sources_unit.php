@@ -48,7 +48,8 @@ namespace {
         public function query(string $query, array $params = []): self {
             $sql = preg_replace('/\s+/', ' ', trim($query));
             $this->queries[] = [$sql, $params]; $this->affected = 0; $this->result = false;
-            if (str_contains($sql, 'FROM vpn_v2_plans WHERE')) { $this->result = $this->plans[(int)$params[0]] ?? false; }
+            if (str_starts_with($sql, 'SELECT GET_LOCK') || str_starts_with($sql, 'SELECT RELEASE_LOCK')) { $this->result = 1; }
+            elseif (str_contains($sql, 'FROM vpn_v2_plans WHERE')) { $this->result = $this->plans[(int)$params[0]] ?? false; }
             elseif (str_contains($sql, 'INSERT INTO vpn_v2_events')) { $this->events[] = $params; }
             elseif (str_starts_with($sql, 'UPDATE vpn_v2_subscriptions SET revision')) {
                 $id = (int)$params[array_key_last($params)];
@@ -170,6 +171,13 @@ namespace {
     $payload = base64_encode(str_replace('000017', '000019', $uri));
     $planService->sync(1, $remote);
     $check(str_contains(implode('', $personalService->urisForParent(15)), '000019'), 'Refreshing plan URL updates all subscribers without copying sources');
+    $revision = db()->subscriptions[15]['revision'];
+    $fetchesBefore = $fetches;
+    $result = $personalService->syncForSubscriptions([14, 15], 1);
+    $check($result === ['synced' => 1, 'failed' => 0] && $fetches === $fetchesBefore + 1,
+        'Manual subscription sync fetches a shared plan source once');
+    $check(db()->subscriptions[15]['revision'] === $revision, 'An unchanged snapshot leaves the subscription revision unchanged');
+
     $failFetch = true; $saved = $personalService->urisForParent(15);
     $expectError(static fn() => $planService->sync(1, $remote));
     $check($personalService->urisForParent(15) === $saved && db()->sources[$remote]['sync_status'] === 'sync_error', 'Failed refresh retains last confirmed snapshot, never substitutes another source');

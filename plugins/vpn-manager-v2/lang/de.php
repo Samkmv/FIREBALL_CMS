@@ -1,13 +1,21 @@
 <?php
 
 return [
+    'vpn_manager_v2_recovery_quick' => 'Speichern und Server ersetzen',
+    'vpn_manager_v2_recovery_quick_help' => 'Geben Sie die neue Panel-Adresse und die Zugangsdaten ein. Bei eindeutigen Inbounds startet die Wiederherstellung sofort.',
+    'vpn_manager_v2_recovery_choose_targets' => 'Das neue Panel wurde geprüft. Wählen Sie die Inbounds für Ihre Tarife.',
+    'vpn_manager_v2_subscription_notice_expired' => 'Abonnement abgelaufen',
+    'vpn_manager_v2_subscription_notice_maintenance' => 'Serverwartung läuft',
+    'vpn_manager_v2_subscription_notice_inactive' => 'VPN-Abonnement inaktiv',
+    'vpn_manager_v2_sync_status_value_replacement_pending' => 'Wartet auf Wiederherstellung auf dem neuen Panel',
+    'vpn_manager_v2_profile_happ_update' => 'Öffnen Sie in Happ das Menü des vorhandenen Abonnements und wählen Sie Aktualisieren. Der Link bleibt beim Serverwechsel gültig.',
     'vpn_manager_v2_happ_protection_title' => 'Verbindungsschutz in Happ',
     'vpn_manager_v2_happ_protection_policy' => 'Einzelne Verbindungen anzeigen und exportieren',
     'vpn_manager_v2_happ_protection_default' => 'App-Einstellungen unverändert lassen',
     'vpn_manager_v2_happ_protection_hide' => 'Anzeige und Export verbieten',
     'vpn_manager_v2_happ_protection_show' => 'Anzeige und Export erlauben',
-    'vpn_manager_v2_happ_protection_help' => 'Eine gültige Happ Provider ID ist erforderlich. Unter Smart Connect → Happ eintragen und das normale Abonnement in der App aktualisieren. Happ sollte Anzeige, Bearbeitung und Export verbergen. Smart Connect muss dafür nicht aktiviert sein.',
-    'vpn_manager_v2_happ_protection_provider_required' => 'Für die Steuerung von Anzeige und Export in Happ eine Provider ID unter Smart Connect → Happ eintragen.',
+    'vpn_manager_v2_happ_protection_help' => 'Geben Sie hier Ihre Provider ID ein, um die Anzeige und den Export in Happ zu steuern. Ohne Provider ID gelten die App-Einstellungen.',
+    'vpn_manager_v2_happ_protection_provider_required' => 'Geben Sie die Provider ID unter Verbindungsschutz in Happ ein.',
     'vpn_manager_v2_happ_protection_configure_provider' => 'Happ Provider ID konfigurieren',
     'vpn_manager_v2_happ_protection_limit' => 'Dies beschränkt die Happ-Oberfläche. Bereits kopierte Zugangsdaten werden nicht widerrufen und können bis zum Ablauf oder zur serverseitigen Deaktivierung funktionieren. Andere Apps können die Einstellung ignorieren. Gerätelimits prüfen Abonnementdownloads, nicht jede VPN-Sitzung.',
     'vpn_manager_v2_happ_protection_invalid' => 'Wählen Sie eine gültige Richtlinie für Anzeige und Export in Happ.',

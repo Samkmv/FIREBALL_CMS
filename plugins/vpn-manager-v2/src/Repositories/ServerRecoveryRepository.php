@@ -39,6 +39,32 @@ final class ServerRecoveryRepository
         )->get() ?: [];
     }
 
+    public function suggestMapping(array $targets, array $inbounds): ?array
+    {
+        $existing = array_fill_keys(array_column($targets, 'id'), true);
+        $mapping = [];
+        foreach ($targets as $target) {
+            $oldId = (int)$target['id'];
+            $matches = array_filter($inbounds, static fn(array $row): bool =>
+                $row['status'] === 'active' && !empty($row['is_enabled'])
+                && ((int)$row['id'] === $oldId || !isset($existing[(int)$row['id']]))
+                && strtolower($row['protocol']) === strtolower($target['protocol'])
+                && (int)$row['port'] === (int)$target['port']
+                && $row['network'] === $target['network'] && $row['security'] === $target['security']
+            );
+            if (count($matches) !== 1) {
+                return null;
+            }
+            $newId = (int)reset($matches)['id'];
+            if (in_array($newId, $mapping, true)) {
+                return null;
+            }
+            $mapping[$oldId] = $newId;
+        }
+
+        return $mapping;
+    }
+
     /** Validate every mapping before changing topology; never merge two credentials. */
     public function remap(int $serverId, array $mapping): void
     {
@@ -52,13 +78,14 @@ final class ServerRecoveryRepository
                 $inbounds[(int)$inbound['id']] = $inbound;
             }
             $selected = [];
+            $existingTargets = array_fill_keys(array_column($targets, 'id'), true);
             foreach ($targets as $target) {
                 $oldId = (int)$target['id'];
                 $newId = (int)($mapping[$oldId] ?? 0);
                 $new = $inbounds[$newId] ?? null;
                 if (!$new || $new['status'] !== 'active' || empty($new['is_enabled'])
                     || strtolower((string)$target['protocol']) !== strtolower((string)$new['protocol'])
-                    || isset($selected[$newId])) {
+                    || isset($selected[$newId]) || ($oldId !== $newId && isset($existingTargets[$newId]))) {
                     throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_mapping_error'));
                 }
                 $selected[$newId] = true;
@@ -98,8 +125,8 @@ final class ServerRecoveryRepository
                 $database->query(
                     'UPDATE vpn_v2_subscription_nodes SET inbound_id = ?, network = ?, security = ?,
                          sync_status = CASE WHEN status = \'deleted\' AND sync_status = \'remote_deleted\'
-                                            THEN sync_status ELSE \'pending\' END, updated_at = ?
-                     WHERE server_id = ? AND inbound_id = ? AND status NOT IN (\'deleting\', \'pending_remote_delete\')',
+                                            THEN sync_status ELSE \'replacement_pending\' END, updated_at = ?
+                     WHERE server_id = ? AND inbound_id = ? AND status NOT IN (\'deleting\', \'pending_remote_delete\', \'delete_failed\')',
                     [$newId, $inbounds[$newId]['network'], $inbounds[$newId]['security'],
                         date('Y-m-d H:i:s'), $serverId, $oldId]
                 );

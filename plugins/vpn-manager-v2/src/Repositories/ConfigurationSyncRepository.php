@@ -197,7 +197,8 @@ final class ConfigurationSyncRepository
         db()->query(
             "UPDATE vpn_v2_subscription_nodes
              SET status = CASE WHEN lkg_snapshot_hash IS NULL THEN 'invalid_snapshot' ELSE status END,
-                 sync_status = 'invalid_snapshot', sync_error = ?, lkg_validity = CASE
+                 sync_status = CASE WHEN sync_status = 'replacement_pending' THEN sync_status ELSE 'invalid_snapshot' END,
+                 sync_error = ?, lkg_validity = CASE
                     WHEN lkg_snapshot_hash IS NULL THEN 'invalid' ELSE lkg_validity END,
                  updated_at = ? WHERE id = ?",
             [mb_substr(trim($safeError), 0, 1000), date('Y-m-d H:i:s'), $nodeId]
@@ -234,7 +235,8 @@ final class ConfigurationSyncRepository
         db()->query(
             'UPDATE vpn_v2_subscription_nodes
              SET client_email = ?, remote_client_name = ?, country_code = ?,
-                 sync_status = \'identity_mismatch\', updated_at = ? WHERE id = ?',
+                 sync_status = CASE WHEN sync_status = \'replacement_pending\' THEN sync_status ELSE \'identity_mismatch\' END,
+                 updated_at = ? WHERE id = ?',
             [mb_substr($name, 0, 190), mb_substr($name, 0, 190), strtoupper($countryCode), date('Y-m-d H:i:s'), $nodeId]
         );
     }
@@ -253,14 +255,19 @@ final class ConfigurationSyncRepository
         )));
     }
 
-    public function markMissingRemote(array $node, ?string $operationId = null): void
+    public function markMissingRemote(array $node, ?string $operationId = null, bool $replacement = false): void
     {
         $now = date('Y-m-d H:i:s');
         db()->query(
             "UPDATE vpn_v2_subscription_nodes
-             SET status = 'missing_remote', sync_status = 'missing_remote',
+             SET status = 'missing_remote',
+                 remote_client_id = CASE WHEN ? = 1 THEN NULL ELSE remote_client_id END,
+                 sync_status = CASE WHEN ? = 1 OR sync_status = 'replacement_pending'
+                                    THEN 'replacement_pending' ELSE 'missing_remote' END,
                  sync_error = ?, last_operation_id = ?, last_sync_at = ?, updated_at = ? WHERE id = ?",
             [
+                (int)$replacement,
+                (int)$replacement,
                 \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_remote_client_missing'),
                 $operationId,
                 $now,
@@ -291,7 +298,7 @@ final class ConfigurationSyncRepository
         $rows = db()->query(
             "SELECT id, subscription_id
              FROM vpn_v2_subscription_nodes
-             WHERE status = 'missing_remote'
+             WHERE status = 'missing_remote' AND sync_status <> 'replacement_pending'
                AND (
                     last_seen_remote_at IS NOT NULL
                     OR (last_remote_hash IS NOT NULL AND last_remote_hash <> '')
@@ -317,14 +324,14 @@ final class ConfigurationSyncRepository
         $database->beginTransaction();
         try {
             $node = $database->query(
-                "SELECT id, subscription_id, status
+                "SELECT id, subscription_id, status, sync_status
                  FROM vpn_v2_subscription_nodes
                  WHERE id = ? LIMIT 1 FOR UPDATE",
                 [$nodeId]
             )->getOne();
 
-            if (!is_array($node)
-                || in_array((string)$node['status'], ['deleted', 'deleting'], true)) {
+            if (!is_array($node) || $node['sync_status'] === 'replacement_pending'
+                || in_array((string)$node['status'], ['deleted', 'deleting', 'pending_remote_delete', 'delete_failed'], true)) {
                 $database->commit();
                 return false;
             }
@@ -389,7 +396,8 @@ final class ConfigurationSyncRepository
         );
         db()->query(
             "UPDATE vpn_v2_subscription_nodes
-             SET sync_status = 'remote_unavailable', sync_error = ?, updated_at = ?
+             SET sync_status = CASE WHEN sync_status = 'replacement_pending' THEN sync_status ELSE 'remote_unavailable' END,
+                 sync_error = ?, updated_at = ?
              WHERE server_id = ? AND status NOT IN ('deleted', 'deleting')",
             [$safeError, $now, $serverId]
         );

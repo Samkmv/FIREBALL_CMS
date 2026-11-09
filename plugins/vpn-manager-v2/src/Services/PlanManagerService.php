@@ -43,7 +43,8 @@ final class PlanManagerService
         $input['ip_limit'] ??= $beforePlan['ip_limit'] ?? 0;
         $plan = ($this->validator ?? new PlanValidator())->validate(
             $input,
-            $repository->topologyForInboundIds($this->inboundIds($input))
+            $repository->topologyForInboundIds($this->inboundIds($input)),
+            $before
         );
         $repository->update($id, $plan);
         $after = $repository->nodes($id);

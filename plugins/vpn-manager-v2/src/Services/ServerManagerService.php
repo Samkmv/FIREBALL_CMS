@@ -36,7 +36,7 @@ final class ServerManagerService
         ]);
     }
 
-    public function update(int $id, array $input): void
+    public function update(int $id, array $input, bool $replacement = false): void
     {
         $repository = $this->repository();
         $existing = $repository->findWithSecrets($id);
@@ -53,8 +53,38 @@ final class ServerManagerService
 
         $secretService = $this->secrets ?? new ServerSecretService();
         $this->validateRequiredSecrets($input, $existing, $data->authType, $secretService);
-        $repository->update($id, $data->toArray(), $secretService->encryptedUpdates($input));
-        (new VpnSubscriptionRevisionService())->touchByServer($id);
+        $updated = $data->toArray();
+        $database = db();
+        $ownsTransaction = !$database->inTransaction();
+        if ($ownsTransaction) {
+            $database->beginTransaction();
+        }
+        try {
+            $current = $repository->findForUpdate($id);
+            if (!$current) {
+                throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_server_not_found'));
+            }
+            foreach (['panel_url', 'panel_path', 'api_url'] as $key) {
+                $replacement = $replacement || (string)($current[$key] ?? '') !== (string)($updated[$key] ?? '');
+            }
+            if ($replacement) {
+                $database->query(
+                    "UPDATE vpn_v2_subscription_nodes SET sync_status = 'replacement_pending'
+                     WHERE server_id = ? AND status NOT IN ('deleted', 'deleting', 'pending_remote_delete', 'delete_failed')",
+                    [$id]
+                );
+            }
+            $repository->update($id, $updated, $secretService->encryptedUpdates($input));
+            (new VpnSubscriptionRevisionService())->touchByServer($id);
+            if ($ownsTransaction) {
+                $database->commit();
+            }
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction) {
+                $database->rollBack();
+            }
+            throw $exception;
+        }
     }
 
     public function toggle(int $id): bool

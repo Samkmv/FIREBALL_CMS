@@ -296,15 +296,19 @@ final class RemoteOperationProcessor
         if ($repairServerId > 0 && $plans->eligibleSubscription($subscriptionId)) {
             foreach ($plans->subscriptionNodes($subscriptionId) as $summary) {
                 if ((int)$summary['server_id'] !== $repairServerId
-                    || in_array($summary['status'], ['deleting', 'pending_remote_delete'], true)
+                    || in_array($summary['status'], ['deleting', 'pending_remote_delete', 'delete_failed'], true)
                     || ($summary['status'] === 'deleted' && $summary['sync_status'] !== 'remote_deleted')
                     || !$plans->planNodeForTarget((int)$subscription['plan_id'], $repairServerId, (int)$summary['inbound_id'])) {
                     continue;
                 }
                 $node = $plans->node((int)$summary['id']);
+                if (!$node) {
+                    continue;
+                }
+                $node['remote_client_id'] = null;
                 $inspection = ($this->remoteSync ?? new RemoteClientSyncService())->inspect($node, $subscription);
                 if (!empty($inspection['missing']) || $summary['status'] === 'deleted') {
-                    ($this->configuration ?? new ConfigurationSyncRepository())->markMissingRemote($node, $operationId);
+                    ($this->configuration ?? new ConfigurationSyncRepository())->markMissingRemote($node, $operationId, replacement: true);
                 }
             }
         }
@@ -317,6 +321,7 @@ final class RemoteOperationProcessor
                     'authorized' => true,
                     'provision_missing' => true,
                     'sync_flow' => true,
+                    'server_id' => $repairServerId,
                 ]
             );
 
@@ -326,13 +331,14 @@ final class RemoteOperationProcessor
         $serverIds = ($this->configuration ?? new ConfigurationSyncRepository())
             ->serverIdsForSubscription($subscriptionId);
 
+        if ($repairServerId > 0) {
+            $serverIds = [$repairServerId];
+        }
         $pushable = array_values(array_filter(
             $nodeRows,
-            static fn(array $node): bool => in_array(
-                (string)($node['status'] ?? ''),
-                ['active', 'disabled'],
-                true
-            )
+            static fn(array $node): bool => empty($node['is_obsolete'])
+                && ($repairServerId === 0 || (int)$node['server_id'] === $repairServerId)
+                && in_array((string)($node['status'] ?? ''), ['active', 'disabled'], true)
         ));
 
         $result = [
@@ -402,22 +408,35 @@ final class RemoteOperationProcessor
         if ($this->subscriptionMatchesCurrentPlan(
             $plans,
             $finalSubscription,
-            $subscriptionId
+            $subscriptionId,
+            $repairServerId
         )) {
-            $plans->finishSubscription(
-                $subscriptionId,
-                (string)($finalSubscription['status'] ?? 'active'),
-                null
-            );
+            if ($repairServerId === 0) {
+                $plans->finishSubscription(
+                    $subscriptionId,
+                    (string)($finalSubscription['status'] ?? 'active'),
+                    null
+                );
+            }
             $result['errors'] = 0;
         } else {
             $result['errors'] = max(1, $result['errors']);
-            $plans->finishSubscription(
-                $subscriptionId,
-                (string)($finalSubscription['status'] ?? 'active'),
-                $finalSubscription['last_error']
-                    ?: \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_client_not_confirmed')
-            );
+            if ($repairServerId === 0) {
+                $plans->finishSubscription(
+                    $subscriptionId,
+                    (string)($finalSubscription['status'] ?? 'active'),
+                    $finalSubscription['last_error']
+                        ?: \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_client_not_confirmed')
+                );
+            }
+        }
+
+        if ($source === 'manual_sync' && $repairServerId === 0) {
+            $dependencies = $this->dependencies ?? new VpnV2SubscriptionDependencyService();
+            $ids = $dependencies->collectEffectiveSubscriptionIds($subscriptionId);
+            $external = (new ExternalVpnSourceService())->syncForSubscriptions($ids, $adminId);
+            $result['external_sources'] = $external;
+            $result['errors'] += $external['failed'];
         }
 
         return $result;
@@ -426,7 +445,8 @@ final class RemoteOperationProcessor
     private function subscriptionMatchesCurrentPlan(
         PlanReconciliationRepository $plans,
         array $subscription,
-        int $subscriptionId
+        int $subscriptionId,
+        int $serverId = 0
     ): bool {
         $planId = (int)($subscription['plan_id'] ?? 0);
         if ($planId <= 0) {
@@ -434,6 +454,9 @@ final class RemoteOperationProcessor
         }
 
         $targets = $plans->activePlanNodes($planId);
+        if ($serverId > 0) {
+            $targets = array_filter($targets, static fn(array $target): bool => (int)$target['server_id'] === $serverId);
+        }
         if ($targets === []) {
             return false;
         }

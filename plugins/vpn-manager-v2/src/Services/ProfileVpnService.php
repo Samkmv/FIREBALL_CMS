@@ -108,7 +108,7 @@ final class ProfileVpnService
                         'country_name' => (string)($node['country_name'] ?? ''),
                         'city' => (string)($node['city'] ?? ''),
                         'show_flag' => (int)($node['show_flag'] ?? 0),
-                        'status' => 'active',
+                        'status' => empty($node['maintenance_mode']) ? 'active' : 'maintenance',
                     ];
                 }
             }

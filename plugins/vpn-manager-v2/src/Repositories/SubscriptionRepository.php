@@ -643,7 +643,8 @@ final class SubscriptionRepository
         $status = in_array($status, ['create_failed', 'sync_error'], true) ? $status : 'create_failed';
         db()->query(
             'UPDATE vpn_v2_subscription_nodes
-             SET status = ?, sync_status = ?, last_error = ?, sync_error = ?, updated_at = ? WHERE id = ?',
+             SET status = ?, sync_status = CASE WHEN sync_status = \'replacement_pending\' THEN sync_status ELSE ? END,
+                 last_error = ?, sync_error = ?, updated_at = ? WHERE id = ?',
             [
                 $status,
                 $status === 'sync_error' ? 'failed' : 'pending',

@@ -9,6 +9,7 @@ use Fireball\VpnManagerV2\Repositories\SubscriptionItemRepository;
 use Fireball\VpnManagerV2\Repositories\SubscriptionRepository;
 use Fireball\VpnManagerV2\Support\NetworkTargetGuard;
 use Fireball\VpnManagerV2\Support\SecretCipher;
+use Fireball\VpnManagerV2\Support\VpnReconciliationLock;
 
 final class ExternalVpnSourceService
 {
@@ -109,6 +110,14 @@ final class ExternalVpnSourceService
 
     public function sync(int $parentId, int $id, ?int $adminId = null): int
     {
+        return (new VpnReconciliationLock())->externalSource(
+            $id,
+            fn(): int => $this->refreshSnapshot($parentId, $id, $adminId)
+        );
+    }
+
+    private function refreshSnapshot(int $parentId, int $id, ?int $adminId): int
+    {
         $item = $this->sources()->find($parentId, $id);
         if (!$item) {
             throw new \InvalidArgumentException('external_source_missing');
@@ -121,19 +130,33 @@ final class ExternalVpnSourceService
             foreach ($uris as $uri) {
                 $this->validateUri($uri);
             }
-            $this->sources()->updateSnapshot($id, $uris);
-            $this->touch($parentId);
-            $this->log('subscription.external_source_synced', $parentId, $id, $adminId, [
-                'source_type' => (string)$item['source_type'],
-                'config_count' => count($uris),
-            ]);
-
-            return count($uris);
+            $database = db();
+            $database->beginTransaction();
+            try {
+                $current = $this->sources()->find($parentId, $id, true);
+                if (!$current) {
+                    throw new \InvalidArgumentException('external_source_missing');
+                }
+                $this->sources()->updateSnapshot($id, $uris);
+                $hash = hash('sha256', json_encode(array_values($uris), JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+                if ($hash !== (string)$current['snapshot_hash']) {
+                    $this->touch($parentId);
+                }
+                $database->commit();
+            } catch (\Throwable $exception) {
+                $database->rollBack();
+                throw $exception;
+            }
         } catch (\Throwable $exception) {
             $this->sources()->recordFailure($id, $this->safeError($exception));
-            $this->touch($parentId);
             throw $exception;
         }
+        $this->log('subscription.external_source_synced', $parentId, $id, $adminId, [
+            'source_type' => (string)$item['source_type'],
+            'config_count' => count($uris),
+        ]);
+
+        return count($uris);
     }
 
     public function toggle(int $parentId, int $id, bool $enabled, ?int $adminId = null): bool
@@ -183,6 +206,40 @@ final class ExternalVpnSourceService
         $this->log('subscription.external_source_detached', $parentId, $id, $adminId);
 
         return true;
+    }
+
+    /** Refresh each inherited plan once, including plans of linked subscriptions. */
+    public function syncForSubscriptions(array $subscriptionIds, ?int $adminId = null): array
+    {
+        $owners = [];
+        foreach ($subscriptionIds as $subscriptionId) {
+            $owners['subscriptions'][(int)$subscriptionId] = true;
+            $planId = $this->sources()->planIdForSubscription((int)$subscriptionId);
+            if ($planId > 0) {
+                $owners['plans'][$planId] = true;
+            }
+        }
+
+        $result = ['synced' => 0, 'failed' => 0];
+        foreach ($owners as $scope => $ids) {
+            $service = $scope === 'subscriptions' ? $this
+                : new self(revisions: $this->revisions, forPlan: true, fetcher: $this->fetcher);
+            foreach (array_keys($ids) as $id) {
+                foreach ($service->itemsForParent($id) as $item) {
+                    if (empty($item['is_enabled']) || $item['source_type'] !== 'subscription_url') {
+                        continue;
+                    }
+                    try {
+                        $service->sync($id, (int)$item['id'], $adminId);
+                        $result['synced']++;
+                    } catch (\Throwable) {
+                        $result['failed']++;
+                    }
+                }
+            }
+        }
+
+        return $result;
     }
 
     public function syncAll(int $limit = 20): array
@@ -362,7 +419,7 @@ final class ExternalVpnSourceService
             CURLOPT_ENCODING => '',
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
-            CURLOPT_USERAGENT => 'FIREBALL-CMS-VPN-Manager-V2/1.4.8',
+            CURLOPT_USERAGENT => 'FIREBALL-CMS-VPN-Manager/3.0.0',
             CURLOPT_HTTPHEADER => ['Accept: text/plain, application/json;q=0.9, */*;q=0.5'],
         ]);
         if (defined('CURLOPT_PROTOCOLS') && defined('CURLPROTO_HTTP') && defined('CURLPROTO_HTTPS')) {

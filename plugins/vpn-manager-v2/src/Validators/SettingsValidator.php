@@ -2,6 +2,7 @@
 
 namespace Fireball\VpnManagerV2\Validators;
 
+use Fireball\VpnManagerV2\DTO\SmartConnectData;
 use Fireball\VpnManagerV2\DTO\VpnSettingsData;
 use Fireball\VpnManagerV2\Support\HappRoutingProfile;
 use Fireball\VpnManagerV2\Exceptions\ValidationException;
@@ -40,14 +41,33 @@ final class SettingsValidator
         'smart_connect_singbox_enabled', 'smart_connect_health_enabled',
     ];
 
-    public function validate(array $input, array $current): VpnSettingsData
+    public function validate(array $input, array $current, bool $manageSmartConnect = true): VpnSettingsData
     {
         $data = array_replace($current, $input);
         foreach (self::CHECKBOXES as $key) {
             $data[$key] = array_key_exists($key, $input) ? $input[$key] : false;
         }
 
-        return $this->make($data, true);
+        if (!$manageSmartConnect) {
+            foreach (SmartConnectData::defaults() as $key => $default) {
+                if (!in_array($key, ['smart_connect_health_enabled', 'smart_connect_happ_provider_id'], true)) {
+                    $data[$key] = $current[$key] ?? $default;
+                }
+            }
+            $provider = $data['smart_connect_happ_provider_id'] ?? '';
+            if (!is_string($provider)) {
+                throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_smart_invalid'));
+            }
+            $provider = trim($provider);
+            if ($provider !== '' && preg_match('/\A[A-Za-z0-9._:-]{1,128}\z/D', $provider) !== 1) {
+                throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_smart_invalid'));
+            }
+            if ($provider === '') {
+                $data['happ_server_settings_policy'] = 'default';
+            }
+        }
+
+        return $this->make($data, true, $manageSmartConnect);
     }
 
     public function validateStored(array $stored): VpnSettingsData
@@ -55,7 +75,7 @@ final class SettingsValidator
         return $this->make($stored, false);
     }
 
-    private function make(array $data, bool $strict): VpnSettingsData
+    private function make(array $data, bool $strict, bool $manageSmartConnect = true): VpnSettingsData
     {
         $serviceName = $this->text(
             $data['service_name'] ?? '',
@@ -86,7 +106,7 @@ final class SettingsValidator
         if (!is_string($serverSettingsPolicy) || !in_array($serverSettingsPolicy, ['default', 'hide', 'show'], true)) {
             $serverSettingsPolicy = $this->invalid($strict, 'vpn_manager_v2_happ_protection_invalid', 'default');
         }
-        $smartConnect = (new SmartConnectValidator())->validate($data, $strict);
+        $smartConnect = (new SmartConnectValidator())->validate($data, $strict && $manageSmartConnect);
         if ($strict && $serverSettingsPolicy !== 'default' && $smartConnect['smart_connect_happ_provider_id'] === '') {
             throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_happ_protection_provider_required'));
         }

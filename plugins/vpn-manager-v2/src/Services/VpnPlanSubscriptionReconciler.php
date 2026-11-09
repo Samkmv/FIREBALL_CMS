@@ -202,8 +202,9 @@ final class VpnPlanSubscriptionReconciler
         $adminId = $this->normalizeAdminId($options['initiated_by'] ?? $this->adminId());
         $created = $reused = $failed = $syncErrors = $skipped = $obsolete = 0;
         $configChanged = false;
+        $serverId = (int)($options['server_id'] ?? 0);
         $syncParameters = (bool)($options['sync_parameters'] ?? $options['sync_flow'] ?? true);
-        if ($syncParameters) {
+        if ($syncParameters && $serverId === 0) {
             $plan = $repository->plan($planId);
             if (!$plan) { throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_plan_not_found')); }
             $configChanged = $repository->applyPlanParameters($subscription, $plan);
@@ -213,6 +214,9 @@ final class VpnPlanSubscriptionReconciler
         $repository->clearCurrentPlanObsolete($subscriptionId, $planId);
 
         foreach ($this->findObsoleteNodes($subscriptionId) as $node) {
+            if ($serverId > 0 && (int)$node['server_id'] !== $serverId) {
+                continue;
+            }
             if ($repository->markObsolete((int)$node['id'])) {
                 $obsolete++;
                 $this->events()->logEvent('obsolete_subscription_node_detected', $subscriptionId,
@@ -226,6 +230,9 @@ final class VpnPlanSubscriptionReconciler
             : [];
         foreach ($missingNodes as $missing) {
             $planNode = (array)$missing['plan_node'];
+            if ($serverId > 0 && (int)$planNode['server_id'] !== $serverId) {
+                continue;
+            }
             $existingNode = is_array($missing['existing_node'] ?? null) ? $missing['existing_node'] : null;
             $this->events()->logEvent('missing_subscription_node_detected', $subscriptionId,
                 $existingNode !== null ? (int)$existingNode['id'] : null, (int)$planNode['server_id'],
@@ -263,6 +270,9 @@ final class VpnPlanSubscriptionReconciler
             ? $this->parameterTargets($subscriptionId)
             : [];
         foreach ($flowChanges as $change) {
+            if ($serverId > 0 && (int)$change['node']['server_id'] !== $serverId) {
+                continue;
+            }
             try {
                 if ($this->syncParameters($subscription, (array)$change['node'], (array)$change['plan_node'])) {
                     $configChanged = true;
@@ -342,14 +352,16 @@ final class VpnPlanSubscriptionReconciler
         if (!$subscription) {
             return [];
         }
-        $activeTargets = [];
-        foreach ($repository->activePlanNodes((int)$subscription['plan_id']) as $planNode) {
-            $activeTargets[$this->key($planNode)] = true;
+        $configuredTargets = [];
+        foreach ($repository->allPlanNodes((int)$subscription['plan_id']) as $planNode) {
+            if (!empty($planNode['is_enabled'])) {
+                $configuredTargets[$this->key($planNode)] = true;
+            }
         }
 
         return array_values(array_filter(
             $repository->subscriptionNodes($subscriptionId),
-            fn(array $node): bool => !isset($activeTargets[$this->key($node)])
+            fn(array $node): bool => !isset($configuredTargets[$this->key($node)])
                 && !in_array((string)$node['status'], ['deleted', 'deleting'], true)
         ));
     }
@@ -561,6 +573,7 @@ final class VpnPlanSubscriptionReconciler
             return new ReconcileResult(0, 0, skipped: 1);
         }
         $planId = (int)$subscription['plan_id'];
+        $repository->clearCurrentPlanObsolete($subscriptionId, $planId);
         $removed = $failed = 0;
         foreach ($repository->obsoleteNodesForSubscription($subscriptionId) as $row) {
             $node = $repository->node((int)$row['id']);

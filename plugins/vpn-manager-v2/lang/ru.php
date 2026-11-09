@@ -1,13 +1,21 @@
 <?php
 
 return [
+    'vpn_manager_v2_recovery_quick' => 'Сохранить и заменить сервер',
+    'vpn_manager_v2_recovery_quick_help' => 'Введите новый адрес и данные панели в карточке этого сервера. Если входящие подключения совпадают, перенос начнётся сразу.',
+    'vpn_manager_v2_recovery_choose_targets' => 'Новая панель проверена. Выберите, какие входящие подключения будут использовать тарифы.',
+    'vpn_manager_v2_subscription_notice_expired' => 'Подписка истекла',
+    'vpn_manager_v2_subscription_notice_maintenance' => 'На сервере ведутся технические работы',
+    'vpn_manager_v2_subscription_notice_inactive' => 'VPN-подписка неактивна',
+    'vpn_manager_v2_sync_status_value_replacement_pending' => 'Ожидает восстановления на новой панели',
+    'vpn_manager_v2_profile_happ_update' => 'В Happ откройте меню уже добавленной подписки и выберите «Обновить». После смены сервера используется та же ссылка.',
     'vpn_manager_v2_happ_protection_title' => 'Защита подключений в Happ',
     'vpn_manager_v2_happ_protection_policy' => 'Просмотр и экспорт отдельных подключений',
     'vpn_manager_v2_happ_protection_default' => 'Не менять настройки приложения',
     'vpn_manager_v2_happ_protection_hide' => 'Запретить просмотр и экспорт',
     'vpn_manager_v2_happ_protection_show' => 'Разрешить просмотр и экспорт',
-    'vpn_manager_v2_happ_protection_help' => 'Требуется действующий Provider ID Happ. Укажите его в блоке Smart Connect → Happ, затем обновите обычную подписку в приложении. Happ должен скрыть просмотр, редактирование и экспорт подключений. Включать Smart Connect для этого не нужно.',
-    'vpn_manager_v2_happ_protection_provider_required' => 'Для управления просмотром и экспортом в Happ укажите Provider ID в блоке Smart Connect → Happ.',
+    'vpn_manager_v2_happ_protection_help' => 'Укажите Provider ID в этом блоке, если хотите управлять просмотром и экспортом подключений в Happ. Без Provider ID применяются настройки приложения.',
+    'vpn_manager_v2_happ_protection_provider_required' => 'Укажите Provider ID в разделе «Защита подключений в Happ».',
     'vpn_manager_v2_happ_protection_configure_provider' => 'Настроить Provider ID Happ',
     'vpn_manager_v2_happ_protection_limit' => 'Это ограничение интерфейса Happ. Уже скопированный ключ не отключается: он может работать до истечения срока или отключения клиента на сервере. Другие приложения могут игнорировать настройку. Лимит устройств проверяет загрузку подписки, а не каждый VPN-сеанс.',
     'vpn_manager_v2_happ_protection_invalid' => 'Выберите допустимый режим просмотра и экспорта подключений в Happ.',

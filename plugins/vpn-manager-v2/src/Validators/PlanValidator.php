@@ -13,7 +13,7 @@ final class PlanValidator
     {
     }
 
-    public function validate(array $input, array $topology): PlanData
+    public function validate(array $input, array $topology, array $existingNodes = []): PlanData
     {
         $name = mb_substr(trim((string)($input['name'] ?? '')), 0, 255);
         if ($name === '') {
@@ -22,7 +22,7 @@ final class PlanValidator
 
         $durationDays = $this->integer($input['duration_days'] ?? 30, 1, 36500, 'vpn_manager_v2_error_plan_duration');
         $deviceLimit = $this->integer($input['device_limit'] ?? 1, 1, 100000, 'vpn_manager_v2_error_plan_device_limit');
-        $nodes = $this->validateNodes($input['nodes'] ?? [], $topology);
+        $nodes = $this->validateNodes($input['nodes'] ?? [], $topology, $existingNodes);
 
         return new PlanData(
             $name,
@@ -36,12 +36,16 @@ final class PlanValidator
         );
     }
 
-    public function validateNodes(mixed $nodesInput, array $topology): array
+    public function validateNodes(mixed $nodesInput, array $topology, array $existingNodes = []): array
     {
         if (!is_array($nodesInput) || $nodesInput === []) {
             throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_plan_nodes_required'));
         }
 
+        $retained = [];
+        foreach ($existingNodes as $node) {
+            $retained[$node['server_id'] . ':' . $node['inbound_id']] = $node;
+        }
         $resolver = $this->flowResolver ?? new VpnFlowResolver();
         $nodes = [];
         $seen = [];
@@ -60,20 +64,25 @@ final class PlanValidator
             if ((int)($inbound['server_id'] ?? 0) !== $serverId) {
                 throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_plan_node_mismatch'));
             }
-            if (empty($inbound['server_is_enabled'])) {
+            $key = $serverId . ':' . $inboundId;
+            $previous = $retained[$key] ?? null;
+            if (!$previous && empty($inbound['server_is_enabled'])) {
                 throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_plan_server_disabled'));
             }
-            if (empty($inbound['is_enabled']) || (string)($inbound['status'] ?? '') !== 'active') {
+            $available = !empty($inbound['server_is_enabled']) && !empty($inbound['is_enabled'])
+                && (string)($inbound['status'] ?? '') === 'active';
+            if (!$previous && !$available) {
                 throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_plan_inbound_disabled'));
             }
 
-            $key = $serverId . ':' . $inboundId;
             if (isset($seen[$key])) {
                 throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_plan_node_duplicate'));
             }
             $seen[$key] = true;
 
-            $flowOverride = $this->flowOverride($nodeInput['flow_override'] ?? '__auto__', $inbound, $resolver);
+            $flowOverride = $available
+                ? $this->flowOverride($nodeInput['flow_override'] ?? '__auto__', $inbound, $resolver)
+                : $previous['flow_override'];
             $sortOrder = $this->integer($nodeInput['sort_order'] ?? 0, 0, 1000000, 'vpn_manager_v2_error_plan_sort_order');
             $nodes[] = new PlanNodeData($serverId, $inboundId, $flowOverride, $sortOrder);
         }

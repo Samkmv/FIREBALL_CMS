@@ -1,13 +1,21 @@
 <?php
 
 return [
+    'vpn_manager_v2_recovery_quick' => '保存并替换服务器',
+    'vpn_manager_v2_recovery_quick_help' => '在此服务器中填写新面板地址和凭据。如果入站匹配唯一，立即开始恢复。',
+    'vpn_manager_v2_recovery_choose_targets' => '新面板已检查。请选择套餐使用的入站。',
+    'vpn_manager_v2_subscription_notice_expired' => '订阅已过期',
+    'vpn_manager_v2_subscription_notice_maintenance' => '服务器维护中',
+    'vpn_manager_v2_subscription_notice_inactive' => 'VPN 订阅未激活',
+    'vpn_manager_v2_sync_status_value_replacement_pending' => '等待在替换面板上恢复',
+    'vpn_manager_v2_profile_happ_update' => '在 Happ 中打开现有订阅的菜单并选择更新。更换服务器后仍可使用原链接。',
     'vpn_manager_v2_happ_protection_title' => 'Happ 连接保护',
     'vpn_manager_v2_happ_protection_policy' => '查看和导出单个连接',
     'vpn_manager_v2_happ_protection_default' => '保持应用设置不变',
     'vpn_manager_v2_happ_protection_hide' => '禁止查看和导出',
     'vpn_manager_v2_happ_protection_show' => '允许查看和导出',
-    'vpn_manager_v2_happ_protection_help' => '需要有效的 Happ Provider ID。请在 Smart Connect → Happ 中填写，然后在应用内更新普通订阅。Happ 应隐藏连接的查看、编辑和导出功能。无需启用 Smart Connect。',
-    'vpn_manager_v2_happ_protection_provider_required' => '如需控制 Happ 中的查看和导出，请在 Smart Connect → Happ 中填写 Provider ID。',
+    'vpn_manager_v2_happ_protection_help' => '在此输入 Provider ID 以控制 Happ 中连接的查看与导出。留空时使用应用设置。',
+    'vpn_manager_v2_happ_protection_provider_required' => '请在 Happ 连接保护中输入 Provider ID。',
     'vpn_manager_v2_happ_protection_configure_provider' => '配置 Happ Provider ID',
     'vpn_manager_v2_happ_protection_limit' => '这只是 Happ 界面限制。已复制的凭据不会失效，在到期或服务器禁用客户端之前仍可能使用。其他应用可能忽略此设置。设备限制检查订阅下载，而非每个 VPN 会话。',
     'vpn_manager_v2_happ_protection_invalid' => '请选择有效的 Happ 连接查看和导出策略。',

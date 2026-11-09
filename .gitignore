@@ -90,5 +90,6 @@ dist/fireball-cms-*.zip*
 !/tests/tape_room_changelog.php
 !/tests/tape_room_fixture.php
 !/tests/tape_room_fixture_setup.py
+!/tests/vpn_v3_unit.php
 /tests/.tmp/
 /tests/artifacts/
