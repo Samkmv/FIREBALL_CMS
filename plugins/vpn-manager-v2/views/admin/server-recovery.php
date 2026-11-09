@@ -5,6 +5,8 @@ $id = (int)$server['id'];
 $base = '/admin/plugins/vpn-manager-v2/servers/' . $id . '/recovery';
 $active = array_values(array_filter($inbounds, static fn(array $row): bool => $row['status'] === 'active' && !empty($row['is_enabled'])));
 $existingTargets = array_fill_keys(array_column($targets, 'id'), true);
+$activeIds = array_fill_keys(array_column($active, 'id'), true);
+$hasOptions = false;
 $latest = [];
 foreach ($recoveryOperations as $operation) {
     $payload = json_decode((string)($operation['payload_json'] ?? ''), true);
@@ -60,6 +62,10 @@ foreach ($subscriptions as $subscription) {
         <section class="border rounded-5 p-3 p-md-4 mb-3">
             <h2 class="h5">2. <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_step_map')) ?></h2>
             <p class="text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_map_help')) ?></p>
+            <div class="d-flex flex-wrap gap-3 mb-3">
+                <a href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/discrepancies') . '?server=' . $id) ?>"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_discrepancies_title')) ?></a>
+                <a href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/inbounds')) ?>"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_discrepancies_cleanup')) ?></a>
+            </div>
             <?php if ($targets === []): ?>
                 <div class="alert alert-info rounded-4"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_new_server')) ?></div>
                 <a class="btn btn-outline-primary rounded-pill" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/plans')) ?>"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_tab_plans')) ?></a>
@@ -68,6 +74,8 @@ foreach ($subscriptions as $subscription) {
                 $options = array_values(array_filter($active, static fn(array $row): bool =>
                     strtolower($row['protocol']) === strtolower($target['protocol'])
                     && ((int)$row['id'] === (int)$target['id'] || !isset($existingTargets[(int)$row['id']]))));
+                $canSkip = !isset($activeIds[(int)$target['id']]);
+                $hasOptions = $hasOptions || $options !== [];
                 $selected = 0;
                 foreach ($options as $option) { if ((int)$option['id'] === (int)$target['id']) { $selected = (int)$option['id']; } }
                 $similar = array_values(array_filter($options, static fn(array $row): bool => (int)$row['port'] === (int)$target['port'] && $row['network'] === $target['network'] && $row['security'] === $target['security']));
@@ -76,11 +84,18 @@ foreach ($subscriptions as $subscription) {
                 <div class="row align-items-center g-2 mb-3">
                     <label class="col-md-5 form-label mb-0" for="vpnRecoveryMap<?= (int)$target['id'] ?>">
                         <?= htmlSC((string)$target['name']) ?> · <?= htmlSC((string)$target['protocol']) ?>:<?= (int)$target['port'] ?>
+                        <?php if ($target['status'] === 'sync_missing'): ?>
+                            <span class="badge text-bg-warning"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_discrepancies_missing')) ?></span>
+                        <?php endif; ?>
                         <span class="small text-body-secondary d-block"><?= htmlSC(sprintf(FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_plan_count'), (int)$target['plan_count'])) ?></span>
                     </label>
                     <div class="col-md-7">
                         <select class="form-select" id="vpnRecoveryMap<?= (int)$target['id'] ?>" name="mapping[<?= (int)$target['id'] ?>]" required <?= !$inspected ? 'disabled' : '' ?>>
-                            <option value=""><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_select')) ?></option>
+                            <?php if ($canSkip): ?>
+                                <option value="skip" <?= !$selected ? 'selected' : '' ?>><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_skip_target')) ?></option>
+                            <?php else: ?>
+                                <option value=""><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_select')) ?></option>
+                            <?php endif; ?>
                             <?php foreach ($options as $option): ?>
                                 <option value="<?= (int)$option['id'] ?>" <?= $selected === (int)$option['id'] ? 'selected' : '' ?>><?= htmlSC((string)$option['name'] . ' · ' . $option['protocol'] . ':' . $option['port'] . ' · #' . $option['remote_inbound_id']) ?></option>
                             <?php endforeach; ?>
@@ -93,7 +108,10 @@ foreach ($subscriptions as $subscription) {
             <h2 class="h5">3. <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_step_apply')) ?></h2>
             <p class="text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_apply_help')) ?></p>
             <p><?= htmlSC(sprintf(FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_subscription_count'), count($subscriptions))) ?></p>
-            <button class="btn btn-dark rounded-pill" type="submit" <?= !$inspected || $targets === [] ? 'disabled' : '' ?>><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_apply')) ?></button>
+            <?php if ($inspected && !$hasOptions && $targets !== []): ?>
+                <div class="alert alert-warning"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_no_targets')) ?></div>
+            <?php endif; ?>
+            <button class="btn btn-dark rounded-pill" type="submit" <?= !$inspected || !$hasOptions ? 'disabled' : '' ?>><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_apply')) ?></button>
         </section>
     </form>
     <section class="border rounded-5 p-3 p-md-4 mb-3">

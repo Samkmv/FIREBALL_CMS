@@ -16,7 +16,7 @@ final class InboundRepository
                     i.created_at, i.updated_at, s.name AS server_name, s.code AS server_code
              FROM vpn_v2_inbounds i
              INNER JOIN vpn_v2_servers s ON s.id = i.server_id
-             ORDER BY i.id ASC'
+             WHERE i.status <> \'archived\' ORDER BY i.id ASC'
         )->get() ?: [];
     }
 
@@ -28,6 +28,40 @@ final class InboundRepository
              FROM vpn_v2_inbounds WHERE server_id = ? ORDER BY id ASC',
             [$serverId]
         )->get() ?: [];
+    }
+
+    public function archiveMissing(int $id): void
+    {
+        $database = db();
+        $database->beginTransaction();
+        try {
+            $row = $database->query(
+                'SELECT server_id, status FROM vpn_v2_inbounds WHERE id = ? FOR UPDATE',
+                [$id]
+            )->getOne();
+            if (!$row || $row['status'] !== 'sync_missing') {
+                throw new InboundSyncException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_inbound_archive_missing_only'));
+            }
+
+            $now = date('Y-m-d H:i:s');
+            $database->query(
+                "UPDATE vpn_v2_inbounds SET status = 'archived', is_enabled = 0, updated_at = ? WHERE id = ?",
+                [$now, $id]
+            );
+            $database->query('DELETE FROM vpn_v2_plan_nodes WHERE inbound_id = ?', [$id]);
+            $database->query(
+                "UPDATE vpn_v2_subscription_nodes
+                 SET status = 'deleted', desired_enabled = 0, is_obsolete = 1,
+                     sync_status = 'inbound_archived', updated_at = ?
+                 WHERE inbound_id = ? AND status <> 'deleted'",
+                [$now, $id]
+            );
+            (new \Fireball\VpnManagerV2\Services\VpnSubscriptionRevisionService())->touchByServer((int)$row['server_id']);
+            $database->commit();
+        } catch (\Throwable $exception) {
+            $database->rollBack();
+            throw $exception;
+        }
     }
 
     public function syncServer(int $serverId, array $inbounds): InboundSyncResult
@@ -106,6 +140,7 @@ final class InboundRepository
             }
 
             $missingIds = array_diff(array_keys($existing), array_keys($seen));
+            $missingIds = array_filter($missingIds, static fn($id): bool => $existing[$id]['status'] !== 'archived');
             foreach ($missingIds as $missingId) {
                 if ((string)($existing[$missingId]['status'] ?? '') !== 'sync_missing') {
                     $configChanged = true;
@@ -117,12 +152,12 @@ final class InboundRepository
                 $database->query(
                     "UPDATE vpn_v2_inbounds
                      SET status = 'sync_missing', updated_at = ?
-                     WHERE server_id = ? AND remote_inbound_id NOT IN ({$placeholders})",
+                     WHERE server_id = ? AND status <> 'archived' AND remote_inbound_id NOT IN ({$placeholders})",
                     array_merge([$now, $serverId], array_keys($seen))
                 );
             } else {
                 $database->query(
-                    "UPDATE vpn_v2_inbounds SET status = 'sync_missing', updated_at = ? WHERE server_id = ?",
+                    "UPDATE vpn_v2_inbounds SET status = 'sync_missing', updated_at = ? WHERE server_id = ? AND status <> 'archived'",
                     [$now, $serverId]
                 );
             }

@@ -374,6 +374,7 @@ final class FireballPluginVpnManagerV2 implements PluginInterface, \FBL\Plugins\
             'plans' => ['vpn_manager_v2_tab_plans', '/admin/plugins/vpn-manager-v2/plans', 'ci-package'],
             'subscriptions' => ['vpn_manager_v2_tab_subscriptions', '/admin/plugins/vpn-manager-v2/subscriptions', 'ci-link'],
             'connections' => ['vpn_manager_v2_tab_connections', '/admin/plugins/vpn-manager-v2/connections', 'ci-share-2'],
+            'discrepancies' => ['vpn_manager_v2_discrepancies_title', '/admin/plugins/vpn-manager-v2/discrepancies', 'ci-activity'],
             'operations' => ['vpn_manager_v2_tab_operations', '/admin/plugins/vpn-manager-v2/operations', 'ci-refresh-cw'],
             'conflicts' => ['vpn_manager_v2_tab_conflicts', '/admin/plugins/vpn-manager-v2/conflicts', 'ci-alert-triangle'],
             'sync-logs' => ['vpn_manager_v2_tab_sync_logs', '/admin/plugins/vpn-manager-v2/sync-logs', 'ci-list'],

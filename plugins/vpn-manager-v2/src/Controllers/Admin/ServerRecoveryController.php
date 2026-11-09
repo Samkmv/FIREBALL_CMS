@@ -15,6 +15,26 @@ use Fireball\VpnManagerV2\Support\ServerConfigurationSignature;
 
 final class ServerRecoveryController
 {
+    public function discrepancies(): string
+    {
+        Permissions::authorize(Permissions::VIEW);
+        $servers = array_column((new ServerRepository())->all(), null, 'id');
+        $id = (int)request()->get('server', array_key_first($servers));
+        $server = $servers[$id] ?? null;
+        $page = max(1, min(100000, (int)request()->get('page', 1)));
+        $rows = $server ? (new ServerRecoveryRepository())->discrepancies($id, ($page - 1) * 50) : [];
+
+        return plugin_view(\FireballPluginVpnManagerV2::SLUG, 'admin/discrepancies',
+            \FireballPluginVpnManagerV2::viewData('discrepancies', [
+                'title' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_discrepancies_title'),
+                'servers' => $servers,
+                'server' => $server,
+                'rows' => array_slice($rows, 0, 50),
+                'page' => $page,
+                'hasNext' => count($rows) > 50,
+            ]));
+    }
+
     public function index(): string
     {
         Permissions::authorize(Permissions::VIEW);
@@ -106,7 +126,7 @@ final class ServerRecoveryController
         $queue = new OperationQueueRepository();
         $user = get_user();
         $operations = [];
-        foreach ($repository->subscriptions($id) as $subscription) {
+        foreach ($repository->subscriptions($id, availableOnly: true) as $subscription) {
             $operation = $queue->enqueue('sync_subscription', 'manual_sync', $id,
                 (int)$subscription['id'], null,
                 ['repair_server_id' => $id, 'repair_server_signature' => $signature], (int)($user['id'] ?? 0));

@@ -293,12 +293,23 @@ final class RemoteOperationProcessor
 
         // Explicit server replacement is allowed to restore clients which the
         // old inventory scan archived. Scheduled scans keep deletion semantics.
+        $repairTargets = [];
         if ($repairServerId > 0 && $plans->eligibleSubscription($subscriptionId)) {
+            foreach ($plans->activePlanNodes((int)$subscription['plan_id']) as $target) {
+                if ((int)$target['server_id'] === $repairServerId) {
+                    $repairTargets[(int)$target['inbound_id']] = true;
+                }
+            }
+            if ($repairTargets === []) {
+                throw new ObsoleteOperationException(
+                    \FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_no_targets')
+                );
+            }
             foreach ($plans->subscriptionNodes($subscriptionId) as $summary) {
                 if ((int)$summary['server_id'] !== $repairServerId
                     || in_array($summary['status'], ['deleting', 'pending_remote_delete', 'delete_failed'], true)
                     || ($summary['status'] === 'deleted' && $summary['sync_status'] !== 'remote_deleted')
-                    || !$plans->planNodeForTarget((int)$subscription['plan_id'], $repairServerId, (int)$summary['inbound_id'])) {
+                    || !isset($repairTargets[(int)$summary['inbound_id']])) {
                     continue;
                 }
                 $node = $plans->node((int)$summary['id']);
@@ -337,7 +348,8 @@ final class RemoteOperationProcessor
         $pushable = array_values(array_filter(
             $nodeRows,
             static fn(array $node): bool => empty($node['is_obsolete'])
-                && ($repairServerId === 0 || (int)$node['server_id'] === $repairServerId)
+                && ($repairServerId === 0 || ((int)$node['server_id'] === $repairServerId
+                    && isset($repairTargets[(int)$node['inbound_id']])))
                 && in_array((string)($node['status'] ?? ''), ['active', 'disabled'], true)
         ));
 

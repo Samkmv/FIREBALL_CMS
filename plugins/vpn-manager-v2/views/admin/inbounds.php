@@ -27,6 +27,16 @@ foreach ($inbounds as $inbound) {
     $security = trim((string)($inbound['security'] ?? '')) ?: 'none';
     $syncedAt = trim((string)($inbound['synced_at'] ?? '')) ?: FireballPluginVpnManagerV2::t('vpn_manager_v2_never');
 
+    $archive = '';
+    if (($inbound['status'] ?? '') === 'sync_missing'
+        && \Fireball\VpnManagerV2\Support\Permissions::allows(\Fireball\VpnManagerV2\Support\Permissions::MANAGE_INBOUNDS)) {
+        $archive = '<form method="post" action="' . htmlSC(base_href('/admin/plugins/vpn-manager-v2/inbounds/archive')) . '"'
+            . ' onsubmit="return confirm(this.dataset.confirm)" data-confirm="'
+            . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_inbound_archive_confirm')) . '">'
+            . get_csrf_field() . '<input type="hidden" name="id" value="' . $id . '">'
+            . '<button class="btn btn-sm btn-outline-danger" type="submit">'
+            . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_inbound_archive_action')) . '</button></form>';
+    }
     $rows[] = [
         'cells' => [
             ['value' => '#' . $id],
@@ -41,6 +51,7 @@ foreach ($inbounds as $inbound) {
             ['value' => $flow],
             ['html' => $status],
             ['value' => $syncedAt],
+            ['html' => $archive],
         ],
     ];
 
@@ -50,6 +61,7 @@ foreach ($inbounds as $inbound) {
         'icon' => 'ci-log-in',
         'status' => [['html' => $status]],
         'extra_fields' => [
+            ['html' => $archive],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_server'), 'html' => $serverHtml],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_remote_id'), 'value' => (string)$inbound['remote_inbound_id']],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_protocol'), 'value' => strtoupper((string)$inbound['protocol'])],
@@ -103,6 +115,7 @@ foreach ($inbounds as $inbound) {
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_default_flow')],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_status')],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_synced_at')],
+            ['label' => ''],
         ],
         'rows' => $rows,
         'mobile_cards' => $mobileCards,

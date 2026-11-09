@@ -18,7 +18,7 @@ final class ServerRecoveryRepository
         )->get() ?: [];
     }
 
-    public function subscriptions(int $serverId): array
+    public function subscriptions(int $serverId, bool $availableOnly = false): array
     {
         return db()->query(
             "SELECT sub.id, sub.status, sub.plan_id, p.name AS plan_name,
@@ -33,9 +33,39 @@ final class ServerRecoveryRepository
              WHERE sub.status IN ('active', 'provisioning', 'provisioning_failed', 'partial_sync', 'sync_error', 'suspended')
                AND sub.starts_at <= NOW() AND (sub.expires_at IS NULL OR sub.expires_at > NOW())
                AND EXISTS (SELECT 1 FROM vpn_v2_plan_nodes pn
-                           WHERE pn.plan_id = sub.plan_id AND pn.server_id = ? AND pn.is_enabled = 1)
+                           INNER JOIN vpn_v2_inbounds i ON i.id = pn.inbound_id AND i.server_id = pn.server_id
+                           WHERE pn.plan_id = sub.plan_id AND pn.server_id = ? AND pn.is_enabled = 1"
+            . ($availableOnly ? " AND i.status = 'active' AND i.is_enabled = 1" : '') . ")
              ORDER BY sub.id",
             [$serverId, $serverId]
+        )->get() ?: [];
+    }
+
+    /** Compare plan assignments with the last locally confirmed panel state. */
+    public function discrepancies(int $serverId, int $offset): array
+    {
+        return db()->query(
+            "SELECT sub.id, p.name AS plan_name,
+                    COALESCE(u.name, sub.manual_customer_name) AS customer_name,
+                    COUNT(*) AS expected_count,
+                    SUM(CASE WHEN n.sync_status = 'synced' AND n.is_obsolete = 0
+                                  AND i.status = 'active' AND i.is_enabled = 1
+                                  AND n.status = IF(sub.status = 'suspended', 'disabled', 'active')
+                             THEN 1 ELSE 0 END) AS confirmed_count
+             FROM vpn_v2_plan_nodes pn
+             INNER JOIN vpn_v2_inbounds i ON i.id = pn.inbound_id AND i.server_id = pn.server_id
+             INNER JOIN vpn_v2_plans p ON p.id = pn.plan_id AND p.deleted_at IS NULL
+             INNER JOIN vpn_v2_subscriptions sub ON sub.plan_id = p.id
+             LEFT JOIN users u ON u.id = sub.user_id
+             LEFT JOIN vpn_v2_subscription_nodes n ON n.subscription_id = sub.id
+                 AND n.server_id = pn.server_id AND n.inbound_id = pn.inbound_id
+             WHERE pn.server_id = ? AND pn.is_enabled = 1
+               AND sub.status IN ('active', 'provisioning', 'provisioning_failed', 'partial_sync', 'sync_error', 'suspended')
+               AND sub.starts_at <= NOW() AND (sub.expires_at IS NULL OR sub.expires_at > NOW())
+             GROUP BY sub.id, p.name, customer_name
+             HAVING expected_count > confirmed_count
+             ORDER BY sub.id LIMIT 51 OFFSET " . max(0, $offset),
+            [$serverId]
         )->get() ?: [];
     }
 
@@ -82,6 +112,11 @@ final class ServerRecoveryRepository
             foreach ($targets as $target) {
                 $oldId = (int)$target['id'];
                 $newId = (int)($mapping[$oldId] ?? 0);
+                $old = $inbounds[$oldId] ?? null;
+                if (($mapping[$oldId] ?? null) === 'skip'
+                    && (!$old || $old['status'] !== 'active' || empty($old['is_enabled']))) {
+                    continue;
+                }
                 $new = $inbounds[$newId] ?? null;
                 if (!$new || $new['status'] !== 'active' || empty($new['is_enabled'])
                     || strtolower((string)$target['protocol']) !== strtolower((string)$new['protocol'])
@@ -111,10 +146,13 @@ final class ServerRecoveryRepository
                     throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_mapping_error'));
                 }
             }
+            if ($targets !== [] && $selected === []) {
+                throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_no_targets'));
+            }
             foreach ($targets as $target) {
                 $oldId = (int)$target['id'];
                 $newId = (int)$mapping[$oldId];
-                if ($oldId === $newId) {
+                if ($newId === 0 || $oldId === $newId) {
                     continue;
                 }
                 $database->query(

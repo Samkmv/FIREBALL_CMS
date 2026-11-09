@@ -77,7 +77,7 @@ final class PlanRepository
                     s.name AS server_name, s.code AS server_code, s.is_enabled AS server_is_enabled
              FROM vpn_v2_inbounds i
              INNER JOIN vpn_v2_servers s ON s.id = i.server_id
-             ORDER BY s.id ASC, i.id ASC'
+             WHERE i.status <> \'archived\' ORDER BY s.id ASC, i.id ASC'
         )->get() ?: [];
     }
 

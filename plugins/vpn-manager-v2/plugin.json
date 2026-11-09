@@ -1,7 +1,7 @@
 {
   "name": "Управление VPN",
   "slug": "vpn-manager-v2",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "type": "system",
   "description": "Управление VPN-серверами, тарифами, подписками и подключениями с двусторонней синхронизацией с панелью 3x-ui и поддержкой Happ.",
   "description_i18n": {
@@ -19,6 +19,9 @@
   },
   "auto_migrate": true,
   "release_notes": [
+    "Added per-server discrepancy view and recovery guidance.",
+    "Remove missing inbounds from CMS while retaining subscriptions.",
+    "Restore available inbounds when some replacement targets are missing.",
     "Subscription refresh can use recent device confirmations during a 3x-ui outage and return verified servers when only part of the subscription is reachable.",
     "Server recovery preserves existing client identities and handles clients already absent after replacement.",
     "External sources refresh in the background and during manual subscription sync.",
@@ -27,6 +30,9 @@
   ],
   "release_notes_i18n": {
     "en": [
+      "Added per-server discrepancy view and recovery guidance.",
+      "Remove missing inbounds from CMS while retaining subscriptions.",
+      "Restore available inbounds when some replacement targets are missing.",
       "Subscription refresh can use recent device confirmations during a 3x-ui outage and return verified servers when only part of the subscription is reachable.",
       "Server recovery preserves existing client identities and handles clients already absent after replacement.",
       "External sources refresh in the background and during manual subscription sync.",
@@ -34,6 +40,9 @@
       "Added quick server replacement and Happ notices for expiry and maintenance."
     ],
     "ru": [
+      "Добавлен экран расхождений по серверам и подсказки при восстановлении.",
+      "Добавлено удаление отсутствующих входящих подключений из CMS с сохранением подписок.",
+      "Восстановление доступных подключений при отсутствии части входящих подключений на новой панели.",
       "При сбое 3x-UI обновление подписки использует недавнее подтверждение устройства или выдаёт доступные подтверждённые серверы.",
       "Восстановление сервера сохраняет идентификаторы клиентов. Удаление учитывает подключения, уже отсутствующие на новой панели.",
       "Внешние источники обновляются в фоне и при ручной синхронизации подписки.",
@@ -41,6 +50,9 @@
       "Добавлены быстрая замена сервера и уведомления об истечении подписки и техработах в Happ."
     ],
     "de": [
+      "Abweichungsübersicht pro Server und Hinweise zur Wiederherstellung hinzugefügt.",
+      "Fehlende Inbounds aus der CMS entfernen und Abonnements behalten.",
+      "Verfügbare Inbounds wiederherstellen, wenn einzelne Ziele fehlen.",
       "Bei einem 3x-UI-Ausfall kann die Aktualisierung kürzlich bestätigte Geräte und erreichbare Server verwenden.",
       "Die Wiederherstellung erhält vorhandene Client-Identitäten und berücksichtigt bereits fehlende Verbindungen.",
       "Externe Quellen werden im Hintergrund und bei manueller Synchronisierung aktualisiert.",
@@ -48,6 +60,9 @@
       "Schneller Serverwechsel und Happ-Hinweise zu Ablauf und Wartung hinzugefügt."
     ],
     "zh-cn": [
+      "新增按服务器查看差异及恢复指引。",
+      "可从 CMS 移除缺失入站并保留订阅。",
+      "部分入站缺失时可恢复其余可用入站。",
       "3x-UI 故障时，订阅可使用近期确认的设备记录或返回已验证的服务器。",
       "服务器恢复保留现有客户端标识，并处理新面板上已不存在的连接。",
       "外部来源在后台及手动同步订阅时更新。",

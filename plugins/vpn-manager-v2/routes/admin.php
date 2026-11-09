@@ -19,6 +19,8 @@ $router->get('/admin/plugins/vpn-manager-v2', static function (): string {
 
 $router->get('/admin/plugins/vpn-manager-v2/servers', [ServerController::class, 'index'])
     ->middleware(['auth', 'admin']);
+$router->get('/admin/plugins/vpn-manager-v2/discrepancies', [ServerRecoveryController::class, 'discrepancies'])
+    ->middleware(['auth', 'admin']);
 $router->get('/admin/plugins/vpn-manager-v2/servers/(?P<id>\d+)/recovery/?', [ServerRecoveryController::class, 'index'])
     ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/servers/(?P<id>\d+)/recovery/inspect/?', [ServerRecoveryController::class, 'inspect'])
@@ -47,6 +49,9 @@ $router->post('/admin/plugins/vpn-manager-v2/servers/delete', [ServerController:
 $router->get('/admin/plugins/vpn-manager-v2/inbounds', [InboundController::class, 'index'])
     ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/inbounds/sync', [InboundController::class, 'sync'])
+    ->middleware(['auth', 'admin']);
+
+$router->post('/admin/plugins/vpn-manager-v2/inbounds/archive', [InboundController::class, 'archive'])
     ->middleware(['auth', 'admin']);
 
 $router->get('/admin/plugins/vpn-manager-v2/plans', [PlanController::class, 'index'])

@@ -22,6 +22,22 @@ final class InboundController
         ]));
     }
 
+    public function archive(): void
+    {
+        Permissions::authorize(Permissions::MANAGE_INBOUNDS);
+        try {
+            (new InboundRepository())->archiveMissing((int)request()->post('id'));
+            session()->setFlash('success', \FireballPluginVpnManagerV2::t('vpn_manager_v2_inbound_archived'));
+        } catch (VpnManagerV2Exception $exception) {
+            session()->setFlash('error', $exception->getMessage());
+        } catch (\Throwable $exception) {
+            log_error_details('VPN inbound archive failed', [], $exception);
+            session()->setFlash('error', \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_inbound_sync_generic'));
+        }
+
+        response()->redirect(base_href('/admin/plugins/vpn-manager-v2/inbounds'));
+    }
+
     public function sync(): void
     {
         Permissions::authorize(Permissions::MANAGE_INBOUNDS);
