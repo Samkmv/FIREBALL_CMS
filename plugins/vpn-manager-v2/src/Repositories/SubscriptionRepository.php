@@ -241,9 +241,9 @@ final class SubscriptionRepository
     /**
      * Количество подписок для административного списка с учётом поиска.
      */
-    public function countAdminList(string $search = '', string $status = ''): int
+    public function countAdminList(string $search = '', string $status = '', ?array $onlyIds = null): int
     {
-        [$searchSql, $params] = $this->adminListWhere($search, $status);
+        [$searchSql, $params] = $this->adminListWhere($search, $status, $onlyIds);
 
         return (int)db()->query(
             "SELECT COUNT(*)
@@ -258,17 +258,20 @@ final class SubscriptionRepository
     /**
      * Страница административного списка. Новые подписки идут первыми.
      */
-    public function adminPage(string $search = '', int $limit = 20, int $offset = 0, string $status = ''): array
+    public function adminPage(string $search = '', int $limit = 20, int $offset = 0, string $status = '', ?array $onlyIds = null): array
     {
         $limit = max(1, min(100, $limit));
         $offset = max(0, $offset);
-        [$searchSql, $params] = $this->adminListWhere($search, $status);
+        [$searchSql, $params] = $this->adminListWhere($search, $status, $onlyIds);
 
         return db()->query(
             "SELECT s.id, s.user_id, s.plan_id, s.status, s.starts_at, s.expires_at,
                     s.traffic_limit_bytes, s.device_limit, s.ip_limit, s.revision, s.config_updated_at,
                     s.created_by, s.internal_comment, s.last_error, s.created_at, s.updated_at,
                     s.client_display_name, COALESCE(u.name, s.manual_customer_name) AS user_name, u.login AS user_login, u.email AS user_email, p.name AS plan_name,
+                    EXISTS (SELECT 1 FROM vpn_v2_external_sources e
+                        WHERE e.deleted_at IS NULL AND e.is_enabled = 1
+                          AND (e.parent_subscription_id = s.id OR e.plan_id = s.plan_id)) AS has_external_sources,
                     COUNT(n.id) AS node_count,
                     SUM(CASE WHEN n.status = 'active' THEN 1 ELSE 0 END) AS active_node_count
              FROM vpn_v2_subscriptions s
@@ -301,15 +304,48 @@ final class SubscriptionRepository
         return $counts;
     }
 
-    private function adminListWhere(string $search, string $status): array
+    public function presenceCandidates(): array
+    {
+        return db()->query(
+            "SELECT n.subscription_id, n.server_id, n.client_email
+             FROM vpn_v2_subscription_nodes n
+             INNER JOIN vpn_v2_subscriptions sub ON sub.id = n.subscription_id
+             INNER JOIN vpn_v2_servers srv ON srv.id = n.server_id
+             INNER JOIN vpn_v2_inbounds i ON i.id = n.inbound_id AND i.server_id = n.server_id
+             WHERE n.status = 'active' AND n.is_obsolete = 0 AND n.client_email <> ''
+               AND srv.is_enabled = 1 AND srv.maintenance_mode = 0
+               AND i.is_enabled = 1 AND i.status = 'active'
+               AND sub.status IN ('active', 'partial_sync', 'sync_error')
+               AND sub.starts_at <= NOW() AND (sub.expires_at IS NULL OR sub.expires_at > NOW())"
+        )->get() ?: [];
+    }
+
+    private function adminListWhere(string $search, string $status, ?array $onlyIds = null): array
     {
         $sql = '';
         $params = [];
-        if (trim($search) !== '') {
-            $like = '%' . trim($search) . '%';
-            $sql .= ' AND (CAST(s.id AS CHAR) LIKE ? OR u.name LIKE ? OR u.login LIKE ?
-                OR u.email LIKE ? OR s.manual_customer_name LIKE ? OR s.client_display_name LIKE ? OR p.name LIKE ? OR s.status LIKE ?)';
-            $params = array_fill(0, 8, $like);
+        $search = trim($search);
+        if ($search !== '') {
+            $literal = '%' . strtr($search, ['!' => '!!', '%' => '!%', '_' => '!_']) . '%';
+            $columns = ['CAST(s.id AS CHAR)', 'u.name', 'u.login', 'u.email', 's.manual_customer_name',
+                's.client_display_name', 'p.name', 's.status'];
+            $conditions = array_map(static fn(string $column): string => $column . " LIKE ? ESCAPE '!'", $columns);
+            $params = array_fill(0, count($columns), $literal);
+
+            if (preg_match('/^#([0-9]+)$/D', $search, $match) === 1) {
+                $params[0] = $match[1];
+            }
+            $digits = preg_replace('/[^0-9]/', '', $search);
+            if (strlen($digits) >= 3 && strlen($digits) <= 24
+                && preg_match('/^[0-9+().\s‐‑‒–—−-]+$/uD', $search) === 1) {
+                $pattern = implode('[[:space:].()+‐‑‒–—−-]*', str_split($digits));
+                foreach (['u.name', 'u.login', 's.manual_customer_name', 's.client_display_name'] as $column) {
+                    $conditions[] = $column . ' REGEXP ?';
+                    $params[] = $pattern;
+                }
+            }
+
+            $sql .= ' AND (' . implode(' OR ', $conditions) . ')';
         }
         $status = SubscriptionListFilter::normalize($status);
         if ($status !== '') {
@@ -318,6 +354,10 @@ final class SubscriptionRepository
             $statuses = $status === 'inactive' ? SubscriptionListFilter::INACTIVE_STATUSES : [$status];
             $sql .= ' IN (' . implode(', ', array_fill(0, count($statuses), '?')) . ')';
             array_push($params, ...$statuses);
+        }
+        if ($onlyIds !== null) {
+            $ids = implode(',', array_map('intval', $onlyIds));
+            $sql .= $ids === '' ? ' AND 1 = 0' : " AND s.id IN ({$ids})";
         }
         return [$sql, $params];
     }

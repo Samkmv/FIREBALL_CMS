@@ -44,6 +44,34 @@ $assert(count($inbounds) === 1
     && ($inbounds[0]['streamSettings']['network'] ?? '') === 'xhttp',
     '3x-ui response variants are not normalized.');
 
+foreach (['broken JSON', '{"clients":[null]}', '{"clients":{"first":{"id":"u1"}}}'] as $invalidSettings) {
+    $rejected = false;
+    try {
+        $mapper->inbounds(['obj' => [['id' => 42, 'settings' => $invalidSettings]]]);
+    } catch (\Fireball\VpnManagerV2\Exceptions\ThreeXuiResponseException) {
+        $rejected = true;
+    }
+    $assert($rejected, 'Malformed inventory must not be treated as an empty client list.');
+}
+
+$network = new \Fireball\VpnManagerV2\Support\NetworkTargetGuard();
+$assert($network->validatedRequestAddresses('https://[2606:4700:4700::1111]:443', false) === ['2606:4700:4700::1111'],
+    'Literal IPv6 failed DNS validation.');
+foreach (['https://100.64.0.1', 'https://[::ffff:127.0.0.1]'] as $privateUrl) {
+    $blocked = false;
+    try {
+        $network->validatedRequestAddresses($privateUrl, false);
+    } catch (\Fireball\VpnManagerV2\Exceptions\ThreeXuiTransportException) {
+        $blocked = true;
+    }
+    $assert($blocked, 'A non-global IP was permitted by the outbound request guard.');
+}
+$assert($network->curlResolveEntries('https://panel.example:8443', ['1.1.1.1', '2606:4700:4700::1111'])
+    === ['panel.example:8443:1.1.1.1,[2606:4700:4700::1111]'], 'DNS pins must retain every vetted address.');
+$bounded = new \Fireball\VpnManagerV2\Support\BoundedResponseBody(4);
+$assert($bounded->append(null, '123') === 3 && $bounded->append(null, '45') === 0
+    && $bounded->exceeded && $bounded->body === '123', 'Oversized response chunk was retained.');
+
 $capabilities = (new ThreeXuiCapabilities())->detect($inbounds);
 $assert($capabilities['protocols'] === ['vless'] && $capabilities['transports'] === ['xhttp'],
     'Server capabilities were not derived from the observed response.');

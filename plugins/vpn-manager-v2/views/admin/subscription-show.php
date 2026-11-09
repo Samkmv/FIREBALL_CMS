@@ -269,8 +269,8 @@ foreach ($nodes as $node) {
             ? 'vpn_manager_v2_subscription_deleted_note' : 'vpn_manager_v2_subscription_deletion_pending_note')) ?>
     </div>
 <?php else: ?>
-<div class="border rounded-5 p-3 p-md-4 mb-4">
-    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+<div class="border rounded-4 p-3 mb-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
         <div>
             <h2 class="h5 mb-2"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_reconciliation_title')) ?></h2>
             <div class="d-flex flex-wrap gap-3 small">
@@ -309,56 +309,79 @@ foreach ($nodes as $node) {
 </div>
 
 <?php endif; ?>
-<div class="border rounded-5 p-3 p-md-4 mb-4">
-    <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3 vpn-v2-order-heading">
+<div class="border rounded-4 p-3 mb-3">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2 vpn-v2-order-heading">
         <div><span class="text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_id')) ?></span> <strong>#<?= $subscriptionId ?></strong></div>
         <?= ProvisioningStatus::badge(ProvisioningStatus::subscriptionStatus($subscription)) ?>
     </div>
-    <dl class="row mb-0 g-3">
-        <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_user')) ?></dt>
-        <dd class="col-sm-9 mb-0">
-            <?php if ((int)($subscription['user_id'] ?? 0) > 0): ?>
-                #<?= (int)$subscription['user_id'] ?> ·
-                <?= htmlSC((string)$subscription['user_name']) ?> ·
-                <?= htmlSC((string)$subscription['user_login']) ?> ·
-                <?= htmlSC((string)$subscription['user_email']) ?>
-            <?php else: ?>
-                <?= htmlSC((string)$subscription['user_name']) ?> ·
-                <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_manual_customer_label')) ?>
-            <?php endif; ?>
-        </dd>
-        <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_plan')) ?></dt>
-        <dd class="col-sm-9 mb-0">#<?= (int)$subscription['plan_id'] ?> · <?= htmlSC((string)$subscription['plan_name']) ?></dd>
-        <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_period')) ?></dt>
-        <dd class="col-sm-9 mb-0"><?= htmlSC((string)$subscription['starts_at']) ?> — <?= htmlSC((string)($subscription['expires_at'] ?: FireballPluginVpnManagerV2::t('vpn_manager_v2_lifetime_short'))) ?></dd>
-        <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_limits')) ?></dt>
-        <dd class="col-sm-9 mb-0">
-            <?= htmlSC(TrafficFormatter::limit(isset($subscription['traffic_limit_bytes']) ? (int)$subscription['traffic_limit_bytes'] : null)) ?> ·
-            <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_device_limit')) ?>: <?= (int)$subscription['device_limit'] ?> ·
-            <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_ip_limit')) ?>: <?= (int)($subscription['ip_limit'] ?? 0) ?>
-        </dd>
-        <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_token_preview')) ?></dt>
-        <dd class="col-sm-9 mb-0"><code><?= htmlSC((string)$subscription['token_preview']) ?></code></dd>
-        <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_revision')) ?></dt>
-        <dd class="col-sm-9 mb-0"><?= (int)$subscription['revision'] ?></dd>
-        <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_effective_status')) ?></dt>
-        <dd class="col-sm-9 mb-0">
-            <span class="badge rounded-pill text-bg-<?= $effectiveStatus['effective_status'] === 'active' ? 'success' : 'secondary' ?>">
-                <?= htmlSC(ProvisioningStatus::label((string)$effectiveStatus['effective_status'])) ?>
-            </span>
-            <?php if (!empty($effectiveStatus['inactive_reason'])): ?>
-                <span class="small text-body-secondary ms-2"><?= htmlSC(LocalizedValue::inactiveReason($effectiveStatus['inactive_reason'])) ?></span>
-            <?php endif; ?>
-        </dd>
-        <dt class="col-sm-3 text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_internal_comment')) ?></dt>
-        <dd class="col-sm-9 mb-0 text-break"><?= nl2br(htmlSC((string)($subscription['internal_comment'] ?? '—'))) ?></dd>
-        <?php if (!empty($subscription['last_error'])): ?>
-            <dt class="col-sm-3 text-danger"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_last_error')) ?></dt>
-            <dd class="col-sm-9 mb-0 text-danger"><?= htmlSC((string)$subscription['last_error']) ?></dd>
-        <?php endif; ?>
+    <dl class="row g-2 mb-0 small">
+        <div class="col-12 col-md-6 col-xl-3 text-break">
+            <dt class="text-body-secondary fw-normal mb-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_user')) ?></dt>
+            <dd class="mb-0 fw-semibold">
+                <?php if ((int)($subscription['user_id'] ?? 0) > 0): ?>
+                    #<?= (int)$subscription['user_id'] ?> ·
+                    <?= htmlSC((string)$subscription['user_name']) ?> ·
+                    <?= htmlSC((string)$subscription['user_login']) ?> ·
+                    <?= htmlSC((string)$subscription['user_email']) ?>
+                <?php else: ?>
+                    <?= htmlSC((string)$subscription['user_name']) ?> ·
+                    <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_manual_customer_label')) ?>
+                <?php endif; ?>
+            </dd>
+        </div>
+        <div class="col-12 col-md-6 col-xl-3 text-break">
+            <dt class="text-body-secondary fw-normal mb-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_plan')) ?></dt>
+            <dd class="mb-0 fw-semibold">#<?= (int)$subscription['plan_id'] ?> · <?= htmlSC((string)$subscription['plan_name']) ?></dd>
+        </div>
+        <div class="col-12 col-md-6 col-xl-3 text-break">
+            <dt class="text-body-secondary fw-normal mb-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_period')) ?></dt>
+            <dd class="mb-0 fw-semibold"><?= htmlSC((string)$subscription['starts_at']) ?> — <?= htmlSC((string)($subscription['expires_at'] ?: FireballPluginVpnManagerV2::t('vpn_manager_v2_lifetime_short'))) ?></dd>
+        </div>
+        <div class="col-12 col-md-6 col-xl-3 text-break">
+            <dt class="text-body-secondary fw-normal mb-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_limits')) ?></dt>
+            <dd class="mb-0 fw-semibold">
+                <?= htmlSC(TrafficFormatter::limit(isset($subscription['traffic_limit_bytes']) ? (int)$subscription['traffic_limit_bytes'] : null)) ?> ·
+                <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_device_limit')) ?>: <?= (int)$subscription['device_limit'] ?> ·
+                <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_ip_limit')) ?>: <?= (int)($subscription['ip_limit'] ?? 0) ?>
+            </dd>
+        </div>
     </dl>
+    <?php if ((string)$effectiveStatus['effective_status'] !== ProvisioningStatus::subscriptionStatus($subscription)
+        || !empty($effectiveStatus['inactive_reason'])): ?>
+        <div class="small mt-2">
+            <span class="text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_effective_status')) ?></span>
+            <?= ProvisioningStatus::badge((string)$effectiveStatus['effective_status']) ?>
+            <?php if (!empty($effectiveStatus['inactive_reason'])): ?>
+                <span class="text-body-secondary"><?= htmlSC(LocalizedValue::inactiveReason($effectiveStatus['inactive_reason'])) ?></span>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
+    <?php if (trim((string)($subscription['internal_comment'] ?? '')) !== ''): ?>
+        <div class="small text-break mt-2">
+            <strong><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_internal_comment')) ?></strong>
+            <?= nl2br(htmlSC((string)$subscription['internal_comment'])) ?>
+        </div>
+    <?php endif; ?>
+    <?php if (!empty($subscription['last_error'])): ?>
+        <div class="alert alert-danger py-2 px-3 small mt-2 mb-0">
+            <strong><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_last_error')) ?></strong>
+            <?= htmlSC((string)$subscription['last_error']) ?>
+        </div>
+    <?php endif; ?>
+    <details class="border-top small mt-2 pt-2">
+        <summary class="text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_technical')) ?></summary>
+        <dl class="d-flex flex-wrap column-gap-3 row-gap-1 mt-2 mb-0">
+            <div class="d-flex gap-2">
+                <dt><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_token_preview')) ?></dt>
+                <dd class="mb-0"><code><?= htmlSC((string)$subscription['token_preview']) ?></code></dd>
+            </div>
+            <div class="d-flex gap-2">
+                <dt><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_revision')) ?></dt>
+                <dd class="mb-0"><?= (int)$subscription['revision'] ?></dd>
+            </div>
+        </dl>
+    </details>
 </div>
-
 
 <?php require __DIR__ . '/partials/subscription-client-info.php'; ?>
 

@@ -25,7 +25,7 @@ final class NetworkTargetGuard
 
     public function validatedRequestAddresses(string $url, bool $allowPrivate): array
     {
-        $host = (string)(parse_url($url, PHP_URL_HOST) ?: '');
+        $host = trim((string)(parse_url($url, PHP_URL_HOST) ?: ''), '[]');
         try {
             $this->assertConfigurationHost($host, $allowPrivate);
         } catch (ValidationException $exception) {
@@ -44,6 +44,20 @@ final class NetworkTargetGuard
         }
 
         return $addresses;
+    }
+
+    public function curlResolveEntries(string $url, array $addresses): array
+    {
+        $host = trim((string)(parse_url($url, PHP_URL_HOST) ?: ''), '[]');
+        if ($host === '' || filter_var($host, FILTER_VALIDATE_IP) !== false) {
+            return [];
+        }
+        $scheme = strtolower((string)(parse_url($url, PHP_URL_SCHEME) ?: 'https'));
+        $port = (int)(parse_url($url, PHP_URL_PORT) ?: ($scheme === 'http' ? 80 : 443));
+        $pinned = array_map(static fn(string $address): string =>
+            str_contains($address, ':') ? '[' . $address . ']' : $address, $addresses);
+
+        return [$host . ':' . $port . ':' . implode(',', $pinned)];
     }
 
     private function addresses(string $host): array
@@ -72,7 +86,7 @@ final class NetworkTargetGuard
         return filter_var(
             $ip,
             FILTER_VALIDATE_IP,
-            FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
+            FILTER_FLAG_GLOBAL_RANGE
         ) !== false;
     }
 }

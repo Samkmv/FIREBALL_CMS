@@ -327,6 +327,58 @@
         }
     }
 
+    function setupLiveSubscriptionSearch(form) {
+        var input = form.elements.q;
+        var status = form.elements.status;
+        var results = document.querySelector('[data-vpn-v2-search-results]');
+        var count = form.querySelector('[data-vpn-v2-search-count]');
+        var clear = form.querySelector('[data-vpn-v2-search-clear]');
+        var timer;
+        var request;
+        if (!input || !status || !results || !count || !clear) return;
+
+        function refresh(delay) {
+            window.clearTimeout(timer);
+            if (request) request.abort();
+            timer = window.setTimeout(async function () {
+                var controller = new AbortController();
+                request = controller;
+                var url = new URL(form.action);
+                if (input.value.trim()) url.searchParams.set('q', input.value.trim());
+                if (status.value) url.searchParams.set('status', status.value);
+                results.setAttribute('aria-busy', 'true');
+                try {
+                    var response = await fetch(url, {credentials: 'same-origin', cache: 'no-store',
+                        headers: {'Accept': 'text/html', 'X-VPN-Subscription-Search': '1'}, signal: controller.signal});
+                    if (!response.ok || new URL(response.url).pathname !== url.pathname) throw new Error('search_failed');
+                    var page = new DOMParser().parseFromString(await response.text(), 'text/html');
+                    if (controller.signal.aborted) return;
+                    var next = page.querySelector('[data-vpn-v2-search-results]');
+                    var nextCount = page.querySelector('[data-vpn-v2-search-count]');
+                    if (!next || !nextCount) throw new Error('search_failed');
+                    results.replaceChildren.apply(results, Array.from(next.childNodes));
+                    count.textContent = nextCount.textContent.trim();
+                    clear.hidden = !url.search;
+                    window.history.replaceState(window.history.state, '', url);
+                } catch (error) {
+                    if (!controller.signal.aborted) count.textContent = form.dataset.searchFailed;
+                } finally {
+                    if (request === controller) results.removeAttribute('aria-busy');
+                }
+            }, delay);
+        }
+
+        input.addEventListener('input', function (event) {
+            if (!event.isComposing) refresh(250);
+        });
+        input.addEventListener('compositionend', function () { refresh(250); });
+        status.addEventListener('change', function () { refresh(0); });
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+            refresh(0);
+        });
+    }
+
     function setupAsyncOperations() {
         var busy = false;
         document.addEventListener('submit', async function (event) {
@@ -980,6 +1032,7 @@
         document.querySelectorAll('[data-vpn-v2-connection-order]').forEach(setupConnectionOrder);
         setupProfileCopy();
         setupAsyncOperations();
+        document.querySelectorAll('[data-vpn-v2-live-search]').forEach(setupLiveSubscriptionSearch);
         document.querySelectorAll('[data-vpn-recovery]').forEach(setupServerRecovery);
         document.querySelectorAll('[data-vpn-v2-server-metrics]').forEach(setupServerMetrics);
         document.querySelectorAll('[data-vpn-v2-client-inspect]').forEach(setupClientInspection);

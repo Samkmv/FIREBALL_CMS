@@ -101,13 +101,16 @@ $modernTransport = static function (
         ]]);
     }
     if (str_ends_with($path, '/panel/api/clients/get/shared-client')) {
-        return $json(['success' => true, 'obj' => ['inboundIds' => [11, 12]]]);
+        return $json(['success' => true, 'obj' => ['client' => ['email' => 'shared-client', 'uuid' => 'shared-id'], 'inboundIds' => [11, 12]]]);
+    }
+    if ($method === 'POST' && str_ends_with($path, '/panel/api/clients/onlines')) {
+        return $json(['success' => true, 'obj' => ['shared-client']]);
     }
     if (str_ends_with($path, '/panel/api/clients/shared-client/detach')) {
         return $json(['success' => true]);
     }
     if (str_ends_with($path, '/panel/api/clients/get/single-client')) {
-        return $json(['success' => true, 'obj' => ['inboundIds' => [11]]]);
+        return $json(['success' => true, 'obj' => ['client' => ['email' => 'single-client', 'uuid' => 'single-id'], 'inboundIds' => [11]]]);
     }
     if (str_ends_with($path, '/panel/api/clients/del/single-client')) {
         return $json(['success' => true]);
@@ -121,6 +124,17 @@ $modernTransport = static function (
 $modern = new ThreeXuiClient($config('token'), $modernTransport);
 $modern->deleteClient(11, 'shared-id', 'shared-client');
 $modern->deleteClient(11, 'single-id', 'single-client');
+foreach ([[11, 'reused-id'], [12, 'single-id']] as [$inboundId, $credential]) {
+    $rejected = false;
+    try {
+        $modern->deleteClient($inboundId, $credential, 'single-client');
+    } catch (\Fireball\VpnManagerV2\Exceptions\ThreeXuiResponseException) {
+        $rejected = true;
+    }
+    $assert($rejected, 'A global delete accepted a different credential or inbound.');
+}
+
+$assert($modern->onlineClientNames() === ['shared-client'], 'Modern panel online clients were not read.');
 $modern->resetClientTraffic(11, 'single-client');
 $serverMetrics = (new ServerMetricsService())->normalize($modern->serverStatus());
 $sharedDetach = array_values(array_filter(
@@ -186,6 +200,9 @@ $legacyTransport = static function (
             'settings' => ['clients' => [['id' => 'legacy-id', 'email' => 'legacy-client']]],
         ]]]);
     }
+    if ($method === 'POST' && str_ends_with($path, '/panel/api/inbounds/onlines')) {
+        return $json(['success' => true, 'obj' => ['legacy-client']]);
+    }
     if (str_contains($path, '/panel/api/clients/')) {
         return $json(['success' => false], 404);
     }
@@ -199,6 +216,7 @@ $legacyTransport = static function (
 $legacy = new ThreeXuiClient($config('token'), $legacyTransport);
 $legacy->deleteClient(21, 'legacy-id', 'legacy-client');
 $legacy->resetClientTraffic(21, 'legacy-client');
+$assert($legacy->onlineClientNames() === ['legacy-client'], 'Legacy online client fallback failed.');
 $assert(count(array_filter(
     $legacyCalls,
     static fn(array $call): bool => str_contains(

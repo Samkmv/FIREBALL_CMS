@@ -34,6 +34,7 @@ function db(): object {
 $pdo = db()->pdo;
 $pdo->exec('CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, login TEXT, email TEXT);
  CREATE TABLE vpn_v2_plans (id INTEGER PRIMARY KEY, name TEXT);
+ CREATE TABLE vpn_v2_external_sources (parent_subscription_id INTEGER, plan_id INTEGER, is_enabled INTEGER, deleted_at TEXT);
  CREATE TABLE vpn_v2_subscription_nodes (id INTEGER PRIMARY KEY, subscription_id INTEGER, status TEXT);
  CREATE TABLE vpn_v2_subscriptions (id INTEGER PRIMARY KEY, user_id INTEGER, plan_id INTEGER, status TEXT,
  starts_at TEXT, expires_at TEXT, traffic_limit_bytes INTEGER, device_limit INTEGER DEFAULT 3, ip_limit INTEGER DEFAULT 0,
@@ -80,6 +81,28 @@ require dirname(__DIR__) . '/views/admin/subscriptions.php';
 $accessRequestMarkup = ob_get_clean();
 $assert((bool)preg_match('~<form[^>]+action="/admin/plugins/vpn-manager-v2/subscriptions/access-requests/17/dismiss"[^>]*>.*?<i class="ci-close me-1" aria-hidden="true"></i>~s', $accessRequestMarkup), 'Closing a VPN access request uses the native ci-close icon');
 $assert(!str_contains($accessRequestMarkup, 'class="ci-x me-1"'), 'Access-request card does not retain the old icon');
+$searchWhere = new ReflectionMethod(\Fireball\VpnManagerV2\Repositories\SubscriptionRepository::class, 'adminListWhere');
+$searchRepository = new \Fireball\VpnManagerV2\Repositories\SubscriptionRepository();
+[$sql, $args] = $searchWhere->invoke($searchRepository, '78-76', '');
+$assert(str_contains($sql, 's.client_display_name REGEXP ?')
+    && preg_match('~' . end($args) . '~u', '78–76') === 1
+    && preg_match('~' . end($args) . '~u', '7876') === 1, 'Digit groups accept alternate separators');
+[, $args] = $searchWhere->invoke($searchRepository, '#78', '');
+$assert($args[0] === '78', 'Subscription ID accepts a leading #');
+[, $args] = $searchWhere->invoke($searchRepository, 'a_b%', '');
+$assert($args[0] === '%a!_b!%%', 'Search punctuation is literal');
+$pdo->sqliteCreateFunction('regexp', static fn(string $pattern, ?string $text): int =>
+    (int)preg_match('~' . $pattern . '~u', $text ?? ''), 2);
+$pdo->exec("UPDATE vpn_v2_subscriptions SET client_display_name = 'Клиент 78–76' WHERE id = 2");
+$assert($ids($repository->adminPage('78-76', 20, 0, 'active')) === [2], 'Formatted numbers compose with status filtering');
+$pdo->exec("INSERT INTO vpn_v2_external_sources VALUES (2, NULL, 1, NULL)");
+$onlineRows = $repository->adminPage('78-76', 20, 0, '', [2, 3]);
+$assert($ids($onlineRows) === [2] && (int)$onlineRows[0]['has_external_sources'] === 1,
+    'Online filter and search compose, including the external source indicator');
+$assert($repository->countAdminList('', '', []) === 0, 'No confirmed online IDs never returns all subscriptions');
+
+
+
 if (($argv[1] ?? '') !== 'render') { echo "PASS subscription status filters, counters, search, pagination, return state and access-request icon\n"; exit; }
 function view(): object {
     return new class {

@@ -16,6 +16,7 @@ use Fireball\VpnManagerV2\Services\SubscriptionEditingService;
 use Fireball\VpnManagerV2\Services\SubscriptionDeletionService;
 use Fireball\VpnManagerV2\Services\SubscriptionClientInfoService;
 use Fireball\VpnManagerV2\Services\SubscriptionNamingService;
+use Fireball\VpnManagerV2\Services\SubscriptionPresenceService;
 use Fireball\VpnManagerV2\Services\VpnSubscriptionUrlService;
 use Fireball\VpnManagerV2\Services\VpnSubscriptionRevisionService;
 use Fireball\VpnManagerV2\Services\VpnPlanSubscriptionReconciler;
@@ -33,25 +34,39 @@ final class SubscriptionController
         Permissions::authorize(Permissions::VIEW);
 
         // FIREBALL_VPN_SUBSCRIPTIONS_LIST_V1
-        $search = mb_substr(trim((string)request()->get('q', '')), 0, 120);
-        $status = SubscriptionListFilter::normalize(request()->get('status', ''));
+        $query = request()->get('q', '');
+        $search = is_string($query) ? mb_substr(trim($query), 0, 120) : '';
+        $liveSearch = request()->header('X-VPN-Subscription-Search', '') === '1';
+        $requestedStatus = request()->get('status', '');
+        $onlineOnly = $requestedStatus === 'online';
+        $status = SubscriptionListFilter::normalize($requestedStatus);
+        $presence = $onlineOnly ? (new SubscriptionPresenceService())->online() : null;
+        $onlineIds = $presence['ids'] ?? null;
         $repository = new SubscriptionRepository();
-        $total = $repository->countAdminList($search, $status);
+        $total = $repository->countAdminList($search, $status, $onlineIds);
+        if ($onlineOnly && (int)request()->get('page', 1) > max(1, (int)ceil($total / 20))) {
+            $this->redirect('/admin/plugins/vpn-manager-v2/subscriptions?' . http_build_query(
+                ['status' => 'online', 'q' => $search]
+            ));
+        }
         $pagination = new Pagination($total, 20);
 
         $requestRepository = new VpnAccessRequestRepository();
-        $requestRepository->reconcilePendingWithActiveSubscriptions($this->adminId());
+        if (!$liveSearch) {
+            $requestRepository->reconcilePendingWithActiveSubscriptions($this->adminId());
+        }
 
         return plugin_view(\FireballPluginVpnManagerV2::SLUG, 'admin/subscriptions', \FireballPluginVpnManagerV2::viewData('subscriptions', [
             'title' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_title'),
             'subtitle' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_subtitle'),
-            'subscriptions' => $repository->adminPage($search, 20, $pagination->getOffset(), $status),
+            'subscriptions' => $repository->adminPage($search, 20, $pagination->getOffset(), $status, $onlineIds),
             'subscriptionsTotal' => $total,
             'pagination' => $pagination,
             'searchQuery' => $search,
-            'statusFilter' => $status,
+            'statusFilter' => $onlineOnly ? 'online' : $status,
+            'unavailablePresencePanels' => $presence['unavailable'] ?? 0,
             'statusCounts' => $repository->adminStatusCounts(),
-            'accessRequests' => $requestRepository->pending(),
+            'accessRequests' => $liveSearch ? [] : $requestRepository->pending(),
             'returnQuery' => AdminTableState::capture(),
         ]));
     }

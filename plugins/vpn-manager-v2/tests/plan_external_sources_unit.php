@@ -130,8 +130,9 @@ namespace {
     };
     $uri = 'vless://00000000-0000-4000-8000-000000000017@vpn.example.test:443?encryption=none&security=tls&type=tcp#Shared';
     $personalUri = str_replace('000017', '000018', $uri);
-    $fetches = 0; $payload = base64_encode($uri); $failFetch = false;
-    $fetcher = static function () use (&$fetches, &$payload, &$failFetch): string {
+    $fetches = 0; $lastFetched = null; $payload = base64_encode($uri); $failFetch = false;
+    $fetcher = static function (string $url) use (&$fetches, &$payload, &$failFetch, &$lastFetched): string {
+        $lastFetched = $url;
         $fetches++; if (db()->inTransaction()) throw new \RuntimeException('Network inside transaction');
         if ($failFetch) throw new \Fireball\VpnManagerV2\Exceptions\ValidationException('fixture fetch failure'); return $payload;
     };
@@ -161,7 +162,9 @@ namespace {
     $check($personalService->urisForParent(14) === [$personalUri] && $personalService->urisForParent(15) === [], 'Disable affects every subscriber, not personal source');
     $planService->toggle(1, $shared, true);
     $sourceUrl = 'https://subscriptions.example.test/private-token';
-    $remote = $planService->attachSubscription(1, $sourceUrl, 'External subscription', 1);
+    $wrapped = 'https://translate.yandex.ru/translate?url=' . rawurlencode($sourceUrl) . '&lang=de-de';
+    $remote = $planService->attachSubscription(1, $wrapped, 'External subscription', 1);
+    $check($lastFetched === $sourceUrl, 'Translator links fetch the original subscription without using the translation proxy');
     $check($fetches === 1 && !str_contains(db()->sources[$remote]['source_preview'], 'private-token'), 'URL fetched through existing parser, token masked');
     $expectError(static fn() => $planService->reorder(1, [$remote, $personal]));
     $check($planService->reorder(1, [$remote, $shared]), 'Plan source order updated');

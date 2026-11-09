@@ -7,6 +7,7 @@ use Fireball\VpnManagerV2\Repositories\ExternalSourceRepository;
 use Fireball\VpnManagerV2\Repositories\PlanRepository;
 use Fireball\VpnManagerV2\Repositories\SubscriptionItemRepository;
 use Fireball\VpnManagerV2\Repositories\SubscriptionRepository;
+use Fireball\VpnManagerV2\Support\BoundedResponseBody;
 use Fireball\VpnManagerV2\Support\NetworkTargetGuard;
 use Fireball\VpnManagerV2\Support\SecretCipher;
 use Fireball\VpnManagerV2\Support\VpnReconciliationLock;
@@ -125,7 +126,7 @@ final class ExternalVpnSourceService
         try {
             $source = $this->sources()->source($item);
             $uris = (string)$item['source_type'] === 'subscription_url'
-                ? $this->extractUrisFromPayload($this->fetch($source))
+                ? $this->extractUrisFromPayload($this->fetch($this->subscriptionUrl($source)))
                 : [$source];
             foreach ($uris as $uri) {
                 $this->validateUri($uri);
@@ -267,6 +268,9 @@ final class ExternalVpnSourceService
 
     public function extractUrisFromPayload(string $payload): array
     {
+        if (str_starts_with($payload, "\xEF\xBB\xBF")) {
+            $payload = substr($payload, 3);
+        }
         $payload = trim($payload);
         if ($payload === '' || strlen($payload) > self::MAX_SOURCE_BYTES) {
             $this->invalidPayload();
@@ -387,9 +391,17 @@ final class ExternalVpnSourceService
     {
         $url = trim($url);
         $parts = parse_url($url);
+        if (is_array($parts) && strtolower((string)($parts['scheme'] ?? '')) === 'https'
+            && strtolower((string)($parts['host'] ?? '')) === 'translate.yandex.ru'
+            && ($parts['path'] ?? '') === '/translate' && strlen($url) <= 8192) {
+            parse_str((string)($parts['query'] ?? ''), $query);
+            $url = is_string($query['url'] ?? null) ? trim($query['url']) : '';
+            $parts = parse_url($url);
+        }
         if (strlen($url) > 2048 || !is_array($parts)
             || !in_array(strtolower((string)($parts['scheme'] ?? '')), ['http', 'https'], true)
-            || empty($parts['host']) || filter_var($url, FILTER_VALIDATE_URL) === false) {
+            || empty($parts['host'])
+            || filter_var($url, FILTER_VALIDATE_URL) === false) {
             throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_external_url'));
         }
 
@@ -409,11 +421,14 @@ final class ExternalVpnSourceService
         if (!function_exists('curl_init')) {
             throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_curl_required'));
         }
-        $addresses = (new NetworkTargetGuard())->validatedRequestAddresses($url, false);
+        $guard = new NetworkTargetGuard();
+        $addresses = $guard->validatedRequestAddresses($url, false);
+        $response = new BoundedResponseBody(self::MAX_SOURCE_BYTES);
         $handle = curl_init($url);
         curl_setopt_array($handle, [
-            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_WRITEFUNCTION => $response->append(...),
             CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_PROXY => '',
             CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_TIMEOUT => 30,
             CURLOPT_ENCODING => '',
@@ -425,20 +440,19 @@ final class ExternalVpnSourceService
         if (defined('CURLOPT_PROTOCOLS') && defined('CURLPROTO_HTTP') && defined('CURLPROTO_HTTPS')) {
             curl_setopt($handle, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
         }
-        $resolve = $this->curlResolveEntries($url, $addresses);
+        $resolve = $guard->curlResolveEntries($url, $addresses);
         if ($resolve !== []) {
             curl_setopt($handle, CURLOPT_RESOLVE, $resolve);
         }
-        $body = curl_exec($handle);
+        $success = curl_exec($handle);
         $status = (int)curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
         $error = curl_errno($handle);
         curl_close($handle);
-        if (!is_string($body) || $error !== 0 || $status < 200 || $status >= 300
-            || strlen($body) > self::MAX_SOURCE_BYTES) {
+        if ($success === false || $error !== 0 || $status < 200 || $status >= 300) {
             throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_external_fetch'));
         }
 
-        return $body;
+        return $response->body;
     }
 
     private function validateUri(string $uri): void
@@ -525,22 +539,6 @@ final class ExternalVpnSourceService
         }
 
         return $scheme . '://••••';
-    }
-
-    private function curlResolveEntries(string $url, array $addresses): array
-    {
-        $host = trim((string)(parse_url($url, PHP_URL_HOST) ?: ''), '[]');
-        if ($host === '' || filter_var($host, FILTER_VALIDATE_IP) !== false) {
-            return [];
-        }
-        $scheme = strtolower((string)(parse_url($url, PHP_URL_SCHEME) ?: 'https'));
-        $port = (int)(parse_url($url, PHP_URL_PORT) ?: ($scheme === 'http' ? 80 : 443));
-
-        return array_values(array_map(
-            static fn(string $address): string => $host . ':' . $port . ':'
-                . (str_contains($address, ':') ? '[' . $address . ']' : $address),
-            $addresses
-        ));
     }
 
     private function assertParent(int $parentId): void

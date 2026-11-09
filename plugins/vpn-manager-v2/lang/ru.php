@@ -1,6 +1,11 @@
 <?php
 
 return [
+    'vpn_manager_v2_subscription_technical' => 'Технические детали',
+    'vpn_manager_v2_presence_online' => 'Онлайн',
+    'vpn_manager_v2_presence_unavailable' => 'Не удалось проверить %d панелей 3x-UI. Показаны только подтверждённые подключения.',
+    'vpn_manager_v2_has_external_sources' => 'Есть внешние источники',
+    'vpn_manager_v2_live_search_failed' => 'Не удалось обновить результаты. Нажмите «Найти», чтобы повторить поиск.',
     'vpn_manager_v2_incy_routing_title' => 'Маршрутизация Incy',
     'vpn_manager_v2_incy_routing_enabled' => 'Включить маршрутизацию Incy',
     'vpn_manager_v2_incy_routing_field' => 'Ссылка Incy или JSON-профиль',

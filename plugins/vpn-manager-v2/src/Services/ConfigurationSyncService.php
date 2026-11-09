@@ -44,7 +44,11 @@ final class ConfigurationSyncService
             $client = $this->client($server);
             $remoteInbounds = $client->listInbounds();
             $parsed = [];
+            $receivedInboundIds = [];
+            $mapper = new ThreeXuiResponseMapper();
             foreach ($remoteInbounds as $remoteInbound) {
+                $mapper->clients($remoteInbound);
+                $receivedInboundIds[(int)($remoteInbound['id'] ?? 0)] = true;
                 $parsed[] = ($this->parser ?? new InboundParser())->parse($remoteInbound);
             }
             ($this->inbounds ?? new InboundRepository())->syncServer($serverId, $parsed);
@@ -87,7 +91,9 @@ final class ConfigurationSyncService
                 }
                 if (!is_array($match['remote'])) {
                     $counts['missing']++;
-                    if (!empty($server['maintenance_mode']) || (string)($node['sync_status'] ?? '') === 'replacement_pending') {
+                    if (!isset($receivedInboundIds[(int)$node['remote_inbound_id']])
+                        || !empty($server['maintenance_mode'])
+                        || (string)($node['sync_status'] ?? '') === 'replacement_pending') {
                         // The recovery workflow remaps targets before recreating clients.
                         continue;
                     }

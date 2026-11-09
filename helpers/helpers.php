@@ -9,6 +9,10 @@ function log_error_details(string $title, array $context = [], ?\Throwable $exce
     $requestUri = (string)($_SERVER['REQUEST_URI'] ?? '-');
     $authRequest = preg_match('~/(?:login|register|forgot-password|reset-password|verify-email|two-factor[^/?]*)(?:[/?]|$)~', $requestUri) === 1;
     $safeUri = preg_replace('/([?&](?:token|password|password_confirmation|needCSRFToken)=)[^&#]*/i', '$1[redacted]', $requestUri);
+    $vpnSubscriptionRequest = preg_match('~/vpn-v2/subscription/[^/?#]+~i', $requestUri) === 1;
+    if ($vpnSubscriptionRequest && $safeUri !== null) {
+        $safeUri = preg_replace('~(/vpn-v2/subscription/)[^/?#]+~i', '$1[redacted]', $safeUri);
+    }
     $lines = [
         '[' . date('Y-m-d H:i:s') . '] ' . $title,
         'Request URI: ' . ($safeUri ?? '[redacted]'),
@@ -18,7 +22,12 @@ function log_error_details(string $title, array $context = [], ?\Throwable $exce
 
     if ($exception) {
         $lines[] = 'Exception: ' . get_class($exception);
-        $lines[] = 'Message: ' . ($authRequest ? 'Authentication request failed; code ' . $exception->getCode() : $exception->getMessage());
+        $message = match (true) {
+            $authRequest => 'Authentication request failed; code ' . $exception->getCode(),
+            $vpnSubscriptionRequest => 'VPN subscription request failed; code ' . $exception->getCode(),
+            default => $exception->getMessage(),
+        };
+        $lines[] = 'Message: ' . $message;
         $lines[] = 'File: ' . $exception->getFile();
         $lines[] = 'Line: ' . $exception->getLine();
         $lines[] = 'Trace: ' . implode(PHP_EOL, array_map(static fn(array $frame): string =>

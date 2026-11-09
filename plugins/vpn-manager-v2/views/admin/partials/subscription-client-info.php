@@ -11,7 +11,7 @@ $summaryCards = [
         'help' => $clientT('vpn_manager_v2_profile_traffic_limit') . ': ' . $clientLimit($usage['limit'])],
     ['field' => 'remaining', 'icon' => 'ci-hard-drive', 'label' => 'vpn_manager_v2_profile_traffic_remaining',
         'value' => $usage['remaining'] === null ? $clientT('vpn_manager_v2_unlimited') : ($usage['remaining_known'] ? $clientBytes($usage['remaining']) : '—'),
-        'help' => $clientT('vpn_manager_v2_client_traffic_total_help')],
+        'help' => $usage['remaining'] === null ? '' : $clientT('vpn_manager_v2_client_traffic_total_help')],
     ['field' => 'term', 'icon' => 'ci-calendar', 'label' => 'vpn_manager_v2_client_term_remaining',
         'value' => $usage['lifetime'] ? $clientT('vpn_manager_v2_lifetime_short') : ($usage['days_remaining'] === null ? '—' : $usage['days_remaining'] . ' ' . $clientT('vpn_manager_v2_days')),
         'help' => (string)($subscription['expires_at'] ?? '')],
@@ -19,21 +19,21 @@ $summaryCards = [
         'value' => $usage['active_connections'] . ' / ' . $usage['connections'], 'help' => $clientT('vpn_manager_v2_client_connections_help')],
 ];
 ?>
-<section class="border rounded-5 p-3 p-md-4 mb-4" data-vpn-v2-client-information
+<section class="border rounded-4 p-3 mb-3" data-vpn-v2-client-information
          data-subscription-id="<?= $subscriptionId ?>" data-traffic-limit="<?= $usage['limit'] ?>"
          data-unlimited-label="<?= htmlSC($clientT('vpn_manager_v2_unlimited')) ?>"
          data-not-checked-label="<?= htmlSC($clientT('vpn_manager_v2_client_not_checked')) ?>"
          data-partial-traffic-label="<?= htmlSC($clientT('vpn_manager_v2_client_partial_traffic')) ?>"
          data-failed-traffic-label="<?= htmlSC($clientT('vpn_manager_v2_client_traffic_failed')) ?>">
     <h2 class="h5 mb-1"><?= htmlSC($clientT('vpn_manager_v2_client_information')) ?></h2>
-    <p class="small text-body-secondary mb-4"><?= htmlSC($clientT('vpn_manager_v2_client_information_help')) ?></p>
-    <div class="row g-3 mb-3">
+    <p class="small text-body-secondary mb-2"><?= htmlSC($clientT('vpn_manager_v2_client_information_help')) ?></p>
+    <div class="row g-2 mb-2">
         <?php foreach ($summaryCards as $card): ?>
-            <div class="col-12 col-sm-6 col-xl-3">
-                <div class="border bg-body-tertiary rounded-4 p-3 h-100">
-                    <div class="small text-body-secondary d-flex align-items-center gap-2 mb-2"><i class="<?= htmlSC($card['icon']) ?>" aria-hidden="true"></i><?= htmlSC($clientT($card['label'])) ?></div>
+            <div class="col-6 col-lg-3">
+                <div class="border bg-body-tertiary rounded-3 p-2 h-100">
+                    <div class="small text-body-secondary d-flex align-items-center gap-1 mb-1"><i class="<?= htmlSC($card['icon']) ?>" aria-hidden="true"></i><?= htmlSC($clientT($card['label'])) ?></div>
                     <div class="h5 mb-1 text-break" data-vpn-v2-usage-value="<?= $card['field'] ?>"><?= htmlSC($card['value']) ?></div>
-                    <div class="small text-body-secondary text-break"><?= htmlSC($card['help']) ?></div>
+                    <?php if ($card['help'] !== ''): ?><div class="small text-body-secondary text-break"><?= htmlSC($card['help']) ?></div><?php endif; ?>
                 </div>
             </div>
         <?php endforeach; ?>

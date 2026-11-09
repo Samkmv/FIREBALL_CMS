@@ -1,6 +1,11 @@
 <?php
 
 return [
+    'vpn_manager_v2_subscription_technical' => 'Technical details',
+    'vpn_manager_v2_presence_online' => 'Online',
+    'vpn_manager_v2_presence_unavailable' => 'Could not check %d 3x-UI panels. Showing confirmed connections only.',
+    'vpn_manager_v2_has_external_sources' => 'Has external sources',
+    'vpn_manager_v2_live_search_failed' => 'Could not refresh results. Press Search to retry.',
     'vpn_manager_v2_incy_routing_title' => 'Incy routing',
     'vpn_manager_v2_incy_routing_enabled' => 'Enable Incy routing',
     'vpn_manager_v2_incy_routing_field' => 'Incy link or JSON profile',
