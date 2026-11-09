@@ -1,0 +1,26 @@
+<?php
+
+return [
+    'vpn_workspace_details' => 'Error details',
+    'vpn_workspace_title' => 'VPN Workspace',
+    'vpn_workspace_intro' => 'Review VPN status here. Changes open in the existing VPN plugin.',
+    'vpn_workspace_servers' => 'Servers',
+    'vpn_workspace_plans' => 'Plans',
+    'vpn_workspace_subscriptions' => 'Subscriptions',
+    'vpn_workspace_errors' => 'Error log',
+    'vpn_workspace_dependency' => 'Activate the existing VPN Management plugin (vpn-manager-v2) to view its data.',
+    'vpn_workspace_load_error' => 'Could not load data. Check that the existing VPN plugin is installed and up to date.',
+    'vpn_workspace_empty' => 'No records to show.',
+    'vpn_workspace_status' => 'Status',
+    'vpn_workspace_last_check' => '3x-UI check',
+    'vpn_workspace_targets' => 'Inbounds',
+    'vpn_workspace_mismatches' => 'Subscriptions with discrepancies',
+    'vpn_workspace_expiration' => 'Expires',
+    'vpn_workspace_search' => 'Search by customer or plan',
+    'vpn_workspace_find' => 'Search',
+    'vpn_workspace_open' => 'Open',
+    'vpn_workspace_full_log' => 'Full synchronization log',
+    'vpn_workspace_error_help' => 'Up to 50 recent errors and conflicts from 3x-UI synchronization.',
+    'vpn_workspace_previous' => 'Previous',
+    'vpn_workspace_next' => 'Next',
+];
