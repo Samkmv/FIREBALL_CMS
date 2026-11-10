@@ -10,6 +10,7 @@ use App\Models\SiteSetting;
 use App\Models\Support;
 use App\Services\NotificationService;
 use App\Services\FireCaptchaService;
+use FBL\Language;
 use FBL\Theme;
 use FBL\RateLimiter;
 
@@ -52,6 +53,8 @@ class HomeController extends BaseController
     {
         header('Cache-Control: private, no-store');
         header('X-Robots-Tag: noindex, nofollow');
+
+        Language::load([self::class, 'index']);
 
         return $this->renderHomepage(['seasonal_preview' => true, 'seo_canonical' => base_href('/')]);
     }
