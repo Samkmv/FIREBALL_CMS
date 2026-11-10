@@ -1,7 +1,7 @@
 {
   "name": "Управление VPN",
   "slug": "vpn-manager-v2",
-  "version": "3.2.1",
+  "version": "3.2.2",
   "type": "system",
   "description": "Управление VPN-серверами, тарифами, подписками и подключениями с двусторонней синхронизацией с панелью 3x-ui и поддержкой Happ.",
   "description_i18n": {
@@ -19,6 +19,7 @@
   },
   "auto_migrate": true,
   "release_notes": [
+    "The Xray link serves Auto Select only. Manual servers and external connections remain in the standard subscription.",
     "The Xray subscription now lists compatible manual servers alongside Auto Select.",
     "Added an opt-in HTTPS subscription for Xray server selection in Happ.",
     "Subscriptions work on ready servers while remaining connections await synchronization. Remote cleanup continues separately after a subscription is disabled.",
@@ -46,6 +47,7 @@
   ],
   "release_notes_i18n": {
     "en": [
+      "The Xray link serves Auto Select only. Manual servers and external connections remain in the standard subscription.",
       "The Xray subscription now lists compatible manual servers alongside Auto Select.",
       "Added an opt-in HTTPS subscription for Xray server selection in Happ.",
       "Subscriptions work on ready servers while remaining connections await synchronization. Remote cleanup continues separately after a subscription is disabled.",
@@ -72,6 +74,7 @@
       "Added quick server replacement and Happ notices for expiry and maintenance."
     ],
     "ru": [
+      "Ссылка Xray снова выдаёт только автовыбор. Ручные серверы и внешние подключения остаются в обычной подписке.",
       "В подписке Xray появились отдельные профили совместимых серверов для ручного выбора рядом с автовыбором.",
       "Добавлена отдельная HTTPS-подписка для тестирования автовыбора серверов Xray в Happ.",
       "Подписка доступна на готовых серверах, пока остальные ожидают синхронизации. Очистка в 3x-UI продолжается отдельно после отключения подписки.",
@@ -98,6 +101,7 @@
       "Добавлены быстрая замена сервера и уведомления об истечении подписки и техработах в Happ."
     ],
     "de": [
+      "Der Xray-Link liefert nur die automatische Auswahl. Manuelle Server und externe Verbindungen bleiben im normalen Abonnement.",
       "Das Xray-Abonnement zeigt kompatible Server zur manuellen Auswahl neben der automatischen Auswahl.",
       "Ein separates HTTPS-Abonnement zur optionalen Xray-Serverauswahl in Happ wurde hinzugefügt.",
       "Abonnements sind auf einsatzbereiten Servern verfügbar. Die Remote-Bereinigung läuft nach der Deaktivierung separat weiter.",
@@ -124,6 +128,7 @@
       "Schneller Serverwechsel und Happ-Hinweise zu Ablauf und Wartung hinzugefügt."
     ],
     "zh-cn": [
+      "Xray 链接仅提供自动选择。手动服务器和外部连接仍通过普通订阅提供。",
       "Xray 订阅现在会在自动选择旁列出兼容的手动服务器。",
       "新增独立 HTTPS 订阅，可在 Happ 中试用 Xray 自动选服。",
       "订阅可在就绪服务器上使用，其余连接等待同步。停用订阅后，远程清理将单独继续。",

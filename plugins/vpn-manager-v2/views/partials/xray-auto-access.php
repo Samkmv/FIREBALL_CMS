@@ -19,11 +19,12 @@ $xrayText = static fn(string $key): string => htmlSC(FireballPluginVpnManagerV2:
             )) ?>
         </p>
     <?php endif; ?>
-    <button class="btn btn-outline-secondary rounded-pill" type="button"
+    <button class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" type="button"
             data-vpn-v2-copy-value="<?= htmlSC($xrayLink) ?>"
             data-vpn-v2-copy-done="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_link_copied')) ?>"
             data-vpn-v2-copy-failed="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_link_copy_failed')) ?>">
-        <i class="ci-copy" aria-hidden="true"></i> <span data-vpn-v2-copy-label><?= $xrayText('copy') ?></span>
+        <i class="ci-copy flex-shrink-0" aria-hidden="true"></i>
+        <span data-vpn-v2-copy-label><?= $xrayText('copy') ?></span>
     </button>
     <div class="small text-body-secondary mt-2" data-vpn-v2-copy-status aria-live="polite"></div>
     <div class="d-none mt-2" data-vpn-v2-manual-copy>

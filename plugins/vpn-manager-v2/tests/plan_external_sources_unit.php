@@ -294,11 +294,16 @@ namespace {
     cache()->set('vpn-v2:settings:v1', ['xray_auto' => ['enabled' => true]], 300);
     $xray = $endpoint->respond($token, 'xray');
     $check($xray->configCount === 1 && str_contains($xray->body, $publicKey), 'Xray uses the inherited external snapshot.');
+    $ordinary = base64_decode($endpoint->respond($token)->body);
+    $check(str_contains($ordinary, $uri) && str_contains($ordinary, $realityUri),
+        'The normal subscription preserves compatible and incompatible external links in native URI format.');
     $payload = str_replace('vpn.example.test', 'changed.example.test', $realityUri);
     $planService->sync(1, $xraySource);
     $check(str_contains($endpoint->respond($token, 'xray')->body, 'changed.example.test'), 'Xray uses the latest external snapshot.');
     cache()->set('vpn-v2:settings:v1', ['xray_auto' => ['enabled' => true, 'include_external' => false]], 300);
     $check($endpoint->respond($token, 'xray')->configCount === 0, 'Xray respects the external source switch.');
+    $check(str_contains($endpoint->respond($token, 'plain')->body, 'changed.example.test'),
+        'Disabling external connections in Xray must leave the latest external source available on the ordinary link.');
     foreach (db()->events as $event) {
         $check(!str_contains((string)$event[6], 'private-token') && !str_contains((string)$event[6], 'vless://'), 'Audit event contains no credentials');
         if (str_starts_with($event[0], 'plan.')) $check($event[1] === null && json_decode($event[6], true)['plan_id'] === 1, 'Plan audit event must not point to same-number subscription');

@@ -10,7 +10,6 @@ final class XrayAutoConfigService
     private const BLOCK = 'vpn-block';
     private const BALANCER = 'vpn-auto';
     private const DNS = 'vpn-dns';
-    private const DNS_OUTBOUND = 'vpn-dns-out';
 
     public function subscriptionUris(array $subscription, array $nodes, array $settings, VpnSubscriptionBuilder $builder, bool $allowExternal): array
     {
@@ -22,16 +21,15 @@ final class XrayAutoConfigService
     /** @param list<string> $uris Already authorized and filtered subscription entries. */
     public function build(array $uris, array $settings, string $name): array
     {
-        $peers = [];
-        $names = [];
+        $outbounds = [['tag' => self::BLOCK, 'protocol' => 'blackhole']];
+        $count = 0;
         foreach ($uris as $uri) {
-            $outbound = $this->outbound($uri, self::NODE_PREFIX . (count($peers) + 1));
+            $outbound = $this->outbound($uri, self::NODE_PREFIX . ($count + 1));
             if ($outbound !== null) {
-                $peers[] = $outbound;
-                $names[] = $this->peerName($uri, $outbound);
+                $outbounds[] = $outbound;
+                $count++;
             }
         }
-        $count = count($peers);
         $profile = [
             'remarks' => $name,
             'log' => ['access' => 'none', 'loglevel' => 'warning'],
@@ -42,30 +40,22 @@ final class XrayAutoConfigService
                 'protocol' => 'socks',
                 'settings' => ['auth' => 'noauth', 'udp' => true],
             ]],
-            'outbounds' => [['tag' => self::BLOCK, 'protocol' => 'blackhole']],
+            'outbounds' => $outbounds,
             'routing' => ['domainStrategy' => 'AsIs', 'rules' => []],
         ];
         if ($count === 0) {
-            return ['profile' => $profile, 'manual' => [], 'count' => 0, 'skipped' => count($uris)];
+            return ['profile' => $profile, 'count' => 0, 'skipped' => count($uris)];
         }
 
         $selector = [self::NODE_PREFIX];
         $leastLoad = $settings['strategy'] === 'leastLoad';
         $profile['dns'] = ['tag' => self::DNS, 'servers' => ['https://1.1.1.1/dns-query']];
-        $block = $profile['outbounds'][0];
-        $dns = ['tag' => self::DNS_OUTBOUND, 'protocol' => 'dns'];
-        $manual = [];
-        $nameCounts = array_count_values($names);
-        foreach ($peers as $index => $peer) {
-            $entry = $profile;
-            $entry['remarks'] = $nameCounts[$names[$index]] > 1 || $names[$index] === $name
-                ? $names[$index] . ' · #' . ($index + 1) : $names[$index];
-            $entry['outbounds'] = [$block, $peer, $dns];
-            $entry['routing']['rules'] = $this->routingRules(['outboundTag' => $peer['tag']]);
-            $manual[] = $entry;
-        }
-        $profile['outbounds'] = [$block, ...$peers, $dns];
-        $profile['routing']['rules'] = $this->routingRules(['balancerTag' => self::BALANCER]);
+        $profile['outbounds'][] = ['tag' => 'vpn-dns-out', 'protocol' => 'dns'];
+        $profile['routing']['rules'] = [
+            ['type' => 'field', 'inboundTag' => [self::DNS], 'balancerTag' => self::BALANCER],
+            ['type' => 'field', 'inboundTag' => ['vpn-socks'], 'network' => 'tcp,udp', 'port' => '53', 'outboundTag' => 'vpn-dns-out'],
+            ['type' => 'field', 'inboundTag' => ['vpn-socks'], 'network' => 'tcp,udp', 'balancerTag' => self::BALANCER],
+        ];
         $profile['routing']['balancers'] = [[
             'tag' => self::BALANCER,
             'selector' => $selector,
@@ -94,26 +84,7 @@ final class XrayAutoConfigService
                 'enableConcurrency' => true,
             ];
         }
-        return ['profile' => $profile, 'manual' => $manual, 'count' => $count, 'skipped' => count($uris) - $count];
-    }
-
-    private function routingRules(array $target): array
-    {
-        return [
-            ['type' => 'field', 'inboundTag' => [self::DNS]] + $target,
-            ['type' => 'field', 'inboundTag' => ['vpn-socks'], 'network' => 'tcp,udp', 'port' => '53', 'outboundTag' => self::DNS_OUTBOUND],
-            ['type' => 'field', 'inboundTag' => ['vpn-socks'], 'network' => 'tcp,udp'] + $target,
-        ];
-    }
-
-    private function peerName(string $uri, array $outbound): string
-    {
-        $fragment = (string)parse_url($uri, PHP_URL_FRAGMENT);
-        $label = rawurldecode(explode('?serverDescription=', $fragment, 2)[0]);
-        $label = trim(preg_replace('/[[:cntrl:]]/u', '', $label) ?? '');
-        $peer = $outbound['settings']['vnext'][0];
-
-        return $label !== '' ? mb_substr($label, 0, 120) : $peer['address'] . ':' . $peer['port'];
+        return ['profile' => $profile, 'count' => $count, 'skipped' => count($uris) - $count];
     }
 
     private function outbound(string $uri, string $tag): ?array

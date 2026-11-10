@@ -20,7 +20,7 @@ return [
     'vpn_manager_v2_xray_servers_help' => 'An empty selection allows every compatible subscription server. External sources have a separate switch.',
     'vpn_manager_v2_xray_invalid' => 'Invalid Xray auto-selection settings.',
     'vpn_manager_v2_xray_no_nodes' => 'No compatible VLESS + REALITY (TCP) connections in this subscription.',
-    'vpn_manager_v2_xray_access_help' => 'Add this link to Happ. Auto Select and compatible manual servers appear in the same list.',
+    'vpn_manager_v2_xray_access_help' => 'This link adds Auto Select only. Use the standard subscription link for manual servers and external connections.',
     'vpn_manager_v2_xray_copy' => 'Copy Xray link',
     'vpn_manager_v2_xray_diagnostic' => 'Local diagnostics before device checks. Compatible connections %d, skipped %d.',
     'vpn_manager_v2_xray_diagnostic_error' => 'Could not inspect local connections.',
