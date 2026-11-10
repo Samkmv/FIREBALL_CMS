@@ -23,6 +23,7 @@ final class ExternalVpnSourceService
         private readonly ?VpnSubscriptionRevisionService $revisions = null,
         private readonly bool $forPlan = false,
         private readonly ?\Closure $fetcher = null,
+        private readonly int $fetchTimeout = 30,
     ) {
     }
 
@@ -109,19 +110,23 @@ final class ExternalVpnSourceService
         return $count;
     }
 
-    public function sync(int $parentId, int $id, ?int $adminId = null): int
+    public function sync(int $parentId, int $id, ?int $adminId = null, bool $onlyDue = false): int
     {
         return (new VpnReconciliationLock())->externalSource(
             $id,
-            fn(): int => $this->refreshSnapshot($parentId, $id, $adminId)
+            fn(): int => $this->refreshSnapshot($parentId, $id, $adminId, $onlyDue)
         );
     }
 
-    private function refreshSnapshot(int $parentId, int $id, ?int $adminId): int
+    private function refreshSnapshot(int $parentId, int $id, ?int $adminId, bool $onlyDue): int
     {
         $item = $this->sources()->find($parentId, $id);
         if (!$item) {
             throw new \InvalidArgumentException('external_source_missing');
+        }
+        if ($onlyDue && (empty($item['is_enabled'])
+            || strtotime((string)$item['updated_at']) > time() - ExternalSourceRepository::REFRESH_INTERVAL_SECONDS)) {
+            return 0;
         }
         try {
             $source = $this->sources()->source($item);
@@ -243,21 +248,26 @@ final class ExternalVpnSourceService
         return $result;
     }
 
-    public function syncAll(int $limit = 20): array
+    public function syncAll(int $limit = 20, ?array $subscriptionIds = null): array
     {
         $result = ['processed' => 0, 'synced' => 0, 'failed' => 0, 'configs' => 0];
-        foreach ($this->sources()->syncCandidates($limit) as $item) {
+        foreach ($this->sources()->syncCandidates($limit, $subscriptionIds) as $item) {
             $result['processed']++;
             try {
                 $planId = (int)($item['plan_id'] ?? 0);
                 $forPlan = $planId > 0;
                 $service = $forPlan === $this->forPlan ? $this
-                    : new self(revisions: $this->revisions, forPlan: $forPlan, fetcher: $this->fetcher);
-                $result['configs'] += $service->sync(
+                    : new self(revisions: $this->revisions, forPlan: $forPlan, fetcher: $this->fetcher,
+                        fetchTimeout: $this->fetchTimeout);
+                $count = $service->sync(
                     $planId > 0 ? $planId : (int)$item['parent_subscription_id'],
-                    (int)$item['id']
+                    (int)$item['id'],
+                    onlyDue: true
                 );
-                $result['synced']++;
+                if ($count > 0) {
+                    $result['configs'] += $count;
+                    $result['synced']++;
+                }
             } catch (\Throwable) {
                 $result['failed']++;
             }
@@ -429,8 +439,8 @@ final class ExternalVpnSourceService
             CURLOPT_WRITEFUNCTION => $response->append(...),
             CURLOPT_FOLLOWLOCATION => false,
             CURLOPT_PROXY => '',
-            CURLOPT_CONNECTTIMEOUT => 10,
-            CURLOPT_TIMEOUT => 30,
+            CURLOPT_CONNECTTIMEOUT => min(10, $this->fetchTimeout),
+            CURLOPT_TIMEOUT => $this->fetchTimeout,
             CURLOPT_ENCODING => '',
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,

@@ -6,6 +6,8 @@ use Fireball\VpnManagerV2\Support\SecretCipher;
 
 final class ExternalSourceRepository
 {
+    public const REFRESH_INTERVAL_SECONDS = 300;
+
     public function __construct(private readonly bool $forPlan = false) {}
 
     /** Scope is internal, never an SQL identifier supplied by a request. */
@@ -241,16 +243,28 @@ final class ExternalSourceRepository
         )->getColumn();
     }
 
-    public function syncCandidates(int $limit = 20): array
+    public function syncCandidates(int $limit = 20, ?array $subscriptionIds = null): array
     {
-        $cutoff = date('Y-m-d H:i:s', time() - 300);
+        $parameters = [date('Y-m-d H:i:s', time() - self::REFRESH_INTERVAL_SECONDS)];
+        $scope = '';
+        if ($subscriptionIds !== null) {
+            $subscriptionIds = array_values(array_unique(array_filter(array_map('intval', $subscriptionIds))));
+            if ($subscriptionIds === []) {
+                return [];
+            }
+            $ids = implode(',', array_fill(0, count($subscriptionIds), '?'));
+            $scope = " AND (parent_subscription_id IN ({$ids}) OR plan_id IN (
+                SELECT plan_id FROM vpn_v2_subscriptions WHERE id IN ({$ids})
+            ))";
+            array_push($parameters, ...$subscriptionIds, ...$subscriptionIds);
+        }
 
         return db()->query(
             "SELECT * FROM vpn_v2_external_sources
              WHERE source_type = 'subscription_url' AND is_enabled = 1 AND deleted_at IS NULL
-               AND updated_at <= ?
+               AND updated_at <= ?{$scope}
              ORDER BY updated_at ASC, id ASC LIMIT " . max(1, min(200, $limit)),
-            [$cutoff]
+            $parameters
         )->get() ?: [];
     }
 

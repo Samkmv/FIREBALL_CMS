@@ -60,8 +60,11 @@ namespace {
                 if (str_contains($sql, 'LIMIT 1')) $this->result = false;
             } elseif (str_contains($sql, 'FROM vpn_v2_subscription_nodes')) { $this->result = []; }
             elseif (str_contains($sql, 'FROM plugin_settings')) { $this->result = []; }
-            elseif (str_contains($sql, 'FROM vpn_v2_subscriptions')) {
-                if (str_contains($sql, 'WHERE plan_id = ?')) {
+            elseif (str_contains($sql, 'FROM vpn_v2_subscriptions') && !str_contains($sql, 'FROM vpn_v2_external_sources')) {
+                if (str_contains($sql, 'WHERE subscription_token_hash = ?')) {
+                    $this->result = array_values(array_filter($this->subscriptions,
+                        static fn(array $row): bool => hash('sha256', $row['subscription_token']) === $params[0]));
+                } elseif (str_contains($sql, 'WHERE plan_id = ?')) {
                     $this->result = array_values(array_filter($this->subscriptions, static fn($row) => $row['plan_id'] === (int)$params[0] && !in_array($row['status'], ['deleted', 'deleting'], true)));
                 } else {
                     $row = $this->subscriptions[(int)$params[0]] ?? false;
@@ -90,6 +93,15 @@ namespace {
                 if (str_contains($sql, 'relation_key = ?')) $rows = array_values(array_filter($rows, static fn($row) => $row['relation_key'] === $params[1]));
                 if (str_contains($sql, 'is_enabled = 1')) $rows = array_values(array_filter($rows, static fn($row) => $row['is_enabled'] === 1));
                 if (str_contains($sql, "source_type = 'subscription_url'")) $rows = array_values(array_filter($rows, static fn($row) => $row['source_type'] === 'subscription_url'));
+                if (str_contains($sql, 'updated_at <= ?')) {
+                    $rows = array_values(array_filter($rows, static fn(array $row): bool => $row['updated_at'] <= $params[0]));
+                    if (str_contains($sql, 'parent_subscription_id IN (')) {
+                        $ids = array_slice($params, 1, intdiv(count($params) - 1, 2));
+                        $plans = array_column(array_intersect_key($this->subscriptions, array_fill_keys($ids, true)), 'plan_id');
+                        $rows = array_values(array_filter($rows, static fn(array $row): bool =>
+                            in_array($row['parent_subscription_id'], $ids, true) || in_array($row['plan_id'], $plans, true)));
+                    }
+                }
                 if (str_contains($sql, 'encrypted_snapshot IS NOT NULL')) $rows = array_values(array_filter($rows, static fn($row) => !empty($row['encrypted_snapshot'])));
                 usort($rows, static fn($left, $right) => [$left['sort_order'], $left['id']] <=> [$right['sort_order'], $right['id']]);
                 if (str_contains($sql, 'MAX(sort_order)')) $this->result = $rows ? max(array_column($rows, 'sort_order')) + 10 : 10;
@@ -100,9 +112,9 @@ namespace {
                 else $this->result = array_map(static fn($row) => array_diff_key($row, array_flip(['encrypted_source', 'encrypted_snapshot'])), $rows);
             } elseif (str_starts_with($sql, 'UPDATE vpn_v2_external_sources')) {
                 if (str_contains($sql, 'SET encrypted_snapshot')) {
-                    $id = (int)$params[5]; if (isset($this->sources[$id])) $this->sources[$id] = array_replace($this->sources[$id], ['encrypted_snapshot' => $params[0], 'snapshot_hash' => $params[1], 'config_count' => $params[2], 'sync_status' => 'synced', 'last_sync_at' => $params[3], 'last_error' => null]);
+                    $id = (int)$params[5]; if (isset($this->sources[$id])) $this->sources[$id] = array_replace($this->sources[$id], ['encrypted_snapshot' => $params[0], 'snapshot_hash' => $params[1], 'config_count' => $params[2], 'sync_status' => 'synced', 'last_sync_at' => $params[3], 'last_error' => null, 'updated_at' => $params[4]]);
                 } elseif (str_contains($sql, "SET sync_status = 'sync_error'")) {
-                    $id = (int)$params[2]; if (isset($this->sources[$id])) $this->sources[$id] = array_replace($this->sources[$id], ['sync_status' => 'sync_error', 'last_error' => $params[0]]);
+                    $id = (int)$params[2]; if (isset($this->sources[$id])) $this->sources[$id] = array_replace($this->sources[$id], ['sync_status' => 'sync_error', 'last_error' => $params[0], 'updated_at' => $params[1]]);
                 } else {
                     $owner = str_contains($sql, 'AND plan_id = ?') ? 'plan_id' : 'parent_subscription_id';
                     if (str_contains($sql, 'SET sort_order')) { $id = (int)$params[2]; $ownerId = (int)$params[3]; $changes = ['sort_order' => $params[0]]; }
@@ -205,6 +217,29 @@ namespace {
     $check($readded !== $shared, 'Detached source can be safely re-added');
     $personalRemote = $personalService->attachSubscription(14, $sourceUrl, 'Personal URL', 1);
     $check($personalRemote !== $remote, 'Same URL allowed in separate scopes');
+    $old = date('Y-m-d H:i:s', time() - 3600);
+    $token = str_repeat('a', 64);
+    db()->subscriptions[15]['subscription_token'] = $token;
+    db()->sources[$remote]['updated_at'] = $old;
+    db()->sources[$personalRemote]['updated_at'] = $old;
+    $payload = str_replace('000017', '000021', $uri);
+    $endpoint = new \Fireball\VpnManagerV2\Services\VpnSubscriptionEndpointService(externalSources: $personalService);
+    $previousEtag = $endpoint->etag($token, db()->subscriptions[15]['revision'], 'plain');
+    $before = $fetches;
+    $response = $endpoint->respond($token, 'plain', $previousEtag);
+    $check($response->status === 200 && str_contains($response->body, '000021') && $fetches === $before + 1,
+        'Happ refresh updates its inherited source before answering an old ETag and skips unrelated sources');
+    $before = $fetches;
+    $response = $endpoint->respond($token, 'plain', $response->headers['ETag']);
+    $check($response->status === 304 && $fetches === $before, 'Recently refreshed sources are not fetched again');
+    db()->sources[$remote]['updated_at'] = $old;
+    $failFetch = true;
+    $response = $endpoint->respond($token, 'plain');
+    $check($response->status === 200 && str_contains($response->body, '000021')
+        && db()->sources[$remote]['sync_status'] === 'sync_error', 'A failed upstream refresh keeps serving the last confirmed list');
+    $failFetch = false;
+
+    db()->sources[$remote]['updated_at'] = $old;
     $before = $fetches; $batch = $personalService->syncAll(20);
     $check($batch['synced'] === 2 && $batch['failed'] === 0 && $fetches === $before + 2, 'Existing scheduler refreshes both plan and subscription URLs');
     $check(count(db()->sources) === 5, 'No credential copies per subscriber or per refresh');

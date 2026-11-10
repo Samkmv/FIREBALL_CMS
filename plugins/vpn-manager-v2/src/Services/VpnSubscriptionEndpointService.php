@@ -16,6 +16,7 @@ final class VpnSubscriptionEndpointService
         private readonly ?VpnV2SubscriptionDependencyService $dependencies = null,
         private readonly ?VpnSubscriptionMetadataService $metadata = null,
         private readonly ?SubscriptionHwidGatewayService $hwidGateway = null,
+        private readonly ?ExternalVpnSourceService $externalSources = null,
     ) {
     }
 
@@ -24,7 +25,8 @@ final class VpnSubscriptionEndpointService
         string $format = 'base64',
         string $ifNoneMatch = '',
         string $ifModifiedSince = '',
-        array $requestHeaders = []
+        array $requestHeaders = [],
+        bool $refreshExternal = true
     ): SubscriptionEndpointResponse {
         $headers = $this->baseHeaders();
         $token = strtolower(trim($token));
@@ -95,6 +97,18 @@ final class VpnSubscriptionEndpointService
                 isset($targets[(int)$node['server_id'] . ':' . trim((string)($node['client_sub_id'] ?? ''))])
             );
             $headers['Cache-Control'] = 'private, no-store, must-revalidate';
+        }
+
+        if (!$partial && $refreshExternal) {
+            $external = $this->externalSources ?? new ExternalVpnSourceService(fetchTimeout: 2);
+            $refresh = $external->syncAll(2, $dependencies->collectEffectiveSubscriptionIds($subscription));
+            if ($refresh['processed'] > 0) {
+                $latest = $repository->revisionMetadata((int)$subscription['id']);
+                if ($latest && (int)$latest['revision'] !== (int)$subscription['revision']) {
+                    // Re-read the subscription and re-check access before using the new revision.
+                    return $this->respond($token, $format, $ifNoneMatch, '', $requestHeaders, refreshExternal: false);
+                }
+            }
         }
 
         $incy = $format !== 'singbox' && (
