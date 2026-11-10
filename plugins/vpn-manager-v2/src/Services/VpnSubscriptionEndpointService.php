@@ -83,14 +83,16 @@ final class VpnSubscriptionEndpointService
             $requestHeaders
         );
         $headers = array_replace($headers, $gate['headers']);
-        if ($maintenanceOnly && (!$gate['allowed'] || isset($gate['verified_targets']))) {
+        $partial = isset($gate['verified_targets']);
+        // External sources belong to the subscription, independently of its managed nodes.
+        $includeExternal = !$partial || !empty($gate['live_confirmation']);
+        if ($maintenanceOnly && (!$gate['allowed'] || !$includeExternal)) {
             return $this->inactiveResponse($subscription, $settings, $format, $headers, 'maintenance', $maintenanceNodes);
         }
         if (!$gate['allowed']) {
             return new SubscriptionEndpointResponse((int)$gate['status'], '', $headers);
         }
 
-        $partial = isset($gate['verified_targets']);
         if ($partial) {
             $targets = array_fill_keys($gate['verified_targets'], true);
             $effectiveNodes = array_filter($effectiveNodes, static fn(array $node): bool =>
@@ -99,10 +101,15 @@ final class VpnSubscriptionEndpointService
             $headers['Cache-Control'] = 'private, no-store, must-revalidate';
         }
 
-        if (!$partial && $refreshExternal) {
+        if ($includeExternal && $refreshExternal) {
             $external = $this->externalSources ?? new ExternalVpnSourceService(fetchTimeout: 2);
-            $refresh = $external->syncAll(2, $dependencies->collectEffectiveSubscriptionIds($subscription));
-            if ($refresh['processed'] > 0) {
+            $attempted = false;
+            try {
+                $attempted = $external->syncAll(2, $dependencies->collectEffectiveSubscriptionIds($subscription))['processed'] > 0;
+            } catch (\Throwable $exception) {
+                error_log('VPN Manager external source refresh: ' . $exception::class);
+            }
+            if ($attempted) {
                 $latest = $repository->revisionMetadata((int)$subscription['id']);
                 if ($latest && (int)$latest['revision'] !== (int)$subscription['revision']) {
                     // Re-read the subscription and re-check access before using the new revision.
@@ -172,7 +179,7 @@ final class VpnSubscriptionEndpointService
             $uris = ($this->builder ?? new VpnSubscriptionBuilder(
                 repository: $repository,
                 dependencies: $dependencies
-            ))->build($subscription, $orderedNodes, includeExternal: !$partial, maintenanceEntries: $maintenanceEntries);
+            ))->build($subscription, $orderedNodes, includeExternal: $includeExternal, maintenanceEntries: $maintenanceEntries);
         } catch (VpnManagerV2Exception) {
             unset($headers['ETag'], $headers['Last-Modified']);
             $headers['Cache-Control'] = 'private, no-store';

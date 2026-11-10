@@ -1,7 +1,7 @@
 {
   "name": "Управление VPN",
   "slug": "vpn-manager-v2",
-  "version": "3.1.10",
+  "version": "3.1.11",
   "type": "system",
   "description": "Управление VPN-серверами, тарифами, подписками и подключениями с двусторонней синхронизацией с панелью 3x-ui и поддержкой Happ.",
   "description_i18n": {
@@ -19,6 +19,7 @@
   },
   "auto_migrate": true,
   "release_notes": [
+    "Plan external sources stay visible when an available 3x-UI panel confirms the device during a partial outage.",
     "Due external sources are checked when clients refresh the main subscription.",
     "Compact subscription summary with expandable technical details.",
     "Hardened 3x-UI client deletion and outbound requests. Added translated external URLs and live subscription search.",
@@ -41,6 +42,7 @@
   ],
   "release_notes_i18n": {
     "en": [
+      "Plan external sources stay visible when an available 3x-UI panel confirms the device during a partial outage.",
       "Due external sources are checked when clients refresh the main subscription.",
       "Compact subscription summary with expandable technical details.",
       "Hardened 3x-UI client deletion and outbound requests. Added translated external URLs and live subscription search.",
@@ -62,6 +64,7 @@
       "Added quick server replacement and Happ notices for expiry and maintenance."
     ],
     "ru": [
+      "Внешние подключения тарифа остаются в подписке, если доступная панель 3x-UI подтверждает устройство при частичном сбое.",
       "Просроченные внешние источники проверяются при обновлении основной подписки в клиенте.",
       "Компактная карточка подписки с раскрываемыми техническими деталями.",
       "Усилена проверка удаления клиентов в 3x-UI и защита сетевых запросов. Добавлены внешние ссылки через Яндекс Переводчик и поиск подписок по мере ввода.",
@@ -83,6 +86,7 @@
       "Добавлены быстрая замена сервера и уведомления об истечении подписки и техработах в Happ."
     ],
     "de": [
+      "Externe Tarifquellen bleiben bei einem Teilausfall sichtbar, wenn ein erreichbares 3x-UI-Panel das Gerät bestätigt.",
       "Fällige externe Quellen werden beim Abruf des Hauptabonnements geprüft.",
       "Kompakte Abonnementübersicht mit ausklappbaren technischen Details.",
       "Sicherere 3x-UI-Clientlöschung und Netzwerkanfragen. Übersetzungslinks und Live-Suche für Abonnements hinzugefügt.",
@@ -104,6 +108,7 @@
       "Schneller Serverwechsel und Happ-Hinweise zu Ablauf und Wartung hinzugefügt."
     ],
     "zh-cn": [
+      "部分面板故障时，只要可用的 3x-UI 面板确认设备，套餐的外部来源仍会显示。",
       "刷新主订阅时会检查已到更新期限的外部来源。",
       "订阅摘要更紧凑，技术详情可展开。",
       "加强了 3x-UI 客户端删除及网络请求的防护，支持翻译链接和订阅即时搜索。",

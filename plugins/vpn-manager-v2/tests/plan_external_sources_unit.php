@@ -31,7 +31,7 @@ namespace {
         public function remove(string $key): void { $this->removed[] = $key; unset($this->values[$key]); }
     };
     $GLOBALS['planExternalDb'] = new class {
-        public array $sources = [], $subscriptions = [], $parents = [], $events = [], $queries = [];
+        public array $sources = [], $subscriptions = [], $parents = [], $events = [], $queries = [], $nodes = [];
         public array $plans = [1 => ['id' => 1], 2 => ['id' => 2], 3 => ['id' => 3]];
         public mixed $result = null;
         private int $insertId = 0, $affected = 0;
@@ -58,7 +58,10 @@ namespace {
                 // Revision propagation, plus empty dependencies for builder tests.
                 $this->result = str_contains($sql, ' AS id') ? array_map(static fn($id) => ['id' => $id], $this->parents[(int)$params[0]] ?? []) : [];
                 if (str_contains($sql, 'LIMIT 1')) $this->result = false;
+            } elseif (str_contains($sql, 'INNER JOIN vpn_v2_servers s ON s.id = n.server_id')) {
+                $this->result = $this->nodes[(int)$params[0]] ?? [];
             } elseif (str_contains($sql, 'FROM vpn_v2_subscription_nodes')) { $this->result = []; }
+            elseif (str_contains($sql, 'FROM vpn_v2_servers WHERE')) { $this->result = ['id' => (int)$params[0]]; }
             elseif (str_contains($sql, 'FROM plugin_settings')) { $this->result = []; }
             elseif (str_contains($sql, 'FROM vpn_v2_subscriptions') && !str_contains($sql, 'FROM vpn_v2_external_sources')) {
                 if (str_contains($sql, 'WHERE subscription_token_hash = ?')) {
@@ -243,6 +246,45 @@ namespace {
     $before = $fetches; $batch = $personalService->syncAll(20);
     $check($batch['synced'] === 2 && $batch['failed'] === 0 && $fetches === $before + 2, 'Existing scheduler refreshes both plan and subscription URLs');
     $check(count(db()->sources) === 5, 'No credential copies per subscriber or per refresh');
+
+    db()->subscriptions[15]['device_limit'] = 1;
+    $node = [
+        'node_id' => 1, 'server_id' => 1, 'server_name' => 'Online', 'client_sub_id' => 'online',
+        'panel_url' => 'https://online.example.test', 'protocol' => 'vless', 'network' => 'tcp',
+        'security' => 'none', 'port' => 443, 'stream_settings_json' => '{"network":"tcp","security":"none"}',
+        'client_uuid' => '70cc48c5-b2f4-4fc7-a4dd-123456789abc',
+    ];
+    db()->nodes[15] = [$node, array_replace($node, [
+        'node_id' => 2, 'server_id' => 2, 'client_sub_id' => 'offline', 'panel_url' => 'https://offline.example.test',
+    ])];
+    $client = new class {
+        public array $statuses = ['online' => 200, 'offline' => 503];
+        public function probeSubscriptionHwid(string $id, array $headers): int { return $this->statuses[$id]; }
+    };
+    $gateway = new \Fireball\VpnManagerV2\Services\SubscriptionHwidGatewayService(static fn() => $client);
+    $endpoint = new \Fireball\VpnManagerV2\Services\VpnSubscriptionEndpointService(hwidGateway: $gateway, externalSources: $personalService);
+    $headers = ['X-HWID' => 'fixture-device'];
+    db()->sources[$remote]['updated_at'] = $old;
+    $payload = str_replace('000017', '000022', $uri);
+    $before = $fetches;
+    $response = $endpoint->respond($token, 'base64', requestHeaders: $headers);
+    $body = base64_decode($response->body);
+    $check($response->status === 200 && $response->headers['X-Fireball-HWID-Gate'] === 'partial'
+        && str_contains($body, 'online.example.test') && !str_contains($body, 'offline.example.test'),
+        'Only verified managed servers are served when one panel is offline');
+    $check(str_contains($body, '000022') && !str_contains($body, '000021') && $fetches === $before + 1
+        && !isset($response->headers['ETag']), 'Live device confirmation preserves and refreshes inherited sources without caching a partial list');
+
+    $client->statuses['online'] = 503;
+    $response = $endpoint->respond($token, 'plain', requestHeaders: $headers);
+    $check($response->status === 200 && str_contains($response->body, 'online.example.test')
+        && !str_contains($response->body, '000022'), 'A cache-only partial response remains limited to confirmed managed servers');
+    $response = $endpoint->respond($token, 'plain', requestHeaders: ['X-HWID' => 'unknown-device']);
+    $check($response->status === 503 && $response->body === '', 'An unconfirmed device cannot retrieve inherited configurations during a panel outage');
+    $client->statuses = ['online' => 200, 'offline' => 404];
+    $response = $endpoint->respond($token, 'plain', requestHeaders: $headers);
+    $check($response->status === 404 && $response->body === '', 'An explicit panel denial cannot be bypassed by an inherited source');
+
     foreach (db()->events as $event) {
         $check(!str_contains((string)$event[6], 'private-token') && !str_contains((string)$event[6], 'vless://'), 'Audit event contains no credentials');
         if (str_starts_with($event[0], 'plan.')) $check($event[1] === null && json_decode($event[6], true)['plan_id'] === 1, 'Plan audit event must not point to same-number subscription');

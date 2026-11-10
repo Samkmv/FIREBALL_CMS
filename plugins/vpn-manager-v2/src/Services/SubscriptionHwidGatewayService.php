@@ -24,7 +24,7 @@ final class SubscriptionHwidGatewayService
     }
 
     /**
-     * @return array{allowed: bool, status: int, headers: array<string,string>, verified_targets?: list<string>}
+     * @return array{allowed: bool, status: int, headers: array<string,string>, verified_targets?: list<string>, live_confirmation?: bool}
      */
     public function enforce(array $subscription, array $nodes, array $requestHeaders): array
     {
@@ -75,6 +75,7 @@ final class SubscriptionHwidGatewayService
 
         $servers = $clients = $offline = [];
         $verified = [];
+        $liveConfirmation = false;
         $degraded = $unavailable = false;
         foreach ($targets as $targetKey => $target) {
             $serverId = $target['server_id'];
@@ -109,6 +110,7 @@ final class SubscriptionHwidGatewayService
             if ($status >= 200 && $status < 300) {
                 cache()->set($key, true, self::CONFIRMATION_TTL);
                 $verified[] = $targetKey;
+                $liveConfirmation = true;
                 continue;
             }
             if ($status === 404) {
@@ -125,7 +127,10 @@ final class SubscriptionHwidGatewayService
 
         if ($unavailable) {
             return $verified === [] ? $this->result(false, 503, 'unavailable')
-                : $this->result(true, 200, 'partial') + ['verified_targets' => $verified];
+                : $this->result(true, 200, 'partial') + [
+                    'verified_targets' => $verified,
+                    'live_confirmation' => $liveConfirmation,
+                ];
         }
 
         return $this->result(true, 200, $degraded ? 'previously-confirmed' : 'allowed');
