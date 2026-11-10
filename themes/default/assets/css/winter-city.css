@@ -44,52 +44,6 @@ html:has(body[data-seasonal-preview]) {
     pointer-events: none;
 }
 
-[data-winter-city] :is(.posts-index-heading, .post-detail-meta) {
-    --winter-frost-accent: #4d789b;
-    --winter-frost-outline: #729ac460;
-}
-
-[data-bs-theme="dark"] [data-winter-city] :is(.posts-index-heading, .post-detail-meta) {
-    --winter-frost-accent: #9dcced;
-    --winter-frost-outline: #9dcced52;
-}
-
-[data-winter-city] .posts-index-heading h1::after {
-    content: "";
-    display: inline-block;
-    width: .57em;
-    height: .57em;
-    margin-inline-start: .34em;
-    vertical-align: .04em;
-    background-color: var(--winter-frost-accent);
-    mask: url("../images/winter-snowflake.svg") center / contain no-repeat;
-    pointer-events: none;
-}
-
-[data-winter-city] .posts-index-count {
-    box-shadow: 0 0 0 1px var(--winter-frost-outline);
-}
-
-[data-winter-city] .post-detail-meta {
-    position: relative;
-}
-
-[data-winter-city] .post-detail-meta::after {
-    content: "";
-    position: absolute;
-    inset-block-end: -1px;
-    inset-inline-start: 0;
-    width: min(25%, 5rem);
-    height: 2px;
-    border-radius: 2px;
-    background: linear-gradient(90deg, var(--winter-frost-accent), transparent);
-    pointer-events: none;
-}
-
-[data-winter-city] .post-detail-meta:dir(rtl)::after {
-    background: linear-gradient(270deg, var(--winter-frost-accent), transparent);
-}
-
 @media (max-width: 767px) {
     [data-winter-city] .public-navbar::after {
         height: 22px;

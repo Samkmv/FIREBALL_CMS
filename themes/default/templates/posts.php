@@ -79,9 +79,9 @@ $renderGridPost = static function (array $post) use ($postUrl, $categoryUrl, $re
 <section class="container pb-5 mb-2 mb-md-3 mb-lg-4 mb-xl-5">
     <div class="row">
         <div class="col-lg-8">
-            <div class="posts-index-heading d-flex flex-wrap align-items-start justify-content-between gap-3 pb-4 mb-2">
+            <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 pb-4 mb-2">
                 <div>
-                    <span class="posts-index-count badge text-bg-dark rounded-pill mb-3"><?= (int)$total_posts ?> <?= htmlSC($postsTranslate('index_total')) ?></span>
+                    <span class="badge text-bg-dark rounded-pill mb-3"><?= (int)$total_posts ?> <?= htmlSC($postsTranslate('index_total')) ?></span>
                     <h1 class="h3 mb-2"><?= htmlSC($postsTranslate('index_heading')) ?></h1>
                     <?php $postsIndexSubtitle = trim((string)$postsTranslate('index_subtitle')); ?>
                     <?php if ($postsIndexSubtitle !== ''): ?>
