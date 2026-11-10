@@ -234,6 +234,9 @@ $app->router->post('/admin/roles/edit/(?P<id>\d+)/?', [AdminController::class, '
 $app->router->post('/admin/roles/delete', [AdminController::class, 'roleDelete'])->middleware(['auth', 'admin', 'creator']);
 $app->router->get('/admin/settings', [AdminController::class, 'settings'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/settings', [AdminController::class, 'settings'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/settings/seasonal', [AdminController::class, 'seasonalSettings'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/settings/seasonal', [AdminController::class, 'seasonalSettings'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/settings/seasonal/preview', [HomeController::class, 'seasonalPreview'])->middleware(['auth', 'admin']);
 $app->router->get('/admin/settings/pwa', [AdminController::class, 'pwaSettings'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/settings/pwa', [AdminController::class, 'pwaSettings'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/settings/pwa/vapid', [AdminController::class, 'generatePwaVapid'])->middleware(['auth', 'admin']);

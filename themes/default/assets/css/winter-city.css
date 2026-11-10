@@ -1,0 +1,67 @@
+html:has(body[data-seasonal-preview]) {
+    overflow: hidden;
+}
+
+[data-winter-city] .public-navbar::after {
+    content: "";
+    position: absolute;
+    inset: calc(100% - 1px) 0 auto;
+    height: 28px;
+    background: url("../images/winter-garland.svg") repeat-x center top / 320px 28px;
+    pointer-events: none;
+    /* Darken the cable and bulbs against light pages. */
+    filter: brightness(.78) saturate(1.35);
+}
+
+[data-bs-theme="dark"] [data-winter-city] .public-navbar::after {
+    filter: none;
+}
+
+[data-winter-city] .home-page--apple .home-hero .home-gradient-text {
+    width: fit-content;
+    background-image: linear-gradient(105deg, #91efc3, #82dcca 52%, #a5d8ff 100%);
+}
+
+[data-winter-city] .home-hero__overlay::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 91% 9%, #73b5e438, transparent 59%);
+    pointer-events: none;
+}
+
+[data-winter-city] .home-hero__overlay::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+        radial-gradient(circle at 18px 42px, #fff9 0 1px, transparent 1.9px),
+        radial-gradient(circle at 93px 21px, #dbedffb3 0 1.3px, transparent 2.2px),
+        radial-gradient(circle at 136px 107px, #e9f4ff80 0 1px, transparent 1.7px),
+        radial-gradient(circle at 64px 153px, #fff7 0 .9px, transparent 1.6px);
+    background-size: 181px 159px, 251px 192px, 211px 229px, 163px 197px;
+    mask-image: linear-gradient(90deg, #0007 0%, transparent 14%, transparent 48%, #000a 75%, #000 100%);
+    pointer-events: none;
+}
+
+@media (max-width: 767px) {
+    [data-winter-city] .public-navbar::after {
+        height: 22px;
+        background-size: 251px 22px;
+    }
+
+    [data-winter-city] .home-hero__overlay::after {
+        mask-image: linear-gradient(90deg, #0005, transparent 13% 62%, #0009);
+    }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    [data-winter-city][data-winter-snow-motion] .home-hero__overlay::after {
+        animation: winter-city-drift 4.8s linear both;
+    }
+}
+
+@keyframes winter-city-drift {
+    from { background-position: -10px -75px, 7px -59px, -11px -82px, 2px -36px; }
+    to { background-position: 0 0; }
+}

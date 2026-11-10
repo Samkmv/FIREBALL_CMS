@@ -45,8 +45,21 @@ class HomeController extends BaseController
      */
     public function index()
     {
+        return $this->renderHomepage();
+    }
+
+    public function seasonalPreview(): string
+    {
+        header('Cache-Control: private, no-store');
+        header('X-Robots-Tag: noindex, nofollow');
+
+        return $this->renderHomepage(['seasonal_preview' => true, 'seo_canonical' => base_href('/')]);
+    }
+
+    private function renderHomepage(array $renderData = []): string
+    {
         if (theme()->getActiveTheme()['homepage'] === 'home') {
-            return Theme::render('home', ['title' => theme()->getActiveTheme()['name']]);
+            return Theme::render('home', $renderData + ['title' => theme()->getActiveTheme()['name']]);
         }
 
         $homepageType = $this->siteSettings->get('homepage_type', 'default');
@@ -54,25 +67,25 @@ class HomeController extends BaseController
         if ($homepageType === 'page') {
             $page = $this->pages->findPublishedById((int)$this->siteSettings->get('homepage_page_id', '0'));
             if ($page) {
-                return $this->renderPageHomepage($page);
+                return $this->renderPageHomepage($page, $renderData);
             }
         }
 
         if ($homepageType === 'posts') {
-            return $this->renderPostsHomepage();
+            return $this->renderPostsHomepage($renderData);
         }
 
-        return $this->renderDefaultHomepage();
+        return $this->renderDefaultHomepage($renderData);
     }
 
     /**
      * Renders the original system homepage.
      */
-    protected function renderDefaultHomepage(): string
+    protected function renderDefaultHomepage(array $renderData = []): string
     {
         $featured_posts = $this->filterPublicPosts($this->posts->getHomeFeaturedPosts(10));
 
-        return Theme::render('home', [
+        return Theme::render('home', $renderData + [
             'title' => return_translation('home_index_title'),
             'sales_products' => [],
             'root_categories' => [],
@@ -84,14 +97,14 @@ class HomeController extends BaseController
     /**
      * Renders a CMS page as the site root while keeping canonical URL at "/".
      */
-    protected function renderPageHomepage(array $page): string
+    protected function renderPageHomepage(array $page, array $renderData = []): string
     {
         $filteredPage = apply_filters('public_page_before_render', $page, get_user() ?: []);
         if (is_array($filteredPage)) {
             $page = $filteredPage;
         }
 
-        return Theme::render('page', [
+        return Theme::render('page', $renderData + [
             'title' => $page['title'],
             'page' => $page,
             'seo_title' => $page['meta_title'] !== '' ? $page['meta_title'] : $page['title'],
@@ -103,13 +116,13 @@ class HomeController extends BaseController
     /**
      * Renders a latest-posts feed as the site root.
      */
-    protected function renderPostsHomepage(): string
+    protected function renderPostsHomepage(array $renderData = []): string
     {
         $limit = max(1, min(100, (int)$this->siteSettings->get('posts_per_page', '10')));
         $posts = $this->posts->getLatestPublishedPosts($limit);
         $sidebarData = $this->posts->getSidebarData();
 
-        return Theme::render('posts', [
+        return Theme::render('posts', $renderData + [
             'title' => return_translation('posts_index_title'),
             'posts' => $this->filterPublicPosts($posts),
             'footer_scripts' => [asset_versioned_url(base_url('/assets/default/js/favorites.js'), WWW . '/assets/default/js/favorites.js')],

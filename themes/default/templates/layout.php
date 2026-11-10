@@ -38,7 +38,12 @@ $pageSeoArticlePublishedTime = trim((string)($seo_article_published_time ?? ''))
 $pageSeoArticleSection = trim((string)($seo_article_section ?? ''));
 $pageSeoRobots = trim((string)($seo_robots ?? ''));
 $pageSeoCanonical = trim((string)($seo_canonical ?? ''));
-$isHomePage = uri_without_lang() === '';
+$isSeasonalPreview = !empty($seasonal_preview);
+$isHomePage = $isSeasonalPreview || uri_without_lang() === '';
+$showWinterCity = $isSeasonalPreview || (
+    !\FBL\Localization::isAdminPath(uri_without_lang())
+    && \App\Services\SeasonalAppearance::isActive($settings ?? [])
+);
 $homePageTitle = $pageTitle !== '' ? $pageTitle : return_translation('home_index_title');
 $homeTitleBase = ($seoHomeTitle !== '' && $seoHomeTitle !== $siteTitle)
     ? $seoHomeTitle
@@ -254,6 +259,9 @@ $postCategoryUrl = static function (?string $slug = null): string {
     <?php if (str_contains((string)$this->content, 'data-home-page')): ?>
         <link rel="stylesheet" href="<?= theme_asset_versioned('css/home.css') ?>">
     <?php endif; ?>
+    <?php if ($showWinterCity): ?>
+        <link rel="stylesheet" href="<?= theme_asset_versioned('css/winter-city.css') ?>">
+    <?php endif; ?>
     <?php if (!$canViewVideoStatus): ?>
         <style id="fb-video-status-privacy">
             .fb-plyr-hls-message--info,
@@ -282,6 +290,9 @@ $postCategoryUrl = static function (?string $slug = null): string {
 <!-- Body -->
 <body
     class="<?= str_contains((string)$this->content, 'data-home-page') ? 'home-shell' : '' ?>"
+    <?php if ($isSeasonalPreview): ?>data-seasonal-preview<?php endif; ?>
+    <?php if ($showWinterCity): ?>data-winter-city<?php endif; ?>
+    <?php if ($showWinterCity && !$isSeasonalPreview && ($settings['seasonal_snow_motion'] ?? '') === '1'): ?>data-winter-snow-motion<?php endif; ?>
     data-toast-success-title="<?= htmlSC(return_translation('toast_success_title')) ?>"
     data-toast-error-title="<?= htmlSC(return_translation('toast_error_title')) ?>"
     data-toast-info-title="<?= htmlSC(return_translation('toast_info_title')) ?>"

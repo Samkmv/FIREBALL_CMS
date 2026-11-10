@@ -31,6 +31,12 @@ $settingsTabs = [
         'label' => return_translation('admin_settings_tab_pwa'),
         'icon' => 'ci-smartphone',
     ],
+    [
+        'key' => 'seasonal',
+        'href' => base_href('/admin/settings/seasonal'),
+        'label' => return_translation('admin_seasonal_title'),
+        'icon' => 'ci-calendar',
+    ],
 ];
 ?>
 

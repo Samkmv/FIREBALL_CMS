@@ -20,6 +20,7 @@ use App\Services\LanguagePackService;
 use App\Services\MailService;
 use App\Services\NotificationService;
 use App\Services\PwaService;
+use App\Services\SeasonalAppearance;
 use App\Services\UpdateCenter;
 use App\Widgets\Menu\Menu;
 use FBL\Auth;
@@ -1345,6 +1346,36 @@ class AdminController extends BaseController
             'engine_release' => require CONFIG . '/version.php',
             'footer_scripts' => [
                 base_url('/assets/default/js/admin-file-manager.js?v=' . filemtime(WWW . '/assets/default/js/admin-file-manager.js')),
+            ],
+        ]);
+    }
+
+    public function seasonalSettings()
+    {
+        if (request()->isPost()) {
+            $data = SeasonalAppearance::normalize(request()->getData());
+            $errors = SeasonalAppearance::validate($data);
+            if ($errors !== []) {
+                session()->set('form_data', $data);
+                session()->set('form_errors', $errors);
+                response()->redirect(base_href('/admin/settings/seasonal'));
+            }
+
+            if ($data['seasonal_mode'] !== 'scheduled') {
+                unset($data['seasonal_start'], $data['seasonal_end']);
+            }
+            $this->siteSettings->setMany($data);
+            session()->remove('form_data');
+            session()->remove('form_errors');
+            session()->setFlash('success', return_translation('admin_settings_saved'));
+            response()->redirect(base_href('/admin/settings/seasonal'));
+        }
+
+        return view('admin/seasonal_settings', [
+            'title' => return_translation('admin_seasonal_title'),
+            'settings' => $this->siteSettings->all(),
+            'footer_scripts' => [
+                asset_versioned_url(base_url('/assets/default/js/admin-seasonal-preview.js'), WWW . '/assets/default/js/admin-seasonal-preview.js'),
             ],
         ]);
     }
