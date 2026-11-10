@@ -51,8 +51,8 @@ foreach ($subscriptions as $subscription) {
             . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_presence_online')) . '</span>';
     }
     $externalBadge = empty($subscription['has_external_sources']) ? ''
-        : '<span class="d-block"><span class="badge rounded-pill text-bg-info">'
-            . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_has_external_sources')) . '</span></span>';
+        : '<span class="badge rounded-pill text-bg-info">'
+            . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_has_external_sources')) . '</span>';
 
     $expiresDisplay = trim((string)($subscription['expires_at'] ?? ''))
         ?: FireballPluginVpnManagerV2::t('vpn_manager_v2_lifetime_short');
@@ -106,7 +106,7 @@ foreach ($subscriptions as $subscription) {
             . '<div class="small text-body-secondary">' . htmlSC($userMeta) . '</div>'],
         ['html' => '<span class="fw-medium">' . htmlSC((string)$subscription['plan_name'])
             . '</span> <span class="small text-body-secondary">#' . (int)$subscription['plan_id'] . '</span>'
-            . $externalBadge],
+            . ($externalBadge === '' ? '' : '<span class="d-block">' . $externalBadge . '</span>')],
         ['html' => $badge],
         ['value' => (string)$subscription['starts_at']],
         ['value' => $expiresDisplay],
@@ -120,9 +120,9 @@ foreach ($subscriptions as $subscription) {
 
     $mobileCards[] = [
         'id' => (string)$id,
-        'title' => ['html' => htmlSC((string)$subscription['plan_name']) . $externalBadge],
+        'title' => (string)$subscription['plan_name'],
         'icon' => 'ci-link',
-        'status' => [['html' => $badge]],
+        'status' => [['html' => $badge], ['html' => $externalBadge]],
         'actions' => $showAction,
         'extra_fields' => [
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_client_name_title'), 'value' => $clientName],
