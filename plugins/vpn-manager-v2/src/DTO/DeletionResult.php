@@ -11,6 +11,7 @@ final readonly class DeletionResult
         public int $failedNodes,
         public bool $deleted,
         public bool $alreadyDeleted = false,
+        public bool $remotePending = false,
     ) {
     }
 

@@ -218,11 +218,16 @@ final class SubscriptionProvisioningService
         }
 
         $status = $repository->recalculateSubscriptionStatus($subscriptionId);
-        if ($configChanged && $status === 'active') {
+        $available = in_array($status, ['active', 'partial_sync'], true);
+        if ($configChanged && $available) {
             ($this->revisionService ?? new VpnSubscriptionRevisionService())->touchConfig($subscriptionId);
         }
         $repository->logEvent(
-            $status === 'active' ? 'subscription.provisioning_completed' : 'subscription.provisioning_failed',
+            match ($status) {
+                'active' => 'subscription.provisioning_completed',
+                'partial_sync' => 'subscription.provisioning_partial',
+                default => 'subscription.provisioning_failed',
+            },
             $subscriptionId,
             null,
             null,
@@ -237,9 +242,9 @@ final class SubscriptionProvisioningService
                 'status' => $status,
             ]
         );
-        if ($configChanged && $status === 'active') {
+        if ($configChanged && $available) {
             $this->notifyProvisioned($subscriptionId);
-        } elseif ($status !== 'active') {
+        } elseif (!$available) {
             $this->notifyCritical($subscriptionId, 'provisioning');
         }
 
@@ -261,7 +266,6 @@ final class SubscriptionProvisioningService
         }
 
         $subscriptionId = (int)$node['subscription_id'];
-        $repository->setSubscriptionProvisioning($subscriptionId);
         $repository->logEvent(
             'node.provisioning_retry',
             $subscriptionId,
@@ -274,10 +278,10 @@ final class SubscriptionProvisioningService
 
         $outcome = $this->provisionNode($nodeId);
         $status = $repository->recalculateSubscriptionStatus($subscriptionId);
-        if (in_array($outcome['status'], ['created', 'reused'], true) && $status === 'active') {
+        if (in_array($outcome['status'], ['created', 'reused'], true) && in_array($status, ['active', 'partial_sync'], true)) {
             ($this->revisionService ?? new VpnSubscriptionRevisionService())->touchConfig($subscriptionId);
             $this->notifyProvisioned($subscriptionId);
-        } elseif ($status !== 'active') {
+        } elseif (!in_array($status, ['active', 'partial_sync'], true)) {
             $this->notifyCritical($subscriptionId, 'provisioning-retry');
         }
 
@@ -307,6 +311,10 @@ final class SubscriptionProvisioningService
         $node = $repository->connectionForProvisioning($nodeId);
         if (!$node) {
             throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_connection_not_found'));
+        }
+        if ((string)$node['status'] !== 'creating'
+            || ProvisioningStatus::deletionStarted((string)$node['subscription_status'])) {
+            return ['status' => 'create_failed', 'flow_error' => false];
         }
 
         try {

@@ -72,7 +72,7 @@ foreach ($subscriptions as $subscription) {
     if (ProvisioningStatus::deletionStarted((string)$subscription['status'])) {
         $showAction = array_slice($showAction, 0, 1);
     }
-    if ($displayStatus === 'active') {
+    if (in_array($displayStatus, ['active', 'partial_sync'], true)) {
         $showAction[] = [
             'label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_action_suspend'),
             'type' => 'form',

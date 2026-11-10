@@ -92,7 +92,7 @@ final class VpnNotificationService
             return ['queued' => 0, 'sent' => 0, 'failed' => 0];
         }
         $subscription = $this->automation()->subscription($subscriptionId);
-        if (!$subscription || (string)$subscription['status'] !== 'active') {
+        if (!$subscription || !in_array((string)$subscription['status'], ['active', 'partial_sync'], true)) {
             return ['queued' => 0, 'sent' => 0, 'failed' => 0];
         }
         $occurrence = 'provisioned:' . substr((string)($subscription['created_at'] ?? ''), 0, 19);

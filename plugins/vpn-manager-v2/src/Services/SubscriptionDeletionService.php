@@ -184,15 +184,20 @@ final class SubscriptionDeletionService
                 $safeError = $this->safeError($exception);
                 $firstError ??= $safeError;
                 $repository->markNodePendingRemoteDelete($nodeId, $safeError);
-                ($this->operations ?? new OperationQueueRepository())->enqueue(
-                    'delete_client',
-                    'retry',
-                    (int)$node['server_id'],
-                    $subscriptionId,
-                    $nodeId,
-                    [],
-                    $adminId
-                );
+                try {
+                    ($this->operations ?? new OperationQueueRepository())->enqueue(
+                        'delete_client',
+                        'retry',
+                        (int)$node['server_id'],
+                        $subscriptionId,
+                        $nodeId,
+                        [],
+                        $adminId
+                    );
+                } catch (\Throwable $queueError) {
+                    // The pending node still supports a manual retry if queueing fails.
+                    error_log('VPN Manager V2 remote deletion queue: ' . $queueError::class);
+                }
                 $repository->logEvent('node.delete_failed', $subscriptionId, $nodeId,
                     (int)$node['server_id'], (int)$subscription['user_id'], $adminId,
                     ['error_type' => $this->errorType($exception)]);
@@ -208,7 +213,7 @@ final class SubscriptionDeletionService
                 (int)$subscription['user_id'], $adminId,
                 ['deleted' => $deleted, 'already_absent' => $alreadyAbsent, 'failed' => max(1, $failed)]);
 
-            return new DeletionResult($subscriptionId, $deleted, $alreadyAbsent, max(1, $failed), false);
+            return new DeletionResult($subscriptionId, $deleted, $alreadyAbsent, max(1, $failed), false, remotePending: true);
         }
 
         $repository->logEvent('subscription.delete_confirmed', $subscriptionId, null, null,

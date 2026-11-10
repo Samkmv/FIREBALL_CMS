@@ -293,8 +293,17 @@ try {
     $partial = $service->create($input($plans['partial']), $adminId);
     $subscriptionIds[] = $partial->subscriptionId;
     $partialStatuses = db()->query('SELECT status FROM vpn_v2_subscription_nodes WHERE subscription_id = ? ORDER BY id', [$partial->subscriptionId])->get() ?: [];
-    $assert($partial->status === 'provisioning_failed'
+    $assert($partial->status === 'partial_sync'
         && array_column($partialStatuses, 'status') === ['active', 'create_failed'], 'Partial multi-server outcome is invalid.');
+    $partialToken = db()->query('SELECT subscription_token FROM vpn_v2_subscriptions WHERE id = ?', [$partial->subscriptionId])->getColumn();
+    $pendingNodeId = db()->query(
+        "SELECT id FROM vpn_v2_subscription_nodes WHERE subscription_id = ? AND status = 'create_failed'",
+        [$partial->subscriptionId]
+    )->getColumn();
+    $panels['down']->behavior = 'ok';
+    $assert($service->retryNode((int)$pendingNodeId)->successful()
+        && db()->query('SELECT subscription_token FROM vpn_v2_subscriptions WHERE id = ?', [$partial->subscriptionId])->getColumn() === $partialToken,
+        'Recovering the missing server must complete the existing subscription without rotating its token.');
     $results['partial_success'] = true;
 
     $retry = $service->create($input($plans['retry']), $adminId);

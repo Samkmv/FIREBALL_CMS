@@ -53,7 +53,7 @@ final class RetryFailedOperationsService
             $retried++;
             try {
                 $result = ($this->provisioning ?? new SubscriptionProvisioningService())->retryNode((int)$row['id']);
-                if ($result->successful()) {
+                if ($result->created + $result->reused > 0 && $result->failed + $result->syncErrors === 0) {
                     $recovered++;
                 } else {
                     $failed++;

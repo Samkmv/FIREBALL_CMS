@@ -354,6 +354,8 @@ final class SubscriptionRepository
             $statuses = $status === 'inactive' ? SubscriptionListFilter::INACTIVE_STATUSES : [$status];
             $sql .= ' IN (' . implode(', ', array_fill(0, count($statuses), '?')) . ')';
             array_push($params, ...$statuses);
+        } else {
+            $sql .= " AND s.status NOT IN ('deleting', 'pending_remote_delete')";
         }
         if ($onlyIds !== null) {
             $ids = implode(',', array_map('intval', $onlyIds));
@@ -673,7 +675,7 @@ final class SubscriptionRepository
             "UPDATE vpn_v2_subscription_nodes
              SET remote_client_id = ?, status = ?, is_obsolete = 0,
                  sync_status = 'synced', sync_error = NULL,
-                 last_sync_at = ?, last_error = NULL, updated_at = ? WHERE id = ?",
+                 last_sync_at = ?, last_error = NULL, updated_at = ? WHERE id = ? AND status = 'creating'",
             [$remoteClientId, $status, $now, $now, $id]
         );
     }
@@ -684,7 +686,8 @@ final class SubscriptionRepository
         db()->query(
             'UPDATE vpn_v2_subscription_nodes
              SET status = ?, sync_status = CASE WHEN sync_status = \'replacement_pending\' THEN sync_status ELSE ? END,
-                 last_error = ?, sync_error = ?, updated_at = ? WHERE id = ?',
+                 last_error = ?, sync_error = ?, updated_at = ? WHERE id = ?
+                   AND status NOT IN (\'deleted\', \'deleting\', \'pending_remote_delete\', \'delete_failed\')',
             [
                 $status,
                 $status === 'sync_error' ? 'failed' : 'pending',
@@ -859,7 +862,8 @@ final class SubscriptionRepository
     {
         db()->query(
             "UPDATE vpn_v2_subscriptions
-             SET status = 'pending_remote_delete', last_error = ?, updated_at = ? WHERE id = ?",
+             SET status = 'pending_remote_delete', last_error = ?, updated_at = ? WHERE id = ?
+               AND status IN ('deleting', 'pending_remote_delete', 'delete_failed')",
             [mb_substr(trim($safeError), 0, 1000), date('Y-m-d H:i:s'), $id]
         );
     }
@@ -954,56 +958,71 @@ final class SubscriptionRepository
         return db()->rowCount() === 1;
     }
 
-    public function setSubscriptionProvisioning(int $id): void
-    {
-        db()->query(
-            "UPDATE vpn_v2_subscriptions SET status = 'provisioning', last_error = NULL, updated_at = ? WHERE id = ?",
-            [date('Y-m-d H:i:s'), $id]
-        );
-    }
-
     public function recalculateSubscriptionStatus(int $id): string
     {
-        $summary = db()->query(
-            "SELECT COUNT(*) AS total,
-                    SUM(status = 'active') AS active_count,
-                    SUM(status = 'sync_error') AS sync_error_count,
-                    SUM(status = 'create_failed') AS failed_count,
-                    SUM(status = 'creating') AS creating_count
-             FROM vpn_v2_subscription_nodes WHERE subscription_id = ?",
-            [$id]
-        )->getOne() ?: [];
-        $total = (int)($summary['total'] ?? 0);
-        $active = (int)($summary['active_count'] ?? 0);
-        $syncErrors = (int)($summary['sync_error_count'] ?? 0);
-        $failed = (int)($summary['failed_count'] ?? 0);
+        $database = db();
+        $database->beginTransaction();
+        try {
+            $currentStatus = (string)$database->query(
+                'SELECT status FROM vpn_v2_subscriptions WHERE id = ? FOR UPDATE',
+                [$id]
+            )->getColumn();
+            $provisioningStatuses = ['active', 'provisioning', 'provisioning_failed', 'partial_sync', 'sync_error'];
+            if (!in_array($currentStatus, $provisioningStatuses, true)) {
+                $database->commit();
+                return $currentStatus;
+            }
+            $summary = $database->query(
+                "SELECT COUNT(*) AS total,
+                        SUM(status = 'active') AS active_count,
+                        SUM(status = 'disabled') AS disabled_count,
+                        SUM(status = 'sync_error') AS sync_error_count,
+                        SUM(status IN ('create_failed', 'missing_remote', 'invalid_snapshot')) AS failed_count
+                 FROM vpn_v2_subscription_nodes
+                 WHERE subscription_id = ? AND is_obsolete = 0
+                   AND status NOT IN ('deleted', 'deleting', 'pending_remote_delete', 'delete_failed')",
+                [$id]
+            )->getOne() ?: [];
+            $total = (int)($summary['total'] ?? 0);
+            $active = (int)($summary['active_count'] ?? 0);
+            $disabled = (int)($summary['disabled_count'] ?? 0);
+            $syncErrors = (int)($summary['sync_error_count'] ?? 0);
+            $failed = (int)($summary['failed_count'] ?? 0);
 
-        if ($total > 0 && $active === $total) {
-            $status = 'active';
-            $lastError = null;
-            $configUpdatedAt = date('Y-m-d H:i:s');
-        } elseif ($syncErrors > 0) {
-            $status = 'sync_error';
-            $lastError = $this->firstNodeError($id);
-            $configUpdatedAt = null;
-        } elseif ($failed > 0) {
-            $status = 'provisioning_failed';
-            $lastError = $this->firstNodeError($id);
-            $configUpdatedAt = null;
-        } else {
-            $status = 'provisioning';
-            $lastError = null;
-            $configUpdatedAt = null;
+            if ($active > 0 || ($total > 0 && $disabled === $total && $currentStatus === 'active')) {
+                $status = $active + $disabled === $total ? 'active' : 'partial_sync';
+                $lastError = $status === 'partial_sync' ? $this->firstNodeError($id) : null;
+                $configUpdatedAt = date('Y-m-d H:i:s');
+            } elseif ($syncErrors > 0) {
+                $status = 'sync_error';
+                $lastError = $this->firstNodeError($id);
+                $configUpdatedAt = null;
+            } elseif ($failed > 0) {
+                $status = 'provisioning_failed';
+                $lastError = $this->firstNodeError($id);
+                $configUpdatedAt = null;
+            } else {
+                $status = 'provisioning';
+                $lastError = null;
+                $configUpdatedAt = null;
+            }
+
+            $database->query(
+                'UPDATE vpn_v2_subscriptions
+                 SET status = ?, last_error = ?, config_updated_at = COALESCE(?, config_updated_at), updated_at = ?
+                 WHERE id = ?',
+                [$status, $lastError, $configUpdatedAt, date('Y-m-d H:i:s'), $id]
+            );
+
+            $database->commit();
+
+            return $status;
+        } catch (\Throwable $exception) {
+            if ($database->inTransaction()) {
+                $database->rollBack();
+            }
+            throw $exception;
         }
-
-        db()->query(
-            'UPDATE vpn_v2_subscriptions
-             SET status = ?, last_error = ?, config_updated_at = COALESCE(?, config_updated_at), updated_at = ?
-             WHERE id = ?',
-            [$status, $lastError, $configUpdatedAt, date('Y-m-d H:i:s'), $id]
-        );
-
-        return $status;
     }
 
     public function logEvent(
@@ -1039,6 +1058,7 @@ final class SubscriptionRepository
         $value = db()->query(
             'SELECT last_error FROM vpn_v2_subscription_nodes
              WHERE subscription_id = ? AND last_error IS NOT NULL AND last_error <> ""
+               AND is_obsolete = 0 AND status IN (\'create_failed\', \'sync_error\', \'missing_remote\', \'invalid_snapshot\')
              ORDER BY id ASC LIMIT 1',
             [$subscriptionId]
         )->getColumn();

@@ -323,10 +323,14 @@ try {
     $firstAttempt = $service->deleteForever($partial['id'], $adminId);
     $partialState = db()->query('SELECT status, subscription_token FROM vpn_v2_subscriptions WHERE id = ?', [$partial['id']])->getOne();
     $partialNodes = db()->query('SELECT server_id, status FROM vpn_v2_subscription_nodes WHERE subscription_id = ? ORDER BY id', [$partial['id']])->get() ?: [];
-    $assert(!$firstAttempt->successful() && $partialState['status'] === 'pending_remote_delete'
+    $assert(!$firstAttempt->successful() && $firstAttempt->remotePending && $partialState['status'] === 'pending_remote_delete'
         && hash_equals($partial['token'], (string)$partialState['subscription_token'])
         && $partialNodes[0]['status'] === 'deleted' && $partialNodes[1]['status'] === 'pending_remote_delete',
         'Partial deletion state was not retained.');
+    $subscriptionList = new \Fireball\VpnManagerV2\Repositories\SubscriptionRepository();
+    $assert($subscriptionList->countAdminList('#' . $partial['id']) === 0
+        && $subscriptionList->countAdminList('#' . $partial['id'], 'pending_remote_delete') === 1,
+        'The deleted subscription should only be visible through its cleanup status.');
     $goodDeleteCount = $panels['partial-a']->deleteCount;
     $panels['partial-b']->unavailable = false;
     $retry = $service->deleteForever($partial['id'], $adminId);

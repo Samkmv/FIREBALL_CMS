@@ -301,7 +301,9 @@ final class AutomationRepository
              FROM vpn_v2_subscription_nodes n
              INNER JOIN vpn_v2_subscriptions s ON s.id = n.subscription_id
              WHERE n.status IN ('create_failed', 'sync_error')
-               AND s.status IN ('provisioning', 'provisioning_failed', 'sync_error')
+               AND n.is_obsolete = 0
+               AND s.status IN ('provisioning', 'provisioning_failed', 'partial_sync', 'sync_error')
+               AND s.starts_at <= NOW() AND (s.expires_at IS NULL OR s.expires_at > NOW())
              ORDER BY n.updated_at ASC, n.id ASC LIMIT {$limit}"
         )->get() ?: [];
     }

@@ -474,11 +474,7 @@ final class VpnPlanSubscriptionReconciler
                 ($this->revisionService ?? new VpnSubscriptionRevisionService())->touchConfig((int)$node['subscription_id']);
                 $this->invalidateRelatedCaches($subscription);
             }
-            $this->repository()->finishSubscription(
-                (int)$node['subscription_id'],
-                (string)$subscription['status'],
-                null
-            );
+            $this->events()->recalculateSubscriptionStatus((int)$node['subscription_id']);
 
             return new NodeProvisionResult(
                 (int)$node['subscription_id'],
@@ -493,11 +489,7 @@ final class VpnPlanSubscriptionReconciler
             ($this->revisionService ?? new VpnSubscriptionRevisionService())->touchConfig((int)$node['subscription_id']);
             $subscription = $this->repository()->subscription((int)$node['subscription_id']);
             if ($subscription) {
-                $this->repository()->finishSubscription(
-                    (int)$node['subscription_id'],
-                    (string)$subscription['status'],
-                    null
-                );
+                $this->events()->recalculateSubscriptionStatus((int)$node['subscription_id']);
                 $this->invalidateRelatedCaches($subscription);
             }
         }

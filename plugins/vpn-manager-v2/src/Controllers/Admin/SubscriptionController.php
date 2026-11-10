@@ -608,6 +608,10 @@ final class SubscriptionController
                 session()->setFlash('success', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_subscription_deleted'));
                 response()->redirect(AdminTableState::append('/admin/plugins/vpn-manager-v2/subscriptions', $returnQuery));
             }
+            if ($result->remotePending) {
+                session()->setFlash('warning', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_subscription_remote_delete_pending'));
+                response()->redirect('/admin/plugins/vpn-manager-v2/subscriptions');
+            }
             session()->setFlash('error', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_subscription_delete_failed'));
         } catch (VpnManagerV2Exception $exception) {
             session()->setFlash('error', $exception->getMessage());
@@ -695,6 +699,10 @@ final class SubscriptionController
 
     private function flashResult(ProvisioningResult $result, bool $created): void
     {
+        if ($result->status === 'partial_sync') {
+            session()->setFlash('warning', \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_subscription_available_partial'));
+            return;
+        }
         if ($result->flowError) {
             session()->setFlash('error', \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_client_flow_not_saved'));
             return;

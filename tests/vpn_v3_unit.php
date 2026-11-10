@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Fireball\VpnManagerV2\Repositories\ServerRecoveryRepository;
+use Fireball\VpnManagerV2\Repositories\SubscriptionRepository;
 use Fireball\VpnManagerV2\Services\SettingsService;
 use Fireball\VpnManagerV2\Services\SubscriptionHwidGatewayService;
 use Fireball\VpnManagerV2\Services\VpnSubscriptionEndpointService;
@@ -47,22 +48,41 @@ function cache(): object
 $GLOBALS['fixtureDb'] = new class {
     public array $subscription = [];
     public array $nodes = [];
+    public array $provisioningSummary = [];
     private array $rows = [];
+    private bool $transaction = false;
+
+    public function beginTransaction(): void { $this->transaction = true; }
+    public function inTransaction(): bool { return $this->transaction; }
+    public function commit(): void { $this->transaction = false; }
+    public function rollBack(): void { $this->transaction = false; }
 
     public function query(string $sql, array $params = []): self
     {
         $this->rows = match (true) {
+            str_contains($sql, 'SELECT status FROM vpn_v2_subscriptions') => [$this->subscription['status']],
+            str_contains($sql, 'AS disabled_count') => [$this->provisioningSummary],
+            str_contains($sql, 'SELECT last_error FROM vpn_v2_subscription_nodes') => ['fixture server unavailable'],
+            str_contains($sql, 'SELECT COUNT(*)') && str_contains($sql, 'WHERE s.status') => [
+                str_contains($sql, "'deleting', 'pending_remote_delete'")
+                    ? 0
+                    : (int)in_array($this->subscription['status'], $params, true),
+            ],
             str_contains($sql, 'WHERE subscription_token_hash') => [$this->subscription],
             str_contains($sql, 'FROM vpn_v2_servers WHERE') => [['id' => $params[0], 'panel_url' => 'https://panel.example']],
             str_contains($sql, 'INNER JOIN vpn_v2_servers s ON s.id = n.server_id') => $this->nodes,
             default => [],
         };
+        if (str_starts_with($sql, 'UPDATE vpn_v2_subscriptions') && str_contains($sql, 'SET status')) {
+            if (!$this->transaction) throw new RuntimeException('Provisioning state updated without its transaction.');
+            [$this->subscription['status'], $this->subscription['last_error']] = $params;
+        }
 
         return $this;
     }
     public function get(): array { return $this->rows; }
     public function getOne(): ?array { return $this->rows[0] ?? null; }
-    public function getColumn(): int { return 0; }
+    public function getColumn(): mixed { return $this->rows[0] ?? 0; }
 };
 
 function check(bool $condition, string $message): void
@@ -162,5 +182,40 @@ $old = ['id' => 1, 'protocol' => 'vless', 'port' => 443, 'network' => 'tcp', 'se
 $new = array_replace($old, ['id' => 2, 'status' => 'active', 'is_enabled' => 1]);
 check($topology->suggestMapping([$old], [$new]) === [1 => 2], 'Unique replacement target was not mapped.');
 check($topology->suggestMapping([$old], [$new, array_replace($new, ['id' => 3])]) === null, 'Ambiguous replacement was applied automatically.');
+
+$subscriptions = new SubscriptionRepository();
+$fixtureDb->subscription['status'] = 'provisioning';
+$fixtureDb->subscription['revision'] = 2;
+$fixtureDb->provisioningSummary = ['total' => 2, 'active_count' => 0, 'failed_count' => 2];
+check($subscriptions->recalculateSubscriptionStatus(1) === 'provisioning_failed', 'All targets failed but the subscription was marked available.');
+$fixtureDb->provisioningSummary = ['total' => 2, 'active_count' => 1, 'failed_count' => 1];
+check($subscriptions->recalculateSubscriptionStatus(1) === 'partial_sync'
+    && $fixtureDb->subscription['last_error'] === 'fixture server unavailable', 'One confirmed server must make the subscription usable while keeping the failure reason.');
+$fixtureDb->nodes = [[
+    'node_id' => 43, 'server_id' => 2, 'panel_url' => 'https://healthy.example', 'protocol' => 'vless',
+    'network' => 'tcp', 'security' => 'none', 'port' => 443,
+    'stream_settings_json' => '{"network":"tcp","security":"none"}',
+    'client_uuid' => '70cc48c5-b2f4-4fc7-a4dd-123456789abc',
+]];
+$partialResponse = $endpoint->respond($token, 'plain');
+check($partialResponse->status === 200 && str_contains($partialResponse->body, 'healthy.example'),
+    'The current link did not publish the ready server during partial provisioning.');
+$fixtureDb->provisioningSummary = ['total' => 2, 'active_count' => 2];
+check($subscriptions->recalculateSubscriptionStatus(1) === 'active'
+    && $fixtureDb->subscription['last_error'] === null, 'A recovered last server did not clear partial provisioning.');
+$fixtureDb->nodes[] = array_replace($fixtureDb->nodes[0], [
+    'node_id' => 44, 'server_id' => 3, 'panel_url' => 'https://recovered.example',
+]);
+$fixtureDb->subscription['revision']++;
+$afterRecovery = $endpoint->respond($token, 'plain', $partialResponse->headers['ETag']);
+check($afterRecovery->status === 200 && str_contains($afterRecovery->body, 'recovered.example'),
+    'A recovered server did not appear on the same subscription link.');
+$fixtureDb->subscription['status'] = 'pending_remote_delete';
+check($subscriptions->recalculateSubscriptionStatus(1) === 'pending_remote_delete',
+    'A late provisioning result reactivated a subscription being deleted.');
+$pendingDelete = $endpoint->respond($token, 'plain', $afterRecovery->headers['ETag']);
+check(!str_contains($pendingDelete->body, 'healthy.example'), 'Pending remote deletion must revoke subscription access immediately.');
+check($subscriptions->countAdminList() === 0 && $subscriptions->countAdminList(status: 'pending_remote_delete') === 1,
+    'Pending remote cleanup must be hidden from the main list and accessible through its filter.');
 
 echo "VPN 3.0 regression checks passed\n";

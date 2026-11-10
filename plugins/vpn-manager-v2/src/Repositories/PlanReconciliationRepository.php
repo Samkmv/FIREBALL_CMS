@@ -475,15 +475,15 @@ final class PlanReconciliationRepository
         $expiresAt = trim((string)($current['expires_at'] ?? ''));
         $expired = $expiresAt !== '' && strtotime($expiresAt) !== false && strtotime($expiresAt) <= time();
         $status = match (true) {
-            in_array($currentStatus, ['deleting', 'delete_failed', 'deleted', 'traffic_exceeded'], true) => $currentStatus,
+            in_array($currentStatus, ['deleting', 'pending_remote_delete', 'delete_failed', 'deleted', 'traffic_exceeded'], true) => $currentStatus,
             $expired => 'expired',
             $originalStatus === 'suspended' || $currentStatus === 'suspended' => 'suspended',
             $error !== null => 'partial_sync',
             default => 'active',
         };
         db()->query(
-            'UPDATE vpn_v2_subscriptions SET status = ?, last_error = ?, updated_at = ? WHERE id = ?',
-            [$status, $error !== null ? mb_substr($error, 0, 1000) : null, date('Y-m-d H:i:s'), $subscriptionId]
+            'UPDATE vpn_v2_subscriptions SET status = ?, last_error = ?, updated_at = ? WHERE id = ? AND status = ?',
+            [$status, $error !== null ? mb_substr($error, 0, 1000) : null, date('Y-m-d H:i:s'), $subscriptionId, $currentStatus]
         );
     }
 

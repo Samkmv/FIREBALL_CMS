@@ -15,8 +15,8 @@ final class VpnV2ProvisionMissingClientsJob
         foreach ((new ConfigurationSyncRepository())->provisionableNodes(20) as $row) {
             $result['processed']++;
             try {
-                (new VpnPlanSubscriptionReconciler())->retryFailedNode((int)$row['id']);
-                $result['success']++;
+                $outcome = (new VpnPlanSubscriptionReconciler())->retryFailedNode((int)$row['id']);
+                $result[$outcome->successful() ? 'success' : 'failure']++;
             } catch (\Throwable) {
                 $result['failure']++;
             }

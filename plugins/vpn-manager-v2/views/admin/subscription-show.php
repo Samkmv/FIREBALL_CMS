@@ -39,6 +39,21 @@ $deleteLabel = FireballPluginVpnManagerV2::t($deleteRetry
     ? 'vpn_manager_v2_action_retry_delete'
     : 'vpn_manager_v2_action_delete_forever');
 $deleteConfirm = sprintf(FireballPluginVpnManagerV2::t('vpn_manager_v2_confirm_delete_subscription'), $subscriptionId);
+$displayStatus = ProvisioningStatus::subscriptionStatus($subscription);
+$readyNodes = 0;
+$pendingServers = [];
+if ($displayStatus === 'partial_sync') {
+    foreach ($nodes as $node) {
+        if (!empty($node['is_obsolete'])) {
+            continue;
+        }
+        if ($node['status'] === 'active') {
+            $readyNodes++;
+        } elseif (in_array($node['status'], ['creating', 'create_failed', 'sync_error', 'missing_remote', 'invalid_snapshot'], true)) {
+            $pendingServers[(int)$node['server_id']] = (string)$node['server_name'];
+        }
+    }
+}
 $rows = [];
 $mobileCards = [];
 $reorderableNodes = $deletionStarted ? [] : array_values(array_filter($nodes, static fn(array $node): bool =>
@@ -238,7 +253,7 @@ foreach ($nodes as $node) {
             <i class="ci-refresh-cw" aria-hidden="true"></i> <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_sync_subscription')) ?>
         </button>
     </form>
-    <?php if (ProvisioningStatus::subscriptionStatus($subscription) === 'active'): ?>
+    <?php if (in_array($displayStatus, ['active', 'partial_sync'], true)): ?>
         <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId . '/suspend')) ?>">
             <?= get_csrf_field() ?>
             <input type="hidden" name="return_query" value="<?= htmlSC($returnQuery) ?>">
@@ -269,6 +284,16 @@ foreach ($nodes as $node) {
             ? 'vpn_manager_v2_subscription_deleted_note' : 'vpn_manager_v2_subscription_deletion_pending_note')) ?>
     </div>
 <?php else: ?>
+<?php if ($readyNodes > 0 && $pendingServers !== []): ?>
+    <div class="alert alert-warning rounded-4 mb-3" role="status">
+        <strong><?= htmlSC(sprintf(FireballPluginVpnManagerV2::t('vpn_manager_v2_partial_ready_count'), $readyNodes)) ?></strong>
+        <div class="mt-1">
+            <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_partial_waiting_servers')) ?>
+            <?= htmlSC(implode(', ', $pendingServers)) ?>
+        </div>
+        <div class="small mt-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_partial_recovery_help')) ?></div>
+    </div>
+<?php endif; ?>
 <div class="border rounded-4 p-3 mb-3">
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
         <div>
@@ -363,7 +388,7 @@ foreach ($nodes as $node) {
         </div>
     <?php endif; ?>
     <?php if (!empty($subscription['last_error'])): ?>
-        <div class="alert alert-danger py-2 px-3 small mt-2 mb-0">
+        <div class="alert <?= $displayStatus === 'partial_sync' ? 'alert-warning' : 'alert-danger' ?> py-2 px-3 small mt-2 mb-0">
             <strong><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_last_error')) ?></strong>
             <?= htmlSC((string)$subscription['last_error']) ?>
         </div>
