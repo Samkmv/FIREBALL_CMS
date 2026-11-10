@@ -1,6 +1,10 @@
 <?php
 
 return [
+    'subscriptions_end_reason' => 'Reason for ending',
+    'subscriptions_end_reason_site' => 'Auto-renewal turned off on the site',
+    'subscriptions_end_reason_payment_failed' => 'Renewal payment failed',
+    'subscriptions_end_reason_unknown' => 'Unknown',
     'subscriptions_admin_more' => 'More',
     'subscriptions_address_choose' => 'Select or enter a value',
     'subscriptions_address_search' => 'Search the local directory…',

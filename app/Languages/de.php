@@ -218,6 +218,7 @@ return [
     'tpl_auth_account' => 'Konto',
     'tpl_auth_login' => 'Anmelden',
     'tpl_auth_register' => 'Registrieren',
+    'tpl_subscription_active' => 'Abo aktiv',
     'tpl_auth_profile' => 'Profil',
     'tpl_auth_chat' => 'Nachrichten',
     'tpl_auth_chat_new' => 'Neue Nachricht',

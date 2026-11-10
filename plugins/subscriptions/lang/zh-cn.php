@@ -3,6 +3,10 @@
 $en = require __DIR__ . '/en.php';
 
 return array_replace($en, [
+    'subscriptions_end_reason' => '结束原因',
+    'subscriptions_end_reason_site' => '已在网站关闭自动续订',
+    'subscriptions_end_reason_payment_failed' => '续订付款失败',
+    'subscriptions_end_reason_unknown' => '未知',
     'subscriptions_admin_more' => '更多',
     'subscriptions_address_choose' => '选择或输入',
     'subscriptions_address_search' => '搜索本地地址库…',

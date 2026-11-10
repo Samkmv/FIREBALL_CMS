@@ -218,6 +218,7 @@ return [
     'tpl_auth_account' => 'Аккаунт',
     'tpl_auth_login' => 'Войти',
     'tpl_auth_register' => 'Регистрация',
+    'tpl_subscription_active' => 'Подписка активна',
     'tpl_auth_profile' => 'Профиль',
     'tpl_auth_chat' => 'Сообщения',
     'tpl_auth_chat_new' => 'Новое сообщение',

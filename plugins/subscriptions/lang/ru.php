@@ -3,6 +3,10 @@
 $en = require __DIR__ . '/en.php';
 
 return array_replace($en, [
+    'subscriptions_end_reason' => 'Причина завершения',
+    'subscriptions_end_reason_site' => 'Автопродление отключено на сайте',
+    'subscriptions_end_reason_payment_failed' => 'Неудачная оплата продления',
+    'subscriptions_end_reason_unknown' => 'Неизвестна',
     'subscriptions_admin_more' => 'Ещё',
     'subscriptions_address_choose' => 'Выберите или введите значение',
     'subscriptions_address_search' => 'Поиск в локальном справочнике…',

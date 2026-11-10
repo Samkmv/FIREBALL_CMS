@@ -13,6 +13,11 @@ $statusLabels = [
     'past_due' => FireballPluginSubscriptions::t('subscriptions_status_past_due'),
     'expired' => FireballPluginSubscriptions::t('subscriptions_status_expired'),
 ];
+$reasonLabels = [
+    'site' => FireballPluginSubscriptions::t('subscriptions_end_reason_site'),
+    'payment_failed' => FireballPluginSubscriptions::t('subscriptions_end_reason_payment_failed'),
+    'unknown' => FireballPluginSubscriptions::t('subscriptions_end_reason_unknown'),
+];
 $sourceLabels = [
     'manual' => FireballPluginSubscriptions::t('subscriptions_source_manual'),
     'external' => FireballPluginSubscriptions::t('subscriptions_source_external'),
@@ -143,14 +148,16 @@ foreach ($subscriptions as $subscription) {
     }
     $actions = $renderActions($actionItems);
     $source = $sourceLabels[(string)($subscription['source'] ?? '')] ?? (string)($subscription['source'] ?? '');
+    $reason = $reasonLabels[$subscription['end_reason'] ?? ''] ?? '—';
     $rows[] = ['cells' => [
         ['value' => '#' . (int)$subscription['id']], ['html' => $user], ['value' => (string)$subscription['plan_name']],
-        ['html' => $status], ['value' => $source], ['html' => $period], ['html' => $actions],
+        ['html' => $status], ['value' => $reason], ['value' => $source], ['html' => $period], ['html' => $actions],
     ]];
     $mobileCards[] = [
         'id' => (string)(int)$subscription['id'], 'title' => (string)$subscription['user_name'], 'icon' => 'ci-user',
         'status' => [['html' => $status]], 'actions' => $mobileActions,
         'extra_fields' => [
+            ['label' => FireballPluginSubscriptions::t('subscriptions_end_reason'), 'value' => $reason],
             ['label' => FireballPluginSubscriptions::t('subscriptions_user'), 'value' => (string)$subscription['user_email']],
             ['label' => FireballPluginSubscriptions::t('subscriptions_plan'), 'value' => (string)$subscription['plan_name']],
             ['label' => FireballPluginSubscriptions::t('subscriptions_source'), 'value' => $source],
@@ -206,14 +213,23 @@ foreach ($subscriptions as $subscription) {
     </details>
 
     <form class="row g-2 align-items-end mb-3 subscriptions-filter-form" method="get">
-        <div class="col-md-5"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_search')) ?></label><input class="form-control" type="search" name="q" value="<?= htmlSC((string)($search ?? '')) ?>"></div>
+        <div class="col-md-4"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_search')) ?></label><input class="form-control" type="search" name="q" value="<?= htmlSC((string)($search ?? '')) ?>"></div>
         <div class="col-md-3"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_field_status')) ?></label><select class="form-select" name="status"><option value=""><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_filter_all')) ?></option><?php foreach ($statusLabels as $key => $label): ?><option value="<?= htmlSC($key) ?>" <?= (string)($status_filter ?? '') === $key ? 'selected' : '' ?>><?= htmlSC($label) ?></option><?php endforeach; ?></select></div>
+        <div class="col-md-3">
+            <label class="form-label" for="subscriptionsEndReason"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_end_reason')) ?></label>
+            <select class="form-select" id="subscriptionsEndReason" name="reason">
+                <option value=""><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_filter_all')) ?></option>
+                <?php foreach ($reasonLabels as $key => $label): ?>
+                    <option value="<?= htmlSC($key) ?>" <?= ($reason_filter ?? '') === $key ? 'selected' : '' ?>><?= htmlSC($label) ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
         <div class="col-md-auto"><button class="btn btn-outline-secondary rounded-pill" type="submit"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_apply')) ?></button></div>
     </form>
 
     <div class="border rounded-5 p-3 p-md-4 admin-table-card" data-admin-table>
         <?= view()->renderPartial('admin/partials/table', [
-            'columns' => array_map(static fn(string $label): array => ['label' => $label], ['ID', FireballPluginSubscriptions::t('subscriptions_user'), FireballPluginSubscriptions::t('subscriptions_plan'), FireballPluginSubscriptions::t('subscriptions_field_status'), FireballPluginSubscriptions::t('subscriptions_source'), FireballPluginSubscriptions::t('subscriptions_period'), FireballPluginSubscriptions::t('subscriptions_actions')]),
+            'columns' => array_map(static fn(string $label): array => ['label' => $label], ['ID', FireballPluginSubscriptions::t('subscriptions_user'), FireballPluginSubscriptions::t('subscriptions_plan'), FireballPluginSubscriptions::t('subscriptions_field_status'), FireballPluginSubscriptions::t('subscriptions_end_reason'), FireballPluginSubscriptions::t('subscriptions_source'), FireballPluginSubscriptions::t('subscriptions_period'), FireballPluginSubscriptions::t('subscriptions_actions')]),
             'rows' => $rows, 'mobile_cards' => $mobileCards, 'empty_text' => FireballPluginSubscriptions::t('subscriptions_empty'),
         ]) ?>
         <?= view()->renderPartial('admin/partials/table_footer', ['visible' => count($subscriptions), 'total' => (int)($total ?? 0), 'pagination' => $pagination ?? null, 'show_results_label' => false]) ?>

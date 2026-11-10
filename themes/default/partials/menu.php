@@ -53,6 +53,11 @@
                 >
                 <?= print_translation('tpl_auth_profile') ?>
             </a>
+            <?php if (!empty($currentUserHasActiveSubscription)): ?>
+                <p class="small text-success text-center w-100 mb-2">
+                    <i class="ci-award me-1" aria-hidden="true"></i><?= print_translation('tpl_subscription_active') ?>
+                </p>
+            <?php endif; ?>
             <?php if (check_admin()): ?>
                 <a class="btn btn-lg btn-outline-secondary w-100 rounded-pill mb-2 d-inline-flex align-items-center justify-content-center gap-2" href="<?= base_href('/admin') ?>">
                     <i class="ci-layout fs-lg ms-n1"></i>

@@ -94,6 +94,29 @@ final class AdminController
     public function subscribers(): string
     {
         $effectiveStatusSql = SubscriptionStatus::effectiveSql();
+        $endReasonSql = "CASE
+            WHEN ({$effectiveStatusSql}) = 'disabled' THEN NULL
+            WHEN s.auto_renew = 0 AND s.ends_at IS NOT NULL AND (
+                SELECT e.event_key FROM subscription_events e
+                LEFT JOIN subscription_payments ep ON ep.id = e.payment_id
+                WHERE e.subscription_id = s.id AND (
+                    e.event_key IN ('subscription.auto_renew_disabled', 'subscription.auto_renew_enabled', 'subscription.auto_renew_blocked_by_address')
+                    OR (e.event_key = 'subscription.renewed' AND ep.payment_type = 'initial')
+                )
+                ORDER BY e.id DESC LIMIT 1
+            ) = 'subscription.auto_renew_disabled' THEN 'site'
+            WHEN ({$effectiveStatusSql}) IN ('grace_period', 'past_due', 'expired') AND EXISTS (
+                SELECT 1 FROM subscription_payments rp
+                WHERE rp.subscription_id = s.id AND rp.payment_type = 'recurring'
+                  AND rp.billing_period_start = s.ends_at AND rp.status = 'failed'
+                  AND NOT EXISTS (
+                      SELECT 1 FROM subscription_events re
+                      WHERE re.payment_id = rp.id AND re.event_key = 'subscription.auto_renew_blocked_by_address'
+                  )
+            ) THEN 'payment_failed'
+            WHEN ({$effectiveStatusSql}) = 'expired' THEN 'unknown'
+        END";
+        $reason = trim((string)request()->get('reason', ''));
         $search = trim((string)request()->get('q', ''));
         $status = trim((string)request()->get('status', ''));
         $where = ['s.archived_at IS NULL'];
@@ -109,12 +132,18 @@ final class AdminController
         } else {
             $status = '';
         }
+        if (in_array($reason, ['site', 'payment_failed', 'unknown'], true)) {
+            $where[] = "({$endReasonSql}) = ?";
+            $params[] = $reason;
+        } else {
+            $reason = '';
+        }
         $whereSql = 'WHERE ' . implode(' AND ', $where);
         $total = (int)db()->query("SELECT COUNT(*) FROM subscriptions s INNER JOIN users u ON u.id = s.user_id {$whereSql}", $params)->getColumn();
         $pagination = new \FBL\Pagination($total, 20);
         $offset = $pagination->getOffset();
         $rows = db()->query(
-            "SELECT s.*, {$effectiveStatusSql} AS effective_status, u.name AS user_name, u.email AS user_email, p.name AS plan_name,
+            "SELECT s.*, {$effectiveStatusSql} AS effective_status, {$endReasonSql} AS end_reason, u.name AS user_name, u.email AS user_email, p.name AS plan_name,
                     NOT EXISTS (
                         SELECT 1 FROM subscriptions active_s
                         WHERE active_s.user_id = s.user_id AND active_s.archived_at IS NULL
@@ -140,6 +169,7 @@ final class AdminController
             'total' => $total,
             'search' => $search,
             'status_filter' => $status,
+            'reason_filter' => $reason,
         ]);
     }
 

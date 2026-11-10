@@ -218,6 +218,7 @@ return [
     'tpl_auth_account' => '账户',
     'tpl_auth_login' => '登录',
     'tpl_auth_register' => '注册',
+    'tpl_subscription_active' => '订阅已激活',
     'tpl_auth_profile' => '个人资料',
     'tpl_auth_chat' => '消息',
     'tpl_auth_chat_new' => '新消息',
