@@ -35,9 +35,12 @@ for ($i = 1; $i <= 3; $i++) {
 $export = static function (string $strategy) use ($builder, $settings, $uris): array {
     return $builder->build($uris, array_replace($settings, ['strategy' => $strategy]), '⚡ Автовыбор');
 };
-if (in_array($argv[1] ?? '', ['leastPing', 'leastLoad', 'blocked'], true)) {
-    $fixture = $argv[1] === 'blocked' ? $builder->build([], $settings, 'Unavailable') : $export($argv[1]);
-    echo json_encode($fixture['profile'], JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), PHP_EOL;
+$format = $argv[1] ?? '';
+if (in_array($format, ['leastPing', 'leastLoad', 'blocked', 'subscription'], true)) {
+    $fixture = $format === 'blocked' ? $builder->build([], $settings, 'Unavailable')
+        : $export($format === 'subscription' ? 'leastPing' : $format);
+    $body = $format === 'subscription' ? [$fixture['profile'], ...$fixture['manual']] : $fixture['profile'];
+    echo json_encode($body, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), PHP_EOL;
     return;
 }
 $result = $export('leastPing');
@@ -48,6 +51,10 @@ $check(array_column($profile['outbounds'], 'protocol') === ['blackhole', 'vless'
 $check($profile['dns']['servers'] === ['https://1.1.1.1/dns-query'] && $profile['routing']['rules'][0]['balancerTag'] === 'vpn-auto', 'DoH is routed into VPN');
 $check($profile['inbounds'][0]['protocol'] === 'socks' && $profile['inbounds'][0]['listen'] === '127.0.0.1'
     && $profile['inbounds'][0]['settings']['udp'], 'Local SOCKS with UDP');
+$check(array_column($result['manual'], 'remarks') === ['Fixture · #1', 'Fixture · #2', 'Fixture · #3'],
+    'Manual entries must distinguish identical names without changing the order.');
+$named = $builder->build([str_replace('#Fixture', '#%F0%9F%87%B3%F0%9F%87%B1%20Amsterdam?serverDescription=SGVsbG8=', $uris[0])], $settings, 'Automatic');
+$check($named['manual'][0]['remarks'] === '🇳🇱 Amsterdam', 'Manual entries use the configured display name.');
 for ($i = 1; $i <= 3; $i++) {
     $node = $profile['outbounds'][$i];
     $remote = $node['settings']['vnext'][0];
@@ -58,6 +65,13 @@ for ($i = 1; $i <= 3; $i++) {
         && $reality['shortId'] === '0' . $i && $reality['serverName'] === "cover{$i}.example"
         && $reality['publicKey'] === rtrim(strtr(base64_encode(str_repeat(chr($i), 32)), '+/', '-_'), '=')
         && $reality['spiderX'] === '/', 'Each outbound retains its own parameters');
+    $manual = $result['manual'][$i - 1];
+    $check($manual['outbounds'] === [$profile['outbounds'][0], $node, $profile['outbounds'][4]]
+        && $manual['routing']['rules'][0]['outboundTag'] === $node['tag']
+        && $manual['routing']['rules'][2]['outboundTag'] === $node['tag']
+        && !isset($manual['routing']['balancers']) && !isset($manual['observatory'])
+        && !isset($manual['burstObservatory']),
+        'Manual selection must send traffic and DoH to the single selected peer.');
 }
 $load = $export('leastLoad')['profile'];
 $check(!isset($load['observatory']) && $load['burstObservatory']['pingConfig']['timeout'] === '5s'
@@ -67,7 +81,8 @@ $mixed = $builder->build([$uris[0], str_replace('type=raw', 'type=xhttp', $uris[
 $check($mixed['count'] === 1 && $mixed['skipped'] === 3
     && $mixed['profile']['routing']['balancers'][0]['fallbackTag'] === 'vpn-node-1', 'One node and unsupported transports');
 $empty = $builder->build([], $settings, 'Unavailable');
-$check($empty['count'] === 0 && array_column($empty['profile']['outbounds'], 'protocol') === ['blackhole'], 'Empty profile has no credentials');
+$check($empty['count'] === 0 && $empty['manual'] === []
+    && array_column($empty['profile']['outbounds'], 'protocol') === ['blackhole'], 'Empty profile has no credentials');
 $more = array_merge($uris, [str_replace(':444?', ':1444?', $uris[0]), str_replace(':445?', ':1445?', $uris[1])]);
 $check($builder->build($more, $settings, 'Fixture')['count'] === 5, 'The export must not cap the number of peers at three.');
 $check(!XrayAutoSettings::normalize(['enabled' => true, 'servers' => ['invalid']])['enabled'], 'Invalid stored allowlist must not broaden access');
@@ -127,16 +142,20 @@ $check($endpoint->respond($token, 'xray')->status === 404, 'Xray export is disab
 $xraySettings = array_replace($legacySettings, ['xray_auto' => ['enabled' => true]]);
 cache()->set('vpn-v2:settings:v1', $xraySettings, 300);
 $xray = $endpoint->respond($token, 'xray', '*');
-$xrayProfile = json_decode($xray->body, true, 512, JSON_THROW_ON_ERROR)[0];
+$profiles = json_decode($xray->body, true, 512, JSON_THROW_ON_ERROR);
+$xrayProfile = $profiles[0];
 $check($xray->status === 200 && $xray->configCount === 1 && !isset($xray->headers['ETag'])
     && str_contains($xray->headers['Cache-Control'], 'no-store') && !isset($xray->headers['routing']) && !isset($xray->headers['providerid'])
-    && $xrayProfile['outbounds'][1]['settings']['vnext'][0]['address'] === 'healthy.example',
+    && $xrayProfile['outbounds'][1]['settings']['vnext'][0]['address'] === 'healthy.example'
+    && count($profiles) === 2 && $profiles[1]['outbounds'][1] === $xrayProfile['outbounds'][1],
     'Separate export must use the authorized node without cache or legacy Happ headers.');
 $plain = $endpoint->respond($token, 'plain');
 $check(str_starts_with($plain->body, 'vless://') && $plain->headers['Content-Type'] === 'text/plain; charset=utf-8',
     'Enabling Xray changed the legacy response format.');
 $fixtureDb->nodes[] = array_replace($fixtureDb->nodes[0], ['server_id' => 8, 'panel_url' => 'https://added.example']);
-$check($endpoint->respond($token, 'xray')->configCount === 2, 'A newly assigned server is absent from Xray.');
+$added = json_decode($endpoint->respond($token, 'xray')->body, true, 512, JSON_THROW_ON_ERROR);
+$check(count($added) === 3 && $added[2]['outbounds'][1]['settings']['vnext'][0]['address'] === 'added.example',
+    'A newly assigned server must appear in the same Xray subscription as a manual entry.');
 cache()->set('vpn-v2:settings:v1', array_replace($xraySettings, ['xray_auto' => ['enabled' => true, 'servers' => [8]]]), 300);
 $limited = $endpoint->respond($token, 'xray');
 $check($limited->configCount === 1 && !str_contains($limited->body, 'healthy.example'), 'Xray ignored its server allowlist.');
@@ -147,7 +166,8 @@ $check($removed->configCount === 1 && !str_contains($removed->body, 'healthy.exa
 $fixtureDb->subscription['expires_at'] = '2000-01-01 00:00:00';
 $xrayExpired = $endpoint->respond($token, 'xray');
 $check($xrayExpired->configCount === 0 && $xrayExpired->headers['X-Fireball-VPN-Status'] === 'expired'
-    && !str_contains($xrayExpired->body, $key), 'Expired Xray export revealed credentials.');
+    && count(json_decode($xrayExpired->body, true, 512, JSON_THROW_ON_ERROR)) === 1
+    && !str_contains($xrayExpired->body, $key), 'Expired Xray export revealed credentials or retained manual profiles.');
 $check($endpoint->respond(str_repeat('b', 64), 'xray')->status === 404, 'Another token must not expose this profile.');
 $fixtureDb->subscription['expires_at'] = null;
 $fixtureDb->subscription['device_limit'] = 1;

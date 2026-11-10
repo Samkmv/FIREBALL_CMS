@@ -20,7 +20,7 @@ return [
     'vpn_manager_v2_xray_servers_help' => '留空时允许订阅中所有兼容服务器。外部来源由单独开关控制。',
     'vpn_manager_v2_xray_invalid' => 'Xray 自动选择设置无效。',
     'vpn_manager_v2_xray_no_nodes' => '此订阅没有兼容的 VLESS + REALITY（TCP）连接。',
-    'vpn_manager_v2_xray_access_help' => '在 Happ 中导入此独立链接并选择自动选择。原有订阅仍可用于手动选择。',
+    'vpn_manager_v2_xray_access_help' => '将此链接添加到 Happ。自动选择和兼容的手动服务器会出现在同一列表中。',
     'vpn_manager_v2_xray_copy' => '复制 Xray 链接',
     'vpn_manager_v2_xray_diagnostic' => '设备检查前的本地诊断。兼容连接 %d，跳过 %d。',
     'vpn_manager_v2_xray_diagnostic_error' => '无法检查本地连接。',

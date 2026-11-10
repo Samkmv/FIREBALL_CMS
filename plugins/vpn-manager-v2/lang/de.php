@@ -20,7 +20,7 @@ return [
     'vpn_manager_v2_xray_servers_help' => 'Ohne Auswahl sind alle kompatiblen Server des Abonnements zulässig. Externe Quellen werden separat gesteuert.',
     'vpn_manager_v2_xray_invalid' => 'Ungültige Xray-Einstellungen.',
     'vpn_manager_v2_xray_no_nodes' => 'Keine kompatiblen VLESS- und REALITY-Verbindungen (TCP) im Abonnement.',
-    'vpn_manager_v2_xray_access_help' => 'Importieren Sie den separaten Link in Happ und wählen Sie Automatische Auswahl. Das bestehende Abonnement bleibt für die manuelle Auswahl verfügbar.',
+    'vpn_manager_v2_xray_access_help' => 'Fügen Sie diesen Link zu Happ hinzu. Die automatische Auswahl und kompatible Server zur manuellen Auswahl erscheinen in derselben Liste.',
     'vpn_manager_v2_xray_copy' => 'Xray-Link kopieren',
     'vpn_manager_v2_xray_diagnostic' => 'Lokale Diagnose vor der Geräteprüfung. Kompatible Verbindungen %d, übersprungen %d.',
     'vpn_manager_v2_xray_diagnostic_error' => 'Lokale Verbindungen konnten nicht geprüft werden.',

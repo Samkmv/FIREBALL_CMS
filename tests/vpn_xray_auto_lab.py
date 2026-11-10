@@ -94,7 +94,10 @@ def main(xray, profile_path):
         """, str(cover_port)], cwd=work, env=env)
         stack.callback(stop, cover)
 
-        config = json.loads(profile_path.read_text(encoding="utf-8"))
+        profiles = json.loads(profile_path.read_text(encoding="utf-8"))
+        if isinstance(profiles, dict):
+            profiles = [profiles]
+        config = profiles[0]
         servers, origins = [], []
         for i, node in enumerate(config["outbounds"][1:4]):
             label = f"node-{i + 1}"
@@ -129,15 +132,15 @@ def main(xray, profile_path):
         config["observatory"].update(probeUrl="http://probe.example/probe", probeInterval="2s")
         client = start("client", config)
 
-        def request(url="http://target.example/which"):
+        def request(url="http://target.example/which", socks=local_socks):
             return run(["curl", "--noproxy", "", "--silent", "--max-time", "2", "--socks5-hostname",
-                        f"127.0.0.1:{local_socks}", url], capture_output=True)
+                        f"127.0.0.1:{socks}", url], capture_output=True)
 
-        def expect(expected, timeout=15):
+        def expect(expected, process=client, socks=local_socks, timeout=15):
             deadline = time.monotonic() + timeout
             while time.monotonic() < deadline:
-                assert client.poll() is None, "Xray client stopped"
-                result = request()
+                assert process.poll() is None, "Xray client stopped"
+                result = request(socks=socks)
                 if result.returncode == 0 and result.stdout == expected:
                     return
                 time.sleep(0.25)
@@ -145,6 +148,15 @@ def main(xray, profile_path):
 
         try:
             expect("node-1")
+            if len(profiles) > 1:
+                manual = profiles[3]
+                manual["outbounds"][1] = config["outbounds"][3]
+                manual_socks = free_port()
+                manual["inbounds"][0]["port"] = manual_socks
+                manual_client = start("manual", manual)
+                expect("node-3", process=manual_client, socks=manual_socks)
+                stop(manual_client)
+                print("PASS manual profile uses its selected REALITY peer")
             stop(servers[0])
             expect("node-2")
             origins[1].delay, origins[2].delay = 0.4, 0.02

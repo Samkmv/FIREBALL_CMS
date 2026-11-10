@@ -342,7 +342,10 @@ final class VpnSubscriptionEndpointService
         $headers['X-Fireball-VPN-Status'] = $state;
         $headers['X-Fireball-Xray-Nodes'] = (string)$result['count'];
         $headers['X-Fireball-Xray-Skipped'] = (string)$result['skipped'];
-        $body = json_encode([$result['profile']], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+        $body = json_encode(
+            [$result['profile'], ...$result['manual']],
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
+        );
 
         return new SubscriptionEndpointResponse(200, $body, $headers, $result['count']);
     }
