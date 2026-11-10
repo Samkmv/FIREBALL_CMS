@@ -123,9 +123,14 @@ $check($custom['xray_auto']['enabled'] && $custom['xray_auto']['interval'] === 4
     && $custom['xray_auto']['servers'] === [8], 'Xray form values are persisted as typed settings.');
 $check($validator->validate([], $custom)->toArray()['xray_auto'] === $custom['xray_auto'],
     'An older settings form must preserve Xray settings.');
+$namedSettings = array_replace($legacySettings, [
+    'subscription_name' => 'Моя подписка',
+    'service_name' => 'Название сервиса',
+]);
+cache()->set('vpn-v2:settings:v1', $namedSettings, 300);
 $check($endpoint->respond($token, 'xray')->status === 404, 'Xray export is disabled by default.');
 $ordinary = $endpoint->respond($token);
-$xraySettings = array_replace($legacySettings, ['xray_auto' => ['enabled' => true]]);
+$xraySettings = array_replace($namedSettings, ['xray_auto' => ['enabled' => true]]);
 cache()->set('vpn-v2:settings:v1', $xraySettings, 300);
 $xray = $endpoint->respond($token, 'xray', '*');
 $profiles = json_decode($xray->body, true, 512, JSON_THROW_ON_ERROR);
@@ -133,10 +138,12 @@ $xrayProfile = $profiles[0];
 $check($xray->status === 200 && $xray->configCount === 1 && !isset($xray->headers['ETag'])
     && str_contains($xray->headers['Cache-Control'], 'no-store') && !isset($xray->headers['routing']) && !isset($xray->headers['providerid'])
     && count($profiles) === 1 && $xrayProfile['remarks'] === 'vpn_manager_v2_xray_name'
-    && $xray->headers['profile-title'] === 'base64:' . base64_encode('VPN V2 · Xray')
+    && $xray->headers['profile-title'] === 'base64:' . base64_encode('Моя подписка')
     && $xrayProfile['outbounds'][1]['settings']['vnext'][0]['address'] === 'healthy.example',
     'Separate export must use the authorized node without cache or legacy Happ headers.');
 $plain = $endpoint->respond($token, 'plain');
+$check($plain->headers['profile-title'] === $xray->headers['profile-title'],
+    'Both formats must send exactly the configured subscription name.');
 $check($endpoint->respond($token)->body === $ordinary->body, 'Enabling the Xray profile must preserve the original base64 payload.');
 $check(str_starts_with($plain->body, 'vless://') && $plain->headers['Content-Type'] === 'text/plain; charset=utf-8',
     'Enabling Xray changed the legacy response format.');

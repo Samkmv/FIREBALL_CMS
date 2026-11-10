@@ -341,7 +341,7 @@ final class VpnSubscriptionEndpointService
             $metadata->headers($subscription, $settings),
             array_flip(['subscription-userinfo', 'profile-update-interval', 'support-url'])
         );
-        $headers['profile-title'] = 'base64:' . base64_encode($metadata->profileTitle($subscription, $settings) . ' · Xray');
+        $headers['profile-title'] = 'base64:' . base64_encode($metadata->profileTitle($subscription, $settings));
         $headers['X-Fireball-VPN-Status'] = $state;
         $headers['X-Fireball-Xray-Nodes'] = (string)$result['count'];
         $headers['X-Fireball-Xray-Skipped'] = (string)$result['skipped'];
