@@ -135,6 +135,7 @@ final class PlanController
                 'obsolete_connections' => $preview->obsoleteConnections,
                 'parameter_counts' => $preview->parameterCounts,
                 'error_count' => count($preview->errors),
+                'errors' => array_slice($preview->errors, 0, 20),
                 // FIREBALL_VPN_RECONCILIATION_UI_V141
                 'has_differences' => $preview->hasDifferences(),
                 'unavailable_server_count' => count($preview->unavailableServers),
@@ -310,6 +311,7 @@ final class PlanController
             'reconciliationPreview' => $plan ? $this->currentPreview((int)$plan['id']) : null,
             'missingConnectionCount' => $plan ? $reconciliation->missingNodeCountForPlan((int)$plan['id']) : 0,
             'latestReconciliation' => $plan ? $reconciliation->latestOperation((int)$plan['id']) : null,
+            'currentConnectionErrors' => $plan ? $reconciliation->currentConnectionErrors((int)$plan['id']) : [],
             'obsoleteConnectionCount' => $plan ? $reconciliation->obsoleteNodeCount((int)$plan['id']) : 0,
             'obsoleteSubscriptionCount' => $plan ? $reconciliation->obsoleteSubscriptionCount((int)$plan['id']) : 0,
             'obsoleteTargets' => $plan ? $reconciliation->obsoleteTargetsForPlan((int)$plan['id']) : [],

@@ -6,6 +6,11 @@ use Fireball\VpnManagerV2\DTO\NodeProvisionResult;
 use Fireball\VpnManagerV2\DTO\ReconcilePreview;
 use Fireball\VpnManagerV2\DTO\ReconcileResult;
 use Fireball\VpnManagerV2\Exceptions\ProvisioningException;
+use Fireball\VpnManagerV2\Exceptions\ClientVerificationException;
+use Fireball\VpnManagerV2\Exceptions\ThreeXuiTransportException;
+use Fireball\VpnManagerV2\Exceptions\ThreeXuiResponseException;
+use Fireball\VpnManagerV2\Exceptions\ValidationException;
+use Fireball\VpnManagerV2\Exceptions\VpnConfigValidationException;
 use Fireball\VpnManagerV2\Exceptions\VpnManagerV2Exception;
 use Fireball\VpnManagerV2\Repositories\PlanReconciliationRepository;
 use Fireball\VpnManagerV2\Repositories\SubscriptionRepository;
@@ -36,7 +41,7 @@ final class VpnPlanSubscriptionReconciler
         }
 
         $checked = $missing = $obsolete = $matching = 0;
-        $parameterCounts = array_fill_keys(['limitHwid', 'limitIp', 'totalGB', 'expiryTime', 'enable', 'flow', 'email'], 0);
+        $parameterCounts = array_fill_keys(['limitHwid', 'limitIp', 'totalGB', 'expiryTime', 'enable', 'flow', 'email', 'configuration'], 0);
         $details = $errors = [];
         foreach ($repository->eligibleSubscriptions($planId) as $subscription) {
             $checked++;
@@ -68,7 +73,7 @@ final class VpnPlanSubscriptionReconciler
                 try {
                     $inspection = ($this->remoteSync ?? new RemoteClientSyncService())->inspect($node, $expected, [
                         'flow' => $this->resolveFlow($planNode), 'traffic_limit_bytes' => $expected['traffic_limit_bytes'],
-                    ]);
+                    ], compareSnapshot: true);
                     if ($inspection['missing']) {
                         $subscriptionMissing++;
                     }
@@ -78,7 +83,9 @@ final class VpnPlanSubscriptionReconciler
                     }
                 } catch (\Throwable $exception) {
                     $hadError = true;
-                    $errors[] = ['subscription_id' => $subscriptionId, 'node_id' => (int)$node['id'], 'error' => $this->safeError($exception)];
+                    $errors[] = ['subscription_id' => $subscriptionId, 'node_id' => (int)$node['id'],
+                        'server_name' => $planNode['server_name'], 'inbound_name' => $planNode['inbound_name'],
+                        'error' => $this->safeError($exception)];
                 }
             }
             foreach ($this->findObsoleteNodes($subscriptionId) as $node) {
@@ -211,7 +218,7 @@ final class VpnPlanSubscriptionReconciler
             $subscription = $this->expectedSubscription($subscription, $plan);
         }
         $firstError = null;
-        $repository->clearCurrentPlanObsolete($subscriptionId, $planId);
+        $configChanged = $repository->clearCurrentPlanObsolete($subscriptionId, $planId) > 0 || $configChanged;
 
         foreach ($this->findObsoleteNodes($subscriptionId) as $node) {
             if ($serverId > 0 && (int)$node['server_id'] !== $serverId) {
@@ -257,10 +264,12 @@ final class VpnPlanSubscriptionReconciler
                 $configChanged = true;
             } elseif ($result->status === 'sync_error') {
                 $syncErrors++;
-                $firstError ??= \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_client_not_confirmed');
+                $firstError ??= $repository->node($result->nodeId)['last_error']
+                    ?? \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_client_not_confirmed');
             } elseif (!$result->successful()) {
                 $failed++;
-                $firstError ??= \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_provisioning_generic');
+                $firstError ??= $repository->node($result->nodeId)['last_error']
+                    ?? \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_provisioning_generic');
             } else {
                 $skipped++;
             }
@@ -279,6 +288,7 @@ final class VpnPlanSubscriptionReconciler
                 }
             } catch (\Throwable $exception) {
                 $syncErrors++;
+                $configChanged = $configChanged || (string)$change['node']['status'] === 'active';
                 $firstError ??= $this->safeError($exception);
             }
         }
@@ -651,6 +661,7 @@ final class VpnPlanSubscriptionReconciler
         $desiredFlow = $this->resolveFlow($planNode);
         try {
             $sync = $this->remoteSync ?? new RemoteClientSyncService();
+            $reprovisioned = false;
             $inspection = $sync->inspect($node, $subscription, [
                 'flow' => $desiredFlow, 'traffic_limit_bytes' => $subscription['traffic_limit_bytes'] ?? null,
             ]);
@@ -660,12 +671,13 @@ final class VpnPlanSubscriptionReconciler
                 if (!$recovered->successful()) {
                     throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_client_not_confirmed'));
                 }
-                return $recovered->changed;
+                $reprovisioned = $recovered->changed;
+                $node = $this->repository()->node($recovered->nodeId) ?? $node;
             }
             $result = $sync->push($node, $subscription, [
                 'flow' => $desiredFlow,
                 'traffic_limit_bytes' => $subscription['traffic_limit_bytes'] ?? null,
-            ]);
+            ], refreshSnapshot: true);
             $this->repository()->confirmNode(
                 (int)$node['id'],
                 $desiredFlow,
@@ -678,8 +690,9 @@ final class VpnPlanSubscriptionReconciler
                     'changed_fields' => $result['changed_fields'], 'success' => true,
                 ]);
 
-            return $this->normalizeFlow($node['flow'] ?? null) !== $desiredFlow
+            return $reprovisioned || $this->normalizeFlow($node['flow'] ?? null) !== $desiredFlow
                 || !empty($result['remote_updated'])
+                || !empty($result['snapshot_changed'])
                 || !in_array((string)$node['status'], ['active', 'disabled'], true);
         } catch (\Throwable $exception) {
             $this->events()->markNodeFailure((int)$node['id'], 'sync_error', $this->safeError($exception));
@@ -751,6 +764,14 @@ final class VpnPlanSubscriptionReconciler
 
     private function safeError(\Throwable $exception): string
     {
+        if ($exception instanceof ProvisioningException || $exception instanceof ValidationException
+            || $exception instanceof ClientVerificationException || $exception instanceof ThreeXuiTransportException
+            || $exception instanceof VpnConfigValidationException) {
+            return mb_substr($exception->getMessage(), 0, 1000);
+        }
+        if ($exception instanceof ThreeXuiResponseException) {
+            return \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_api_rejected');
+        }
         return \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_sync_generic') . ' ('
             . (new \ReflectionClass($exception))->getShortName() . ')';
     }

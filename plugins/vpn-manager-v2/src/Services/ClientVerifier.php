@@ -102,8 +102,10 @@ final class ClientVerifier
                     && (int)$remoteClient['limitHwid'] === (int)$expectedPayload['limitHwid']));
 
         if (!$matches) {
+            $fields = $this->changedFields($remoteClient, $expectedPayload);
             throw new ClientVerificationException(
                 \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_client_verification_failed')
+                    . ($fields === [] ? '' : ' (' . implode(', ', $fields) . ')')
             );
         }
     }

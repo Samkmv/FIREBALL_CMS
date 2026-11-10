@@ -13,6 +13,7 @@ namespace {
     function abort(string $message, int $code): never { throw new \RuntimeException('HTTP ' . $code); }
     $GLOBALS['namingDb'] = new class {
         public array $subscriptions = [], $nodes = [], $operations = [], $events = [], $queries = [];
+        public ?array $snapshot = null;
         public array $user = ['id' => 1, 'name' => 'Кирилл', 'login' => 'creator'];
         public bool $failQueue = false, $transaction = false;
         public mixed $result = null;
@@ -34,6 +35,9 @@ namespace {
                 if ($this->failQueue) throw new \RuntimeException('Fixture queue unavailable');
                 $this->lastId++; $this->operations[$params[1]] = ['id' => $this->lastId, 'operation_id' => $params[0], 'operation_type' => $params[2], 'status' => 'pending', 'created_at' => $params[9], 'params' => $params];
             } elseif (str_starts_with($sql, 'INSERT INTO vpn_v2_events')) $this->events[] = $params;
+            elseif (str_starts_with($sql, 'INSERT INTO vpn_v2_connection_snapshots')) $this->snapshot = json_decode($params[6], true);
+            elseif (str_contains($sql, 'FROM vpn_v2_servers')) $this->result = ['id' => 1, 'panel_url' => 'https://replacement.example.test'];
+            elseif (str_contains($sql, 'FROM vpn_v2_inbounds')) $this->result = ['id' => 2, 'server_id' => 1, 'remote_inbound_id' => 42];
             elseif (str_contains($sql, 'FROM vpn_v2_subscription_items')) $this->result = [];
             elseif (str_contains($sql, 'FROM vpn_v2_profiles')) $this->result = ['id' => 1, 'cms_user_id' => 1, 'shared_uuid' => $this->nodes[7]['client_uuid']];
             elseif (str_contains($sql, 'FROM vpn_v2_subscription_nodes')) {
@@ -47,6 +51,7 @@ namespace {
                 elseif (str_contains($sql, 'SET revision')) { $this->subscriptions[$id]['revision']++; $this->affected = 1; }
                 elseif (!str_contains($sql, 'SET profile_id')) throw new \RuntimeException('Unexpected subscription mutation');
             } elseif (str_starts_with($sql, 'UPDATE vpn_v2_subscription_nodes')) {
+                if (str_contains($sql, 'last_seen_remote_at')) return $this;
                 $id = (int)$params[3]; $owner = (int)$params[4]; $node = $this->nodes[$id] ?? null;
                 if ($node && $node['subscription_id'] === $owner && !in_array($node['status'], ['deleted', 'deleting', 'pending_remote_delete'], true)) {
                     if (str_contains($sql, 'SET client_email')) { $this->nodes[$id]['client_email'] = $params[0]; $this->nodes[$id]['remote_client_name'] = $params[1]; $this->nodes[$id]['sync_status'] = 'identity_mismatch'; }
@@ -124,7 +129,13 @@ namespace {
         public function authenticate(): void {}
         public function testConnection(): \Fireball\VpnManagerV2\DTO\ConnectionTestResult { throw new \LogicException('Unused'); }
         public function listInbounds(): array { throw new \LogicException('Broad panel read'); }
-        public function getInbound(int $id): array { return ['settings' => json_encode(['clients' => [$this->remote]]), 'clientStats' => [['email' => $this->remote['email'], 'up' => 100, 'down' => 200]]]; }
+        public int $port = 9443;
+        public function getInbound(int $id): array {
+            return ['id' => $id, 'protocol' => 'vless', 'port' => $this->port,
+                'streamSettings' => ['network' => 'tcp', 'security' => 'none'],
+                'settings' => json_encode(['clients' => [$this->remote]]),
+                'clientStats' => [['email' => $this->remote['email'], 'up' => 100, 'down' => 200]]];
+        }
         public function getClientTraffic(string $email): array { throw new \LogicException('Unused'); }
         public function findClient(int $id, string $clientId = '', string $email = ''): ?array { throw new \LogicException('Unused'); }
         public function addClient(int $id, array $client): array { throw new \LogicException('Credential replacement forbidden'); }
@@ -137,6 +148,29 @@ namespace {
     $check($sync['changed_fields'] === ['email'] && count($panel->updates) === 1 && $panel->remote['email'] === 'new-panel-name', 'Actual panel update changes only email label and confirms it');
     $check(array_diff_key($before, ['email' => true]) === array_diff_key($panel->remote, ['email' => true]), 'Panel credential, metadata, automatic resets and policy preserved');
     $check($sync['enable'] === true && $sync['traffic_used_bytes'] === 300, 'Confirmed active client and counters after rename');
+
+    $node['client_email'] = $panel->remote['email'];
+    $node['lkg_snapshot_hash'] = 'old-connection-config';
+    $node['lkg_snapshot_version'] = 1;
+    db()->nodes[7] = $node;
+    $syncService = new \Fireball\VpnManagerV2\Services\RemoteClientSyncService(clientFactory: static fn() => $panel);
+    $inspection = $syncService->inspect($node, $subscription, compareSnapshot: true);
+    $check($inspection['changed_fields'] === ['configuration'] && db()->snapshot === null, 'Read-only plan check identifies stale configuration even when client policy matches');
+    $sync = $syncService->push($node, $subscription, refreshSnapshot: true);
+    $snapshot = db()->snapshot;
+    $check($sync['snapshot_changed'] && !$sync['remote_updated'] && count($panel->updates) === 1
+        && $snapshot['port'] === 9443 && $snapshot['panel_url'] === 'https://replacement.example.test'
+        && $snapshot['client_uuid'] === $node['client_uuid'], 'Plan sync publishes confirmed replacement settings while preserving the client credential');
+    $node['lkg_snapshot_hash'] = (new \Fireball\VpnManagerV2\Services\ConfigurationSnapshotService())->hash($snapshot);
+    $check($syncService->inspect($node, $subscription, compareSnapshot: true)['changed_fields'] === [], 'The confirmed settings no longer appear as a discrepancy');
+    $panel->port = 0;
+    try {
+        $syncService->push($node, $subscription, refreshSnapshot: true);
+        throw new \LogicException('Invalid confirmed configuration was accepted');
+    } catch (\Fireball\VpnManagerV2\Exceptions\VpnConfigValidationException) {
+        $check(db()->snapshot === $snapshot, 'Invalid configuration preserves the last confirmed snapshot');
+    }
+
     try { (new \Fireball\VpnManagerV2\Controllers\Admin\SubscriptionController())->rename(); throw new \LogicException('Unauthorized'); }
     catch (\RuntimeException $error) { $check($error->getMessage() === 'HTTP 403', 'Unauthorized rename blocked before mutations'); }
     foreach (['ru', 'en', 'de', 'zh-cn'] as $language) {

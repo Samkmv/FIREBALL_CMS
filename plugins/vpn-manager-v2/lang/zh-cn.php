@@ -1128,6 +1128,8 @@ return [
     'vpn_manager_v2_auto_reconcile_title' => '自动同步',
     'vpn_manager_v2_auto_reconcile_help' => '套餐参数变更后，%d 个有效订阅会自动加入同步队列。',
     'vpn_manager_v2_reconcile_preview_checked' => '检查时间',
+    'vpn_manager_v2_reconcile_diff_configuration' => '连接配置',
+    'vpn_manager_v2_reconcile_current_connection_errors' => '当前连接错误',
     'vpn_manager_v2_reconcile_preview_errors' => '检查错误',
     'vpn_manager_v2_reconcile_diff_devices' => '设备限制',
     'vpn_manager_v2_reconcile_diff_ip' => 'IP 限制',

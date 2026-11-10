@@ -1128,6 +1128,8 @@ return [
     'vpn_manager_v2_auto_reconcile_title' => 'Automatische Synchronisierung',
     'vpn_manager_v2_auto_reconcile_help' => 'Bei Tarifänderungen werden %d aktive Abonnements automatisch zur Abstimmung eingeplant.',
     'vpn_manager_v2_reconcile_preview_checked' => 'Geprüft',
+    'vpn_manager_v2_reconcile_diff_configuration' => 'Verbindungskonfiguration',
+    'vpn_manager_v2_reconcile_current_connection_errors' => 'Aktuelle Verbindungsfehler',
     'vpn_manager_v2_reconcile_preview_errors' => 'Prüffehler',
     'vpn_manager_v2_reconcile_diff_devices' => 'Gerätelimit',
     'vpn_manager_v2_reconcile_diff_ip' => 'IP-Limit',

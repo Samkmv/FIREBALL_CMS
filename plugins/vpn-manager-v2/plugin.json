@@ -1,7 +1,7 @@
 {
   "name": "Управление VPN",
   "slug": "vpn-manager-v2",
-  "version": "3.1.11",
+  "version": "3.1.12",
   "type": "system",
   "description": "Управление VPN-серверами, тарифами, подписками и подключениями с двусторонней синхронизацией с панелью 3x-ui и поддержкой Happ.",
   "description_i18n": {
@@ -19,6 +19,7 @@
   },
   "auto_migrate": true,
   "release_notes": [
+    "Reconciliation publishes confirmed 3x-UI connection settings and shows connection errors on the plan page.",
     "Plan external sources stay visible when an available 3x-UI panel confirms the device during a partial outage.",
     "Due external sources are checked when clients refresh the main subscription.",
     "Compact subscription summary with expandable technical details.",
@@ -42,6 +43,7 @@
   ],
   "release_notes_i18n": {
     "en": [
+      "Reconciliation publishes confirmed 3x-UI connection settings and shows connection errors on the plan page.",
       "Plan external sources stay visible when an available 3x-UI panel confirms the device during a partial outage.",
       "Due external sources are checked when clients refresh the main subscription.",
       "Compact subscription summary with expandable technical details.",
@@ -64,6 +66,7 @@
       "Added quick server replacement and Happ notices for expiry and maintenance."
     ],
     "ru": [
+      "После согласования подписки получают подтверждённые параметры 3x-UI. На странице тарифа видны причины ошибок по подключениям.",
       "Внешние подключения тарифа остаются в подписке, если доступная панель 3x-UI подтверждает устройство при частичном сбое.",
       "Просроченные внешние источники проверяются при обновлении основной подписки в клиенте.",
       "Компактная карточка подписки с раскрываемыми техническими деталями.",
@@ -86,6 +89,7 @@
       "Добавлены быстрая замена сервера и уведомления об истечении подписки и техработах в Happ."
     ],
     "de": [
+      "Der Abgleich übernimmt bestätigte Verbindungseinstellungen aus 3x-UI. Verbindungsfehler erscheinen auf der Tarifseite.",
       "Externe Tarifquellen bleiben bei einem Teilausfall sichtbar, wenn ein erreichbares 3x-UI-Panel das Gerät bestätigt.",
       "Fällige externe Quellen werden beim Abruf des Hauptabonnements geprüft.",
       "Kompakte Abonnementübersicht mit ausklappbaren technischen Details.",
@@ -108,6 +112,7 @@
       "Schneller Serverwechsel und Happ-Hinweise zu Ablauf und Wartung hinzugefügt."
     ],
     "zh-cn": [
+      "同步会发布 3x-UI 已确认的连接配置，并在套餐页面显示各连接的错误原因。",
       "部分面板故障时，只要可用的 3x-UI 面板确认设备，套餐的外部来源仍会显示。",
       "刷新主订阅时会检查已到更新期限的外部来源。",
       "订阅摘要更紧凑，技术详情可展开。",

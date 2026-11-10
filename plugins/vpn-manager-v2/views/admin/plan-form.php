@@ -25,6 +25,7 @@ $previewLabels = [
     'expiryTime' => FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_diff_expiry'),
     'enable' => FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_diff_enable'),
     'flow' => FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_diff_flow'),
+    'configuration' => FireballPluginVpnManagerV2::t('vpn_manager_v2_reconcile_diff_configuration'),
 ];
 
 $previewMissingConnections = max(0, (int)($reconciliationPreview['missing_connections'] ?? 0));
@@ -413,9 +414,35 @@ $renderNodeRow = static function (array $node, string|int $index) use ($servers,
                             <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_open_sync_errors')) ?>
                         </a>
                     <?php endif; ?>
+                    <?php if (!empty($latestReconciliation['last_error'])): ?>
+                        <div class="text-danger"><?= htmlSC((string)$latestReconciliation['last_error']) ?></div>
+                    <?php endif; ?>
                 </div>
             <?php endif; ?>
         </div>
+        <?php foreach ([
+            'vpn_manager_v2_reconcile_preview_errors' => $reconciliationPreview['errors'] ?? [],
+            'vpn_manager_v2_reconcile_current_connection_errors' => $currentConnectionErrors ?? [],
+        ] as $errorHeading => $errorRows): ?>
+            <?php if ($errorRows === []) { continue; } ?>
+            <details class="border rounded-4 p-3 mt-3" open>
+                <summary class="fw-semibold"><?= htmlSC(FireballPluginVpnManagerV2::t($errorHeading)) ?></summary>
+                <ul class="small mt-2 mb-0">
+                    <?php foreach ($errorRows as $errorRow): ?>
+                        <li class="mb-1">
+                            <a href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions/' . (int)$errorRow['subscription_id'])) ?>">
+                                <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_subscription')) ?> #<?= (int)$errorRow['subscription_id'] ?>
+                            </a>
+                            <?php if (!empty($errorRow['node_id'])): ?>
+                                · <?= htmlSC((string)$errorRow['server_name']) ?> / <?= htmlSC((string)$errorRow['inbound_name']) ?>
+                                · #<?= (int)$errorRow['node_id'] ?>
+                            <?php endif; ?>
+                            · <?= htmlSC((string)$errorRow['error']) ?>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
+            </details>
+        <?php endforeach; ?>
         <div class="d-flex flex-wrap gap-2 mt-3">
             <?php if (Permissions::allows(Permissions::RECONCILE)): ?>
             <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/plans/' . $planId . '/preview')) ?>">

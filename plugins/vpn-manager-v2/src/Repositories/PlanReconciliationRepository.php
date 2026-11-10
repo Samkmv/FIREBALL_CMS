@@ -245,7 +245,7 @@ final class PlanReconciliationRepository
                     client_email, client_sub_id, protocol, network, security, flow, status, sync_status,
                     desired_enabled, is_obsolete, traffic_limit_bytes, traffic_used_bytes,
                     upload_bytes, download_bytes, traffic_synced_at, traffic_sync_status,
-                    last_sync_at, last_error, created_at, updated_at
+                    lkg_snapshot_hash, last_sync_at, last_error, created_at, updated_at
              FROM vpn_v2_subscription_nodes WHERE subscription_id = ? ORDER BY id ASC',
             [$subscriptionId]
         )->get() ?: [];
@@ -456,7 +456,7 @@ final class PlanReconciliationRepository
              SET flow = ?, status = ?, is_obsolete = 0, sync_status = \'synced\',
                  traffic_limit_bytes = ?, device_limit = ?, expires_at = ?,
                  traffic_used_bytes = GREATEST(COALESCE(?, traffic_used_bytes), traffic_used_bytes),
-                 last_sync_at = ?, last_error = NULL, updated_at = ? WHERE id = ?',
+                 last_sync_at = ?, last_error = NULL, sync_error = NULL, updated_at = ? WHERE id = ?',
             [$flow, $status, $expected !== null ? $expected['traffic_limit_bytes'] : $node['traffic_limit_bytes'],
                 $deviceLimit, $expiresAt, $trafficUsedBytes, $now, $now, $nodeId]
         );
@@ -722,12 +722,33 @@ final class PlanReconciliationRepository
     {
         $row = db()->query(
             'SELECT operation_id, status, total_count, processed_count, success_count,
-                    failure_count, skipped_count, started_at, finished_at, created_at, options_json
+                    failure_count, skipped_count, started_at, finished_at, created_at, options_json, last_error
              FROM vpn_v2_reconcile_operations WHERE plan_id = ? ORDER BY id DESC LIMIT 1',
             [$planId]
         )->getOne();
 
         return is_array($row) ? $row : null;
+    }
+
+    public function currentConnectionErrors(int $planId): array
+    {
+        [$statusSql, $statuses] = $this->statusClause(self::ELIGIBLE_STATUSES);
+
+        return db()->query(
+            "SELECT n.id AS node_id, n.subscription_id, s.name AS server_name, i.name AS inbound_name,
+                    COALESCE(NULLIF(n.last_error, ''), NULLIF(n.sync_error, ''), sub.last_error) AS error
+             FROM vpn_v2_subscriptions sub
+             LEFT JOIN vpn_v2_subscription_nodes n ON n.subscription_id = sub.id
+                AND n.status NOT IN ('deleted', 'deleting')
+                AND (NULLIF(n.last_error, '') IS NOT NULL OR NULLIF(n.sync_error, '') IS NOT NULL)
+             LEFT JOIN vpn_v2_servers s ON s.id = n.server_id
+             LEFT JOIN vpn_v2_inbounds i ON i.id = n.inbound_id
+             WHERE sub.plan_id = ? AND sub.status IN ({$statusSql}) AND sub.starts_at <= NOW()
+               AND (sub.expires_at IS NULL OR sub.expires_at > NOW())
+               AND (n.id IS NOT NULL OR NULLIF(sub.last_error, '') IS NOT NULL)
+             ORDER BY COALESCE(n.updated_at, sub.updated_at) DESC, sub.id DESC, n.id DESC LIMIT 20",
+            array_merge([$planId], $statuses)
+        )->get() ?: [];
     }
 
     public function operationProgress(int $operationId): ?array

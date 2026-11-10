@@ -1128,6 +1128,8 @@ return [
     'vpn_manager_v2_auto_reconcile_title' => 'Automatic synchronization',
     'vpn_manager_v2_auto_reconcile_help' => 'When plan parameters change, %d active subscriptions are queued for reconciliation automatically.',
     'vpn_manager_v2_reconcile_preview_checked' => 'Checked',
+    'vpn_manager_v2_reconcile_diff_configuration' => 'Connection configuration',
+    'vpn_manager_v2_reconcile_current_connection_errors' => 'Current connection errors',
     'vpn_manager_v2_reconcile_preview_errors' => 'Check errors',
     'vpn_manager_v2_reconcile_diff_devices' => 'Device limit',
     'vpn_manager_v2_reconcile_diff_ip' => 'IP limit',

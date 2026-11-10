@@ -1128,6 +1128,8 @@ return [
     'vpn_manager_v2_auto_reconcile_title' => 'Автоматическая синхронизация',
     'vpn_manager_v2_auto_reconcile_help' => 'При изменении параметров тарифа %d активных подписок будут поставлены в очередь согласования автоматически.',
     'vpn_manager_v2_reconcile_preview_checked' => 'Проверено',
+    'vpn_manager_v2_reconcile_diff_configuration' => 'Параметры подключения',
+    'vpn_manager_v2_reconcile_current_connection_errors' => 'Текущие ошибки подключений',
     'vpn_manager_v2_reconcile_preview_errors' => 'Ошибки проверки',
     'vpn_manager_v2_reconcile_diff_devices' => 'Лимит устройств',
     'vpn_manager_v2_reconcile_diff_ip' => 'Лимит IP',

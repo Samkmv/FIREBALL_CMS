@@ -6,6 +6,8 @@ use Fireball\VpnManagerV2\Clients\ThreeXuiClient;
 use Fireball\VpnManagerV2\Clients\ThreeXuiClientInterface;
 use Fireball\VpnManagerV2\Exceptions\ProvisioningException;
 use Fireball\VpnManagerV2\Exceptions\ValidationException;
+use Fireball\VpnManagerV2\Exceptions\VpnConfigValidationException;
+use Fireball\VpnManagerV2\Repositories\ConfigurationSyncRepository;
 use Fireball\VpnManagerV2\Repositories\ServerRepository;
 use Fireball\VpnManagerV2\Repositories\SubscriptionRepository;
 
@@ -20,7 +22,7 @@ final class RemoteClientSyncService
     ) {
     }
 
-    public function push(array $node, array $subscription, array $nodeOverrides = []): array
+    public function push(array $node, array $subscription, array $nodeOverrides = [], bool $refreshSnapshot = false): array
     {
         $context = $this->context($node);
         $desiredNode = array_replace($node, $nodeOverrides);
@@ -35,13 +37,16 @@ final class RemoteClientSyncService
         $expected = $factory->build($subscription, $desiredNode);
         $client = $this->client($context['server'], $context['inbound'], $node);
         $remoteInboundId = (int)$context['inbound']['remote_inbound_id'];
-        return $this->applyClientState($client, $remoteInboundId, $node, $expected);
+        return $this->applyClientState(
+            $client, $remoteInboundId, $node, $expected,
+            snapshotServer: $refreshSnapshot ? $context['server'] : null
+        );
     }
 
     /** Shared read/merge/update/read path for provisioning and every later change. */
     public function applyClientState(
         ThreeXuiClientInterface $client, int $remoteInboundId, array $node, array $expected,
-        ?array $beforeInbound = null
+        ?array $beforeInbound = null, ?array $snapshotServer = null
     ): array {
         $beforeInbound ??= $client->getInbound($remoteInboundId);
         $verifier = $this->verifier ?? new ClientVerifier();
@@ -69,8 +74,22 @@ final class RemoteClientSyncService
         }
         // Confirm every owned field, including HWID stored outside inbound settings.
         $verifier->verify($confirmed, $expected);
+        $snapshotChanged = false;
+        if ($snapshotServer !== null) {
+            $snapshots = new ConfigurationSnapshotService();
+            $snapshot = $snapshots->fromRemote($snapshotServer, $confirmedInbound, $confirmed, array_replace($node, ['flow' => null]));
+            if ($snapshots->validate($snapshot) !== null) {
+                throw new VpnConfigValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_config_invalid'));
+            }
+            $stored = (new ConfigurationSyncRepository())->storeSnapshot(
+                $node, $snapshot, $snapshots->hash($snapshot), 'reconciliation',
+                remoteCredential: (new RemoteClientCredentialService())->remoteCredential($snapshot['protocol'], $confirmed)
+            );
+            $snapshotChanged = $stored['changed'];
+        }
 
         return [
+            'snapshot_changed' => $snapshotChanged,
             'remote_updated' => $changedFields !== [],
             'changed_fields' => $changedFields,
             'flow' => ($this->flowResolver ?? new VpnFlowResolver())->normalizeFlow($expected['flow'] ?? null),
@@ -108,12 +127,13 @@ final class RemoteClientSyncService
     }
 
     /** A factual read only. No updates, creation, device registration or deletion. */
-    public function inspect(array $node, array $subscription, array $nodeOverrides = []): array
+    public function inspect(array $node, array $subscription, array $nodeOverrides = [], bool $compareSnapshot = false): array
     {
         $context = $this->context($node);
         $expected = ($this->payloadFactory ?? new ClientPayloadFactory())->build($subscription, array_replace($node, $nodeOverrides));
         $client = $this->client($context['server'], $context['inbound'], $node);
-        $remote = $this->readClientState($client, $client->getInbound((int)$context['inbound']['remote_inbound_id']), $node);
+        $inbound = $client->getInbound((int)$context['inbound']['remote_inbound_id']);
+        $remote = $this->readClientState($client, $inbound, $node);
         if ($remote === null) {
             return ['missing' => true, 'changed_fields' => [], 'differences' => []];
         }
@@ -126,6 +146,14 @@ final class RemoteClientSyncService
             $differences[$field] = in_array($field, ['limitHwid', 'limitIp', 'totalGB', 'expiryTime', 'enable'], true)
                 ? ['actual' => isset($remote[$field]) ? (int)$remote[$field] : null, 'expected' => (int)$expected[$field]]
                 : ['changed' => true];
+        }
+        if ($compareSnapshot) {
+            $snapshots = new ConfigurationSnapshotService();
+            $snapshot = $snapshots->fromRemote($context['server'], $inbound, $remote, array_replace($node, ['flow' => null]));
+            if (!hash_equals((string)($node['lkg_snapshot_hash'] ?? ''), $snapshots->hash($snapshot))) {
+                $fields[] = 'configuration';
+                $differences['configuration'] = ['changed' => true];
+            }
         }
         return ['missing' => false, 'changed_fields' => $fields, 'differences' => $differences];
     }
