@@ -5,6 +5,7 @@ namespace Fireball\VpnManagerV2\Validators;
 use Fireball\VpnManagerV2\DTO\SmartConnectData;
 use Fireball\VpnManagerV2\DTO\VpnSettingsData;
 use Fireball\VpnManagerV2\Support\HappRoutingProfile;
+use Fireball\VpnManagerV2\Support\XrayAutoSettings;
 use Fireball\VpnManagerV2\Exceptions\ValidationException;
 
 final class SettingsValidator
@@ -163,6 +164,7 @@ final class SettingsValidator
             $serverSettingsPolicy,
             $incyEnabled,
             $incyLink,
+            XrayAutoSettings::normalize($data['xray_auto'] ?? XrayAutoSettings::defaults(), $strict),
         );
     }
 

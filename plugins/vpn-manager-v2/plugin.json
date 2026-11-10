@@ -1,7 +1,7 @@
 {
   "name": "Управление VPN",
   "slug": "vpn-manager-v2",
-  "version": "3.1.17",
+  "version": "3.2.0",
   "type": "system",
   "description": "Управление VPN-серверами, тарифами, подписками и подключениями с двусторонней синхронизацией с панелью 3x-ui и поддержкой Happ.",
   "description_i18n": {
@@ -19,6 +19,7 @@
   },
   "auto_migrate": true,
   "release_notes": [
+    "Added an opt-in HTTPS subscription for Xray server selection in Happ.",
     "Subscriptions work on ready servers while remaining connections await synchronization. Remote cleanup continues separately after a subscription is disabled.",
     "Reconciliation publishes confirmed 3x-UI connection settings and shows connection errors on the plan page.",
     "Plan external sources stay visible when an available 3x-UI panel confirms the device during a partial outage.",
@@ -44,6 +45,7 @@
   ],
   "release_notes_i18n": {
     "en": [
+      "Added an opt-in HTTPS subscription for Xray server selection in Happ.",
       "Subscriptions work on ready servers while remaining connections await synchronization. Remote cleanup continues separately after a subscription is disabled.",
       "Reconciliation publishes confirmed 3x-UI connection settings and shows connection errors on the plan page.",
       "Plan external sources stay visible when an available 3x-UI panel confirms the device during a partial outage.",
@@ -68,6 +70,7 @@
       "Added quick server replacement and Happ notices for expiry and maintenance."
     ],
     "ru": [
+      "Добавлена отдельная HTTPS-подписка для тестирования автовыбора серверов Xray в Happ.",
       "Подписка доступна на готовых серверах, пока остальные ожидают синхронизации. Очистка в 3x-UI продолжается отдельно после отключения подписки.",
       "После согласования подписки получают подтверждённые параметры 3x-UI. На странице тарифа видны причины ошибок по подключениям.",
       "Внешние подключения тарифа остаются в подписке, если доступная панель 3x-UI подтверждает устройство при частичном сбое.",
@@ -92,6 +95,7 @@
       "Добавлены быстрая замена сервера и уведомления об истечении подписки и техработах в Happ."
     ],
     "de": [
+      "Ein separates HTTPS-Abonnement zur optionalen Xray-Serverauswahl in Happ wurde hinzugefügt.",
       "Abonnements sind auf einsatzbereiten Servern verfügbar. Die Remote-Bereinigung läuft nach der Deaktivierung separat weiter.",
       "Der Abgleich übernimmt bestätigte Verbindungseinstellungen aus 3x-UI. Verbindungsfehler erscheinen auf der Tarifseite.",
       "Externe Tarifquellen bleiben bei einem Teilausfall sichtbar, wenn ein erreichbares 3x-UI-Panel das Gerät bestätigt.",
@@ -116,6 +120,7 @@
       "Schneller Serverwechsel und Happ-Hinweise zu Ablauf und Wartung hinzugefügt."
     ],
     "zh-cn": [
+      "新增独立 HTTPS 订阅，可在 Happ 中试用 Xray 自动选服。",
       "订阅可在就绪服务器上使用，其余连接等待同步。停用订阅后，远程清理将单独继续。",
       "同步会发布 3x-UI 已确认的连接配置，并在套餐页面显示各连接的错误原因。",
       "部分面板故障时，只要可用的 3x-UI 面板确认设备，套餐的外部来源仍会显示。",

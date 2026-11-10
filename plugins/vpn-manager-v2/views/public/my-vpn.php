@@ -264,6 +264,7 @@ $pendingAccessRequest = is_array($pendingAccessRequest ?? null) ? $pendingAccess
                             <?php if ($linkReady): ?>
                                 <p class="small text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_profile_happ_update')) ?></p>
                                 <?php require __DIR__ . '/../partials/smart-connect-access.php'; ?>
+                                <?php require __DIR__ . '/../partials/xray-auto-access.php'; ?>
                             <?php endif; ?>
                             <?php if ($localSubscriptionUrl && $linkReady): ?>
                                 <div class="alert alert-warning rounded-4">

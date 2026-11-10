@@ -1,0 +1,176 @@
+[
+  {
+    "remarks": "⚡ Автовыбор",
+    "log": {
+      "access": "none",
+      "loglevel": "warning"
+    },
+    "inbounds": [
+      {
+        "tag": "vpn-socks",
+        "listen": "127.0.0.1",
+        "port": 10808,
+        "protocol": "socks",
+        "settings": {
+          "auth": "noauth",
+          "udp": true
+        }
+      }
+    ],
+    "outbounds": [
+      {
+        "tag": "vpn-block",
+        "protocol": "blackhole"
+      },
+      {
+        "tag": "vpn-node-1",
+        "protocol": "vless",
+        "settings": {
+          "vnext": [
+            {
+              "address": "node1.example",
+              "port": 444,
+              "users": [
+                {
+                  "id": "00000000-0000-4000-8000-000000000001",
+                  "encryption": "none",
+                  "flow": "xtls-rprx-vision"
+                }
+              ]
+            }
+          ]
+        },
+        "streamSettings": {
+          "network": "tcp",
+          "security": "reality",
+          "realitySettings": {
+            "serverName": "cover1.example",
+            "fingerprint": "chrome",
+            "publicKey": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE",
+            "shortId": "01",
+            "spiderX": "/"
+          }
+        }
+      },
+      {
+        "tag": "vpn-node-2",
+        "protocol": "vless",
+        "settings": {
+          "vnext": [
+            {
+              "address": "node2.example",
+              "port": 445,
+              "users": [
+                {
+                  "id": "00000000-0000-4000-8000-000000000002",
+                  "encryption": "none",
+                  "flow": "xtls-rprx-vision"
+                }
+              ]
+            }
+          ]
+        },
+        "streamSettings": {
+          "network": "tcp",
+          "security": "reality",
+          "realitySettings": {
+            "serverName": "cover2.example",
+            "fingerprint": "chrome",
+            "publicKey": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI",
+            "shortId": "02",
+            "spiderX": "/"
+          }
+        }
+      },
+      {
+        "tag": "vpn-node-3",
+        "protocol": "vless",
+        "settings": {
+          "vnext": [
+            {
+              "address": "node3.example",
+              "port": 446,
+              "users": [
+                {
+                  "id": "00000000-0000-4000-8000-000000000003",
+                  "encryption": "none",
+                  "flow": "xtls-rprx-vision"
+                }
+              ]
+            }
+          ]
+        },
+        "streamSettings": {
+          "network": "tcp",
+          "security": "reality",
+          "realitySettings": {
+            "serverName": "cover3.example",
+            "fingerprint": "chrome",
+            "publicKey": "AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM",
+            "shortId": "03",
+            "spiderX": "/"
+          }
+        }
+      },
+      {
+        "tag": "vpn-dns-out",
+        "protocol": "dns"
+      }
+    ],
+    "routing": {
+      "domainStrategy": "AsIs",
+      "rules": [
+        {
+          "type": "field",
+          "inboundTag": [
+            "vpn-dns"
+          ],
+          "balancerTag": "vpn-auto"
+        },
+        {
+          "type": "field",
+          "inboundTag": [
+            "vpn-socks"
+          ],
+          "network": "tcp,udp",
+          "port": "53",
+          "outboundTag": "vpn-dns-out"
+        },
+        {
+          "type": "field",
+          "inboundTag": [
+            "vpn-socks"
+          ],
+          "network": "tcp,udp",
+          "balancerTag": "vpn-auto"
+        }
+      ],
+      "balancers": [
+        {
+          "tag": "vpn-auto",
+          "selector": [
+            "vpn-node-"
+          ],
+          "fallbackTag": "vpn-block",
+          "strategy": {
+            "type": "leastPing"
+          }
+        }
+      ]
+    },
+    "dns": {
+      "tag": "vpn-dns",
+      "servers": [
+        "https://1.1.1.1/dns-query"
+      ]
+    },
+    "observatory": {
+      "subjectSelector": [
+        "vpn-node-"
+      ],
+      "probeUrl": "https://www.google.com/generate_204",
+      "probeInterval": "30s",
+      "enableConcurrency": true
+    }
+  }
+]

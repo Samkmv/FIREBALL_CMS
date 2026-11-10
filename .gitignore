@@ -59,5 +59,7 @@ dist/fireball-cms-*.zip*
 __pycache__/
 *.pyc
 
-# Local tests, fixtures and verification artifacts.
-/tests/
+# Local tests, fixtures and verification artifacts. Keep the Xray regression sources.
+/tests/*
+!/tests/vpn_xray_auto_unit.php
+!/tests/vpn_xray_auto_lab.py

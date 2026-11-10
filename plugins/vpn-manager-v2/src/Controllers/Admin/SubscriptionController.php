@@ -239,6 +239,21 @@ final class SubscriptionController
         $dependencies->recalculateEffectiveStatuses((int)$subscription['id']);
         $itemRepository = new SubscriptionItemRepository();
         $externalSources = new ExternalVpnSourceService();
+        $settings = (new \Fireball\VpnManagerV2\Services\SettingsService())->current();
+        $xrayDiagnostics = null;
+        if ($subscriptionUrl !== '' && !empty($settings['xray_auto']['enabled']) && !empty($settings['xray_auto']['export'])) {
+            try {
+                $xray = new \Fireball\VpnManagerV2\Services\XrayAutoConfigService();
+                $uris = $xray->subscriptionUris(
+                    $subscription, $dependencies->collectEffectiveConnections($subscription), $settings['xray_auto'],
+                    new \Fireball\VpnManagerV2\Services\VpnSubscriptionBuilder(dependencies: $dependencies), true
+                );
+                $result = $xray->build($uris, $settings['xray_auto'], '');
+                $xrayDiagnostics = ['count' => $result['count'], 'skipped' => $result['skipped']];
+            } catch (\Throwable) {
+                $xrayDiagnostics = ['error' => true];
+            }
+        }
 
         return plugin_view(\FireballPluginVpnManagerV2::SLUG, 'admin/subscription-show', \FireballPluginVpnManagerV2::viewData('subscriptions', [
             'title' => sprintf(\FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_show_title'), (int)$subscription['id']),
@@ -255,7 +270,8 @@ final class SubscriptionController
                 'checked_at' => date('Y-m-d H:i:s'),
             ],
             'subscriptionUrl' => $subscriptionUrl,
-            'smartConnectSettings' => (new \Fireball\VpnManagerV2\Services\SettingsService())->current(),
+            'smartConnectSettings' => $settings,
+            'xrayDiagnostics' => $xrayDiagnostics,
             'subscriptionQr' => $subscriptionQr,
             'effectiveStatus' => $effectiveStatus,
             'dependencyItems' => $itemRepository->itemsForParent((int)$subscription['id']),

@@ -285,6 +285,20 @@ namespace {
     $response = $endpoint->respond($token, 'plain', requestHeaders: $headers);
     $check($response->status === 404 && $response->body === '', 'An explicit panel denial cannot be bypassed by an inherited source');
 
+    $realityUri = str_replace('security=tls', 'security=reality', $uri);
+    $publicKey = rtrim(strtr(base64_encode(str_repeat('B', 32)), '+/', '-_'), '=');
+    $realityUri = str_replace('#Shared', '&sni=cover.example.test&pbk=' . $publicKey . '&sid=01#Reality', $realityUri);
+    $payload = $realityUri;
+    $xraySource = $planService->attachSubscription(1, 'https://subscriptions.example.test/xray', 'Xray source', 1);
+    db()->subscriptions[15]['device_limit'] = 0;
+    cache()->set('vpn-v2:settings:v1', ['xray_auto' => ['enabled' => true]], 300);
+    $xray = $endpoint->respond($token, 'xray');
+    $check($xray->configCount === 1 && str_contains($xray->body, $publicKey), 'Xray uses the inherited external snapshot.');
+    $payload = str_replace('vpn.example.test', 'changed.example.test', $realityUri);
+    $planService->sync(1, $xraySource);
+    $check(str_contains($endpoint->respond($token, 'xray')->body, 'changed.example.test'), 'Xray uses the latest external snapshot.');
+    cache()->set('vpn-v2:settings:v1', ['xray_auto' => ['enabled' => true, 'include_external' => false]], 300);
+    $check($endpoint->respond($token, 'xray')->configCount === 0, 'Xray respects the external source switch.');
     foreach (db()->events as $event) {
         $check(!str_contains((string)$event[6], 'private-token') && !str_contains((string)$event[6], 'vless://'), 'Audit event contains no credentials');
         if (str_starts_with($event[0], 'plan.')) $check($event[1] === null && json_decode($event[6], true)['plan_id'] === 1, 'Plan audit event must not point to same-number subscription');

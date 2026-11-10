@@ -9,8 +9,16 @@ final class SubscriptionController
 {
     public function show(): string
     {
+        $format = (string)request()->get('format', 'base64');
+        $xray = strtolower(trim($format)) === 'xray';
+        if ($xray && !request_is_secure()) {
+            http_response_code(403);
+            header('Cache-Control: no-store');
+            return '';
+        }
         $remoteAddress = trim((string)($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
-        if (!RateLimiter::attempt('vpn-v2-subscription:' . hash('sha256', $remoteAddress), 120, 60)) {
+        $rateLimit = $xray ? 'vpn-v2-xray:' : 'vpn-v2-subscription:';
+        if (!RateLimiter::attempt($rateLimit . hash('sha256', $remoteAddress), 120, 60)) {
             http_response_code(429);
             header('Retry-After: 60');
             header('Cache-Control: no-store');
@@ -19,7 +27,7 @@ final class SubscriptionController
         }
         $response = (new VpnSubscriptionEndpointService())->respond(
             (string)get_route_param('token'),
-            (string)request()->get('format', 'base64'),
+            $format,
             (string)request()->header('If-None-Match', ''),
             (string)request()->header('If-Modified-Since', ''),
             [

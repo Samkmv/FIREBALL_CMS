@@ -34,6 +34,7 @@ final class SettingsController
                 'title' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_settings_title'),
                 'subtitle' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_settings_subtitle'),
                 'settings' => $settings,
+                'xrayServers' => (new \Fireball\VpnManagerV2\Repositories\ServerRepository())->all(),
                 'serverHealth' => $health,
                 'healthReady' => $healthReady,
                 'mailEnabled' => $mailEnabled,

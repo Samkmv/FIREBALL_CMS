@@ -31,7 +31,7 @@ final class VpnSubscriptionEndpointService
         $headers = $this->baseHeaders();
         $token = strtolower(trim($token));
         $format = strtolower(trim($format));
-        if (!in_array($format, ['base64', 'plain', 'singbox'], true)) {
+        if (!in_array($format, ['base64', 'plain', 'singbox', 'xray'], true)) {
             return new SubscriptionEndpointResponse(400, '', $headers);
         }
         if (preg_match('/^[a-f0-9]{64}$/', $token) !== 1) {
@@ -44,6 +44,13 @@ final class VpnSubscriptionEndpointService
             return new SubscriptionEndpointResponse(404, '', $headers);
         }
         $settings = ($this->settings ?? new SettingsService())->current();
+        if ($format === 'xray') {
+            $headers['Content-Type'] = 'application/json; charset=utf-8';
+            $headers['Cache-Control'] = 'private, no-store, must-revalidate';
+            if (empty($settings['xray_auto']['enabled']) || empty($settings['xray_auto']['export'])) {
+                return new SubscriptionEndpointResponse(404, '', $headers);
+            }
+        }
         if ($format === 'singbox') {
             $headers['Content-Type'] = 'application/json; charset=utf-8';
             if (empty($settings['smart_connect_enabled']) || empty($settings['smart_connect_singbox_enabled'])) {
@@ -101,6 +108,7 @@ final class VpnSubscriptionEndpointService
             $headers['Cache-Control'] = 'private, no-store, must-revalidate';
         }
 
+        $includeExternal = $includeExternal && ($format !== 'xray' || !empty($settings['xray_auto']['include_external']));
         if ($includeExternal && $refreshExternal) {
             $external = $this->externalSources ?? new ExternalVpnSourceService(fetchTimeout: 2);
             $attempted = false;
@@ -116,6 +124,19 @@ final class VpnSubscriptionEndpointService
                     return $this->respond($token, $format, $ifNoneMatch, '', $requestHeaders, refreshExternal: false);
                 }
             }
+        }
+
+        if ($format === 'xray') {
+            try {
+                $uris = (new XrayAutoConfigService())->subscriptionUris(
+                    $subscription, $effectiveNodes, $settings['xray_auto'],
+                    $this->builder ?? new VpnSubscriptionBuilder(repository: $repository, dependencies: $dependencies),
+                    $includeExternal
+                );
+            } catch (VpnManagerV2Exception) {
+                $uris = [];
+            }
+            return $this->xrayResponse($subscription, $settings, $headers, $uris);
         }
 
         $incy = $format !== 'singbox' && (
@@ -268,6 +289,9 @@ final class VpnSubscriptionEndpointService
         string $state = 'inactive',
         array $maintenanceNodes = []
     ): SubscriptionEndpointResponse {
+        if ($format === 'xray') {
+            return $this->xrayResponse($subscription, $settings, $headers, [], $state);
+        }
         $metadata = $this->metadata ?? new VpnSubscriptionMetadataService();
         // Preserve the profile identity and real expiration, but do not apply
         // routing rules from a subscription that no longer grants access.
@@ -299,6 +323,28 @@ final class VpnSubscriptionEndpointService
             $format === 'singbox' ? 0 : count($entries),
             false
         );
+    }
+
+    private function xrayResponse(array $subscription, array $settings, array $headers, array $uris, string $state = 'active'): SubscriptionEndpointResponse
+    {
+        $name = \FireballPluginVpnManagerV2::t('vpn_manager_v2_xray_name');
+        $result = (new XrayAutoConfigService())->build($uris, $settings['xray_auto'], $name);
+        if ($result['count'] === 0) {
+            $state = $state === 'active' ? 'unsupported' : $state;
+            $notice = \FireballPluginVpnManagerV2::t($state === 'unsupported'
+                ? 'vpn_manager_v2_xray_no_nodes' : 'vpn_manager_v2_subscription_notice_' . $state);
+            $result['profile']['remarks'] = $notice;
+            $headers['announce'] = 'base64:' . base64_encode($notice);
+        }
+        $metadata = ($this->metadata ?? new VpnSubscriptionMetadataService())->headers($subscription, $settings);
+        $headers += array_intersect_key($metadata, array_flip(['subscription-userinfo', 'profile-update-interval', 'support-url']));
+        $headers['profile-title'] = 'base64:' . base64_encode($name);
+        $headers['X-Fireball-VPN-Status'] = $state;
+        $headers['X-Fireball-Xray-Nodes'] = (string)$result['count'];
+        $headers['X-Fireball-Xray-Skipped'] = (string)$result['skipped'];
+        $body = json_encode([$result['profile']], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+
+        return new SubscriptionEndpointResponse(200, $body, $headers, $result['count']);
     }
 
     private function maintenanceEntries(array $nodes): array

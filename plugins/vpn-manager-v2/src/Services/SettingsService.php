@@ -6,6 +6,7 @@ use Fireball\VpnManagerV2\Exceptions\VpnManagerV2Exception;
 use Fireball\VpnManagerV2\Repositories\SettingsRepository;
 use Fireball\VpnManagerV2\Repositories\SubscriptionConfigRepository;
 use Fireball\VpnManagerV2\Validators\SettingsValidator;
+use Fireball\VpnManagerV2\Support\XrayAutoSettings;
 
 final class SettingsService
 {
@@ -74,6 +75,7 @@ final class SettingsService
             'incy_routing_enabled' => false,
             'incy_routing_link' => '',
             'happ_server_settings_policy' => 'default',
+            'xray_auto' => XrayAutoSettings::defaults(),
         ], \Fireball\VpnManagerV2\DTO\SmartConnectData::defaults());
     }
 

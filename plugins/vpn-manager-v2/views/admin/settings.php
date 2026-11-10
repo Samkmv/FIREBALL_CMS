@@ -241,6 +241,7 @@ $switch = static function (string $key, string $label, string $help = '') use ($
         </div>
     </section>
 
+    <?php require __DIR__ . '/partials/xray-auto-settings.php'; ?>
     <button class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" type="submit">
         <i class="ci-save" aria-hidden="true"></i>
         <span><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_settings_save')) ?></span>
