@@ -45,47 +45,49 @@ html:has(body[data-seasonal-preview]) {
 }
 
 [data-winter-city] :is(.posts-index-heading, .post-detail-meta) {
-    --winter-frost-glow: #729ac424;
-    --winter-frost-speck: #4f799d66;
-    --winter-frost-line: #729ac4b3;
-    position: relative;
-    isolation: isolate;
+    --winter-frost-accent: #4d789b;
+    --winter-frost-outline: #729ac460;
 }
 
 [data-bs-theme="dark"] [data-winter-city] :is(.posts-index-heading, .post-detail-meta) {
-    --winter-frost-glow: #73b5e427;
-    --winter-frost-speck: #a5d8ff80;
-    --winter-frost-line: #93cef3a6;
+    --winter-frost-accent: #9dcced;
+    --winter-frost-outline: #9dcced52;
 }
 
-[data-winter-city] :is(.posts-index-heading, .post-detail-meta)::before {
+[data-winter-city] .posts-index-heading h1::after {
     content: "";
-    position: absolute;
-    inset-block: 0;
-    inset-inline-end: 0;
-    width: min(55%, 28rem);
-    z-index: -1;
-    background:
-        radial-gradient(circle at 68% 54%, var(--winter-frost-speck) 0 1px, transparent 2px),
-        radial-gradient(circle at 78% 38%, var(--winter-frost-speck) 0 1.5px, transparent 2.5px),
-        radial-gradient(circle at 89% 61%, var(--winter-frost-speck) 0 1px, transparent 2px),
-        radial-gradient(ellipse 30% 50% at 70% 53%, var(--winter-frost-glow), transparent);
+    display: inline-block;
+    width: .57em;
+    height: .57em;
+    margin-inline-start: .34em;
+    vertical-align: .04em;
+    background-color: var(--winter-frost-accent);
+    mask: url("../images/winter-snowflake.svg") center / contain no-repeat;
     pointer-events: none;
 }
 
 [data-winter-city] .posts-index-count {
-    box-shadow: 0 0 0 1px var(--winter-frost-line), 0 0 10px var(--winter-frost-glow);
+    box-shadow: 0 0 0 1px var(--winter-frost-outline);
+}
+
+[data-winter-city] .post-detail-meta {
+    position: relative;
 }
 
 [data-winter-city] .post-detail-meta::after {
     content: "";
     position: absolute;
     inset-block-end: -1px;
-    inset-inline-end: 0;
-    width: min(52%, 24rem);
-    height: 1px;
-    background: linear-gradient(90deg, transparent, var(--winter-frost-line) 72%, transparent);
+    inset-inline-start: 0;
+    width: min(25%, 5rem);
+    height: 2px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, var(--winter-frost-accent), transparent);
     pointer-events: none;
+}
+
+[data-winter-city] .post-detail-meta:dir(rtl)::after {
+    background: linear-gradient(270deg, var(--winter-frost-accent), transparent);
 }
 
 @media (max-width: 767px) {
@@ -96,10 +98,6 @@ html:has(body[data-seasonal-preview]) {
 
     [data-winter-city] .home-hero__overlay::after {
         mask-image: linear-gradient(90deg, #0005, transparent 13% 62%, #0009);
-    }
-
-    [data-winter-city] :is(.posts-index-heading, .post-detail-meta)::before {
-        display: none;
     }
 }
 
