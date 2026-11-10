@@ -2,7 +2,7 @@
 
 return [
     'vpn_manager_v2_xray_settings' => 'Автовыбор VPN (Xray)',
-    'vpn_manager_v2_xray_name' => '⚡ Автовыбор',
+    'vpn_manager_v2_xray_name' => '🇪🇺 Автовыбор',
     'vpn_manager_v2_xray_settings_help' => 'Отдельный профиль для тестирования в Happ. Требуется HTTPS. Рабочие ссылки сохраняют прежний формат.',
     'vpn_manager_v2_xray_enabled' => 'Включить автовыбор',
     'vpn_manager_v2_xray_export' => 'Выдавать отдельную JSON-подписку',

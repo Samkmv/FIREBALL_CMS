@@ -2,7 +2,7 @@
 
 return [
     'vpn_manager_v2_xray_settings' => 'Automatische VPN-Auswahl (Xray)',
-    'vpn_manager_v2_xray_name' => '⚡ Automatische Auswahl',
+    'vpn_manager_v2_xray_name' => '🇪🇺 Automatische Auswahl',
     'vpn_manager_v2_xray_settings_help' => 'Separates Testprofil für Happ. HTTPS ist erforderlich. Bestehende Links behalten ihr Format.',
     'vpn_manager_v2_xray_enabled' => 'Automatische Auswahl aktivieren',
     'vpn_manager_v2_xray_export' => 'Separates JSON-Abonnement bereitstellen',

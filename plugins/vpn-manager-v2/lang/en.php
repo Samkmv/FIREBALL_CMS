@@ -2,7 +2,7 @@
 
 return [
     'vpn_manager_v2_xray_settings' => 'VPN Auto Select (Xray)',
-    'vpn_manager_v2_xray_name' => '⚡ Auto Select',
+    'vpn_manager_v2_xray_name' => '🇪🇺 Auto Select',
     'vpn_manager_v2_xray_settings_help' => 'Separate profile for testing in Happ. HTTPS is required. Existing links keep their format.',
     'vpn_manager_v2_xray_enabled' => 'Enable auto selection',
     'vpn_manager_v2_xray_export' => 'Serve a separate JSON subscription',

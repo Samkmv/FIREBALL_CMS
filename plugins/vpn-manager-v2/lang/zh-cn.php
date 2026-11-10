@@ -2,7 +2,7 @@
 
 return [
     'vpn_manager_v2_xray_settings' => 'VPN 自动选择（Xray）',
-    'vpn_manager_v2_xray_name' => '⚡ 自动选择',
+    'vpn_manager_v2_xray_name' => '🇪🇺 自动选择',
     'vpn_manager_v2_xray_settings_help' => '用于在 Happ 中测试的独立配置。需要 HTTPS。现有订阅链接保持原有格式。',
     'vpn_manager_v2_xray_enabled' => '启用自动选择',
     'vpn_manager_v2_xray_export' => '提供独立 JSON 订阅',
