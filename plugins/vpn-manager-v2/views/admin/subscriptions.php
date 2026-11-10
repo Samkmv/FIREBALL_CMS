@@ -122,7 +122,7 @@ foreach ($subscriptions as $subscription) {
         'id' => (string)$id,
         'title' => (string)$subscription['plan_name'],
         'icon' => 'ci-link',
-        'status' => [['html' => $badge], ['html' => $externalBadge]],
+        'status' => [['html' => $externalBadge], ['html' => $badge]],
         'actions' => $showAction,
         'extra_fields' => [
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_client_name_title'), 'value' => $clientName],
