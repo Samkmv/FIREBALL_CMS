@@ -250,30 +250,46 @@ class User
         if (!\App\Services\AuthIdentity::validEmail(\App\Services\AuthIdentity::email((string)($data['email'] ?? '')))) throw new \InvalidArgumentException('auth_validation_email_invalid');
         $phone = $policy['auth_phone_mode'] === 'off' ? null : \App\Services\AuthIdentity::phone((string)($data['phone'] ?? ''));
         if ($phone === null && $policy['auth_phone_mode'] === 'required') throw new \InvalidArgumentException('auth_phone_required');
-        $login = $policy['auth_login_mode'] === 'automatic'
-            ? 'user-' . bin2hex(random_bytes(12))
-            : $this->normalizeLogin((string)($data['login'] ?? ''));
+        $automaticLogin = $policy['auth_login_mode'] === 'automatic';
+        $name = trim($data['name']);
+        $login = $this->normalizeLogin((string)($data['login'] ?? ''));
+        if ($automaticLogin) {
+            $login = rtrim(substr($this->normalizeLogin($name), 0, 16), '-');
+            if (!$this->isValidLogin($login) || !preg_match('/[a-z]/', $login) || $this->isReservedLogin($login)) {
+                $login = 'user';
+            }
+        }
         $identitySql = \App\Services\AuthIdentity::available() ? ', phone, phone_normalized, email_verification_required' : '';
         $identityValues = $identitySql !== '' ? ', :phone, :phone_normalized, :email_verification_required' : '';
         $identityParams = $identitySql !== '' ? ['phone' => $phone, 'phone_normalized' => $phone,
             'email_verification_required' => (new \App\Services\AuthSettings())->emailVerificationRequired($policy) ? 1 : 0] : [];
 
-        db()->query(
-            "INSERT INTO {$this->usersTable} (name, login, email, password, role, locale, admin_locale, created_at{$identitySql})
-             VALUES (:name, :login, :email, :password, :role, :locale, :admin_locale, :created_at{$identityValues})",
-            [
-                'name' => trim($data['name']),
-                'login' => $login,
-                'email' => mb_strtolower(trim($data['email'])),
-                'password' => password_hash($data['password'], PASSWORD_DEFAULT),
-                'role' => $role,
-                'locale' => Localization::currentLocale(),
-                'admin_locale' => Localization::siteLocale(),
-                'created_at' => date('Y-m-d H:i:s'),
-            ] + $identityParams
-        );
+        $params = [
+            'name' => $name,
+            'email' => mb_strtolower(trim($data['email'])),
+            'password' => password_hash($data['password'], PASSWORD_DEFAULT),
+            'role' => $role,
+            'locale' => Localization::currentLocale(),
+            'admin_locale' => Localization::siteLocale(),
+            'created_at' => date('Y-m-d H:i:s'),
+        ] + $identityParams;
 
-        return (int)db()->getInsertId();
+        for ($attempt = 1; ; $attempt++) {
+            $params['login'] = $automaticLogin ? $this->ensureUniqueLogin($login) : $login;
+            try {
+                db()->query(
+                    "INSERT INTO {$this->usersTable} (name, login, email, password, role, locale, admin_locale, created_at{$identitySql})
+                     VALUES (:name, :login, :email, :password, :role, :locale, :admin_locale, :created_at{$identityValues})",
+                    $params
+                );
+                return (int)db()->getInsertId();
+            } catch (\PDOException $e) {
+                // Another registration may claim the login after the availability check.
+                if (!$automaticLogin || $attempt >= 3 || (int)($e->errorInfo[1] ?? 0) !== 1062 || !$this->loginExists($params['login'])) {
+                    throw $e;
+                }
+            }
+        }
     }
 
     /**

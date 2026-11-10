@@ -145,10 +145,9 @@
                 let height = visualHeight;
                 let top = mobile ? Math.max(0, Number(viewport?.offsetTop) || 0) : 0;
                 if (mobile && standalone && !keyboard) {
-                    // WebKit 254868: a closed PWA visualViewport can exclude
-                    // safe-area while fixed layout covers it. Measure CSS's
-                    // native extent instead of adding guessed inset pixels.
-                    height = nativeHeight;
+                    // WebKit can underreport visualViewport (254868) or make
+                    // 100vh taller than the visible layout (301994).
+                    height = Math.min(nativeHeight, layoutHeight);
                     // offsetTop can remain stale after iOS dismisses keyboard.
                     // Native closed-screen layout must start at its own origin.
                     top = 0;

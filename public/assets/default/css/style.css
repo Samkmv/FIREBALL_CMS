@@ -5591,41 +5591,41 @@ body.is-site-fullscreen .plyr * {
 }
 
 .admin-security-log-table.admin-table-component__table {
-    min-width: 88rem;
+    min-width: 0;
     table-layout: fixed;
 }
 
 .admin-security-log-table__col-id {
-    width: 4.5rem;
+    width: 6%;
 }
 
 .admin-security-log-table__col-event {
-    width: 12rem;
+    width: 13.5%;
 }
 
 .admin-security-log-table__col-actor,
 .admin-security-log-table__col-target {
-    width: 7.5rem;
+    width: 11%;
 }
 
 .admin-security-log-table__col-result {
-    width: 9rem;
+    width: 10%;
 }
 
 .admin-security-log-table__col-reason {
-    width: 20rem;
+    width: 16%;
 }
 
 .admin-security-log-table__col-ip {
-    width: 8.5rem;
+    width: 10%;
 }
 
 .admin-security-log-table__col-user-agent {
-    width: 12rem;
+    width: 12.5%;
 }
 
 .admin-security-log-table__col-date {
-    width: 9.5rem;
+    width: 10%;
 }
 
 .admin-security-log-table.admin-table-component__table th,
@@ -5634,11 +5634,6 @@ body.is-site-fullscreen .plyr * {
 .admin-maintenance-log-table.admin-table-component__table td {
     white-space: normal;
     overflow-wrap: anywhere;
-}
-
-.admin-security-log-table__event {
-    overflow-wrap: normal;
-    word-break: normal;
 }
 
 .admin-security-log-table__clamp {
@@ -5726,9 +5721,15 @@ body.is-site-fullscreen .plyr * {
     max-width: none;
 }
 
-[data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) td {
+[data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]):not(.admin-security-log-table) td {
     overflow-wrap: normal;
     word-break: normal;
+}
+
+.admin-security-log-table .badge {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 [data-admin-shell] .admin-table-card .table:not(.admin-posts-table):not(.admin-pages-table):not([data-admin-users-table]) td.text-nowrap,

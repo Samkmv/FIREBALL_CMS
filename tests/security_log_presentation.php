@@ -6,7 +6,7 @@ class SecurityLogTestView extends FBL\View
 {
     public function renderPartial($view, $data = []): string
     {
-        if ($view === 'admin/shell_open') return '<main class="container-fluid p-3 p-md-4"><h1 class="h3 mb-2">' . htmlSC($data['title']) . '</h1><p class="text-body-secondary mb-4">' . htmlSC($data['subtitle']) . '</p>';
+        if ($view === 'admin/shell_open') return '<main class="container-fluid p-3 p-md-4" data-admin-shell><h1 class="h3 mb-2">' . htmlSC($data['title']) . '</h1><p class="text-body-secondary mb-4">' . htmlSC($data['subtitle']) . '</p>';
         if ($view === 'admin/shell_close') return '</main>';
         return parent::renderPartial($view, $data);
     }
@@ -18,7 +18,7 @@ function securityLogSamples(): array
         ['id' => 431, 'event' => 'password_reset_complete', 'result' => 'failed', 'reason' => SecurityLogPresenter::encodeReason('token_claim_failed', ['stage' => 'claim', 'affected_rows' => 0]), 'actor_login' => '', 'target_login' => 'test-user', 'ip_address' => '127.0.0.1', 'user_agent' => 'Test browser', 'created_at' => '2026-10-19 23:37:00'],
         ['id' => 430, 'event' => 'password_reset_request', 'result' => 'success', 'reason' => '', 'actor_login' => '', 'target_login' => 'test-user', 'ip_address' => '127.0.0.1', 'user_agent' => 'Test browser', 'created_at' => '2026-10-19 23:36:00'],
         ['id' => 429, 'event' => 'password_reset_complete', 'result' => 'failed', 'reason' => 'token_used', 'actor_login' => '', 'target_login' => 'test-user', 'ip_address' => '127.0.0.1', 'user_agent' => 'Test browser', 'created_at' => '2026-10-19 23:35:00'],
-        ['id' => 428, 'event' => 'session_revoked', 'result' => 'success', 'reason' => 'Record #47', 'actor_login' => 'creator', 'target_login' => 'creator', 'ip_address' => '127.0.0.1', 'user_agent' => 'Test browser', 'created_at' => '2026-10-19 23:34:00'],
+        ['id' => 428, 'event' => 'session_revoked', 'result' => 'success', 'reason' => 'Record #47', 'actor_login' => 'user-0123456789abcdef01234567', 'target_login' => str_repeat('a', 50), 'ip_address' => '2001:db8:85a3:0:0:8a2e:370:7334', 'user_agent' => 'Test browser', 'created_at' => '2026-10-19 23:34:00'],
     ];
 }
 

@@ -126,15 +126,15 @@ ob_start();
                     ];
                     ?>
                     <tr>
-                        <th class="text-body-secondary text-nowrap fw-normal" scope="row">#<?= (int)($log['id'] ?? 0) ?></th>
+                        <th class="text-body-secondary fw-normal" scope="row">#<?= (int)($log['id'] ?? 0) ?></th>
                         <td class="fw-medium admin-security-log-table__event"><?= htmlSC($eventLabel) ?></td>
                         <td><?= htmlSC($actor) ?></td>
                         <td><?= htmlSC($target) ?></td>
                         <td><span class="badge fs-xs rounded-pill <?= htmlSC($resultClass) ?>"><?= htmlSC($resultLabel) ?></span></td>
                         <td><?= $reasonHtml ?></td>
-                        <td class="text-nowrap"><?= htmlSC($ipAddress) ?></td>
+                        <td><?= htmlSC($ipAddress) ?></td>
                         <td class="small text-body-secondary"><span class="admin-security-log-table__clamp admin-security-log-table__user-agent" title="<?= htmlSC($userAgent) ?>"><?= htmlSC($userAgent) ?></span></td>
-                        <td class="text-nowrap"><?= htmlSC($createdAt) ?></td>
+                        <td><?= htmlSC($createdAt) ?></td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>

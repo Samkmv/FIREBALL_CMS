@@ -381,13 +381,19 @@ try {
         checkAuth('Invalid phone rejected: ' . $phone, $rejected);
     }
     authPolicy(['auth_login_mode' => 'automatic', 'auth_phone_mode' => 'required', 'auth_login_phone' => '1']);
-    $automatic = array_replace($data, ['login' => '', 'email' => 'auto@example.test', 'phone' => '8 999 123 45 67']);
+    $automatic = array_replace($data, ['name' => 'Иван Петров', 'login' => '', 'email' => 'auto@example.test', 'phone' => '8 999 123 45 67']);
     checkAuth('Required phone missing rejected', isset($users->validateRegistration(array_replace($automatic, ['phone' => '']))['phone']));
     checkAuth('Automatic username with required phone validates', $users->validateRegistration($automatic) === []);
     $autoId = $users->create($automatic); $auto = $users->findById($autoId);
-    checkAuth('Automatic username is unique nonempty slug', (bool)preg_match('/^user-[a-f0-9]{24}$/D', $auto['login']) && $auto['login'] !== $row['login']);
+    checkAuth('Automatic username is based on the transliterated name', $auto['login'] === 'ivan-petrov');
     checkAuth('Canonical phone stored for lookup and profile', $auto['phone'] === '+79991234567' && $auto['phone_normalized'] === '+79991234567');
     checkAuth('Duplicate phone validation', isset($users->validateRegistration(array_replace($automatic, ['email' => 'other@example.test']))['phone']));
+    $sameName = $users->create(array_replace($automatic, ['email' => 'same-name@example.test', 'phone' => '+79991234601']));
+    checkAuth('Automatic usernames use a numeric suffix for duplicate names', $users->findById($sameName)['login'] === 'ivan-petrov-2');
+    $longName = $users->create(array_replace($automatic, ['name' => 'Aleksandr-Mikhailovich Petrov', 'email' => 'long-name@example.test', 'phone' => '+79991234602']));
+    checkAuth('Automatic username base is limited to 16 characters', $users->findById($longName)['login'] === 'aleksandr-mikhai');
+    $reservedName = $users->create(array_replace($automatic, ['name' => 'Administrator', 'email' => 'reserved-name@example.test', 'phone' => '+79991234603']));
+    checkAuth('Automatic username falls back for reserved names', preg_match('/^user(?:-[0-9]+)?$/D', $users->findById($reservedName)['login']) === 1);
     $conflict = false;
     try { $users->create(array_replace($automatic, ['email' => 'other@example.test'])); } catch (PDOException $e) { $conflict = $e->getCode() === '23000'; }
     checkAuth('Database enforces unique canonical phone', $conflict);

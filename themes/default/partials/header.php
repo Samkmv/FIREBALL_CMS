@@ -75,13 +75,6 @@
 
         <!-- Button group -->
         <div class="public-navbar-actions d-flex align-items-center gap-md-1 gap-lg-2 ms-auto">
-            <?php if (!empty($currentUserHasActiveSubscription)): ?>
-                <a class="btn btn-icon fs-lg btn-outline-secondary border-0 rounded-circle text-success d-md-none" href="<?= base_href('/profile') ?>" title="<?= htmlSC(return_translation('tpl_subscription_active')) ?>">
-                    <i class="ci-award" aria-hidden="true"></i>
-                    <span class="visually-hidden"><?= print_translation('tpl_subscription_active') ?></span>
-                </a>
-            <?php endif; ?>
-
             <!-- Theme switcher (light/dark/auto) -->
             <div class="dropdown">
                 <button type="button" class="theme-switcher btn btn-icon btn-outline-secondary fs-lg border-0 rounded-circle animate-scale" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Toggle theme (light)">
