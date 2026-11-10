@@ -1875,7 +1875,7 @@ return [
     'admin_seasonal_dates_hint' => 'Beide Tage zählen mit. Es gilt die Zeitzone der Website',
     'admin_seasonal_animate_snow' => 'Schnee auf der Startseite animieren',
     'admin_seasonal_preview' => 'Vorschau der Gestaltung',
-    'admin_seasonal_preview_hint' => 'Die folgenden Einstellungen gelten nur für die Vorschau. Testen Sie die Effekte vor dem Speichern und außerhalb des Zeitplans.',
+    'admin_seasonal_preview_hint' => 'Testen Sie die Effekte außerhalb des Zeitplans. Beim Speichern wird die Einstellung für den Schneefall übernommen. Die übrigen Einstellungen gelten nur für die Vorschau.',
     'admin_seasonal_device' => 'Gerät',
     'admin_seasonal_desktop' => 'Desktop (1440 × 900)',
     'admin_seasonal_mobile' => 'Smartphone (390 × 844)',

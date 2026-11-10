@@ -1881,7 +1881,7 @@ return [
     'admin_seasonal_dates_hint' => 'Both dates are inclusive in the site time zone',
     'admin_seasonal_animate_snow' => 'Animate snow on the homepage',
     'admin_seasonal_preview' => 'Decoration preview',
-    'admin_seasonal_preview_hint' => 'The controls below apply only to the preview. Try the effects before saving and outside the schedule.',
+    'admin_seasonal_preview_hint' => 'Try the effects outside the schedule. Saving applies the snow animation setting to the site. The other controls affect only the preview.',
     'admin_seasonal_device' => 'Device',
     'admin_seasonal_desktop' => 'Desktop (1440 × 900)',
     'admin_seasonal_mobile' => 'Phone (390 × 844)',

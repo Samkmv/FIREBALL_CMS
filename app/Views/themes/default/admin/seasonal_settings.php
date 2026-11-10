@@ -44,11 +44,6 @@ $theme = theme()->getActiveTheme();
         <p id="seasonal-dates-hint" class="small text-body-secondary mb-3">
             <?= print_translation('admin_seasonal_dates_hint') ?> (<?= htmlSC(date_default_timezone_get()) ?>).
         </p>
-        <div class="form-check form-switch mb-3">
-            <input class="form-check-input" type="checkbox" role="switch" id="seasonal-snow-motion" name="seasonal_snow_motion" value="1"
-                   <?= ($values['seasonal_snow_motion'] ?? '0') === '1' ? 'checked' : '' ?>>
-            <label class="form-check-label" for="seasonal-snow-motion"><?= print_translation('admin_seasonal_animate_snow') ?></label>
-        </div>
         <button class="btn btn-primary rounded-pill" type="submit"><?= print_translation('admin_btn_save') ?></button>
     </section>
 
@@ -73,6 +68,11 @@ $theme = theme()->getActiveTheme();
             <div class="form-check form-switch mb-2">
                 <input class="form-check-input" type="checkbox" role="switch" id="seasonal-preview-enabled" checked>
                 <label class="form-check-label" for="seasonal-preview-enabled"><?= print_translation('admin_seasonal_preview_enabled') ?></label>
+            </div>
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" role="switch" id="seasonal-snow-motion" name="seasonal_snow_motion" value="1"
+                       <?= ($values['seasonal_snow_motion'] ?? '0') === '1' ? 'checked' : '' ?>>
+                <label class="form-check-label" for="seasonal-snow-motion"><?= print_translation('admin_seasonal_animate_snow') ?></label>
             </div>
         </div>
         <div data-seasonal-stage>

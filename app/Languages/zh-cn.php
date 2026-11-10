@@ -1875,7 +1875,7 @@ return [
     'admin_seasonal_dates_hint' => '起止日期均包含在内，按网站时区计算',
     'admin_seasonal_animate_snow' => '在首页播放飘雪动画',
     'admin_seasonal_preview' => '装饰预览',
-    'admin_seasonal_preview_hint' => '下方控件仅影响预览。您可以在保存前及计划日期之外查看效果。',
+    'admin_seasonal_preview_hint' => '您可以在计划日期之外查看效果。保存后，飘雪动画设置会应用到网站，其余控件仅影响预览。',
     'admin_seasonal_device' => '设备',
     'admin_seasonal_desktop' => '桌面（1440 × 900）',
     'admin_seasonal_mobile' => '手机（390 × 844）',

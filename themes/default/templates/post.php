@@ -36,7 +36,7 @@ $currentCategorySlug = (string)($post['category_slug'] ?? $post['category'] ?? '
                 <?= $this->partial('favorite_button', ['post' => $post]) ?>
             </div>
 
-            <div class="nav align-items-center gap-2 border-bottom pb-4 mt-n1 mb-4">
+            <div class="post-detail-meta nav align-items-center gap-2 border-bottom pb-4 mt-n1 mb-4">
                 <a class="nav-link text-body fs-xs text-uppercase p-0" href="<?= $categoryUrl($post['category_slug'] ?? $post['category']) ?>">
                     <?= htmlSC($post['category_label'] ?? $post['category']) ?>
                 </a>

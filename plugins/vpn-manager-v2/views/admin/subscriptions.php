@@ -51,8 +51,8 @@ foreach ($subscriptions as $subscription) {
             . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_presence_online')) . '</span>';
     }
     $externalBadge = empty($subscription['has_external_sources']) ? ''
-        : '<span class="badge rounded-pill text-bg-info text-wrap text-break">'
-            . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_has_external_sources')) . '</span>';
+        : '<span class="d-block"><span class="badge rounded-pill text-bg-info">'
+            . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_has_external_sources')) . '</span></span>';
 
     $expiresDisplay = trim((string)($subscription['expires_at'] ?? ''))
         ?: FireballPluginVpnManagerV2::t('vpn_manager_v2_lifetime_short');
@@ -105,8 +105,8 @@ foreach ($subscriptions as $subscription) {
             . '</span>' . (!empty($subscription['client_display_name']) ? '<div class="small text-body-secondary">' . htmlSC((string)$subscription['user_name']) . '</div>' : '')
             . '<div class="small text-body-secondary">' . htmlSC($userMeta) . '</div>'],
         ['html' => '<span class="fw-medium">' . htmlSC((string)$subscription['plan_name'])
-            . '</span><div class="small text-body-secondary">#' . (int)$subscription['plan_id'] . '</div>'
-            . ($externalBadge !== '' ? '<div class="mt-1">' . $externalBadge . '</div>' : '')],
+            . '</span> <span class="small text-body-secondary">#' . (int)$subscription['plan_id'] . '</span>'
+            . $externalBadge],
         ['html' => $badge],
         ['value' => (string)$subscription['starts_at']],
         ['value' => $expiresDisplay],
@@ -120,9 +120,9 @@ foreach ($subscriptions as $subscription) {
 
     $mobileCards[] = [
         'id' => (string)$id,
-        'title' => (string)$subscription['plan_name'],
+        'title' => ['html' => htmlSC((string)$subscription['plan_name']) . $externalBadge],
         'icon' => 'ci-link',
-        'status' => [['html' => $badge . $externalBadge]],
+        'status' => [['html' => $badge]],
         'actions' => $showAction,
         'extra_fields' => [
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_client_name_title'), 'value' => $clientName],

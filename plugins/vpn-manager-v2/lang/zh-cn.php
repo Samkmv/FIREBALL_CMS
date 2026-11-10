@@ -4,7 +4,7 @@ return [
     'vpn_manager_v2_subscription_technical' => '技术详情',
     'vpn_manager_v2_presence_online' => '在线',
     'vpn_manager_v2_presence_unavailable' => '无法检查 %d 个 3x-UI 面板，仅显示已确认的连接。',
-    'vpn_manager_v2_has_external_sources' => '包含外部来源',
+    'vpn_manager_v2_has_external_sources' => '外部来源',
     'vpn_manager_v2_live_search_failed' => '无法刷新结果。请点击搜索重试。',
     'vpn_manager_v2_incy_routing_title' => 'Incy 路由',
     'vpn_manager_v2_incy_routing_enabled' => '启用 Incy 路由',

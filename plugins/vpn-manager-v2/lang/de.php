@@ -4,7 +4,7 @@ return [
     'vpn_manager_v2_subscription_technical' => 'Technische Details',
     'vpn_manager_v2_presence_online' => 'Online',
     'vpn_manager_v2_presence_unavailable' => '%d 3x-UI-Panels konnten nicht geprüft werden. Nur bestätigte Verbindungen werden angezeigt.',
-    'vpn_manager_v2_has_external_sources' => 'Externe Quellen vorhanden',
+    'vpn_manager_v2_has_external_sources' => 'Externe Quellen',
     'vpn_manager_v2_live_search_failed' => 'Ergebnisse konnten nicht aktualisiert werden. Drücken Sie Suchen, um es erneut zu versuchen.',
     'vpn_manager_v2_incy_routing_title' => 'Incy-Routing',
     'vpn_manager_v2_incy_routing_enabled' => 'Incy-Routing aktivieren',

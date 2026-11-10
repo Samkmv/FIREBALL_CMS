@@ -44,6 +44,50 @@ html:has(body[data-seasonal-preview]) {
     pointer-events: none;
 }
 
+[data-winter-city] :is(.posts-index-heading, .post-detail-meta) {
+    --winter-frost-glow: #729ac424;
+    --winter-frost-speck: #4f799d66;
+    --winter-frost-line: #729ac4b3;
+    position: relative;
+    isolation: isolate;
+}
+
+[data-bs-theme="dark"] [data-winter-city] :is(.posts-index-heading, .post-detail-meta) {
+    --winter-frost-glow: #73b5e427;
+    --winter-frost-speck: #a5d8ff80;
+    --winter-frost-line: #93cef3a6;
+}
+
+[data-winter-city] :is(.posts-index-heading, .post-detail-meta)::before {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: 0;
+    width: min(55%, 28rem);
+    z-index: -1;
+    background:
+        radial-gradient(circle at 68% 54%, var(--winter-frost-speck) 0 1px, transparent 2px),
+        radial-gradient(circle at 78% 38%, var(--winter-frost-speck) 0 1.5px, transparent 2.5px),
+        radial-gradient(circle at 89% 61%, var(--winter-frost-speck) 0 1px, transparent 2px),
+        radial-gradient(ellipse 30% 50% at 70% 53%, var(--winter-frost-glow), transparent);
+    pointer-events: none;
+}
+
+[data-winter-city] .posts-index-count {
+    box-shadow: 0 0 0 1px var(--winter-frost-line), 0 0 10px var(--winter-frost-glow);
+}
+
+[data-winter-city] .post-detail-meta::after {
+    content: "";
+    position: absolute;
+    inset-block-end: -1px;
+    inset-inline-end: 0;
+    width: min(52%, 24rem);
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--winter-frost-line) 72%, transparent);
+    pointer-events: none;
+}
+
 @media (max-width: 767px) {
     [data-winter-city] .public-navbar::after {
         height: 22px;
@@ -52,6 +96,10 @@ html:has(body[data-seasonal-preview]) {
 
     [data-winter-city] .home-hero__overlay::after {
         mask-image: linear-gradient(90deg, #0005, transparent 13% 62%, #0009);
+    }
+
+    [data-winter-city] :is(.posts-index-heading, .post-detail-meta)::before {
+        display: none;
     }
 }
 
