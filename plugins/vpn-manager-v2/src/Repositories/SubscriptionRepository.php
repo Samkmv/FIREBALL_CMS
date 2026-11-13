@@ -307,17 +307,37 @@ final class SubscriptionRepository
     public function presenceCandidates(): array
     {
         return db()->query(
-            "SELECT n.subscription_id, n.server_id, n.client_email
+            "SELECT n.id AS connection_id, n.subscription_id, n.server_id, n.client_email,
+                    n.presence_last_online_at, sub.user_id, sub.client_display_name,
+                    COALESCE(u.name, sub.manual_customer_name, '') AS user_name,
+                    u.login AS user_login, p.name AS plan_name, srv.name AS server_name,
+                    i.name AS inbound_name, i.protocol, i.port
              FROM vpn_v2_subscription_nodes n
              INNER JOIN vpn_v2_subscriptions sub ON sub.id = n.subscription_id
              INNER JOIN vpn_v2_servers srv ON srv.id = n.server_id
              INNER JOIN vpn_v2_inbounds i ON i.id = n.inbound_id AND i.server_id = n.server_id
+             LEFT JOIN users u ON u.id = sub.user_id
+             INNER JOIN vpn_v2_plans p ON p.id = sub.plan_id
              WHERE n.status = 'active' AND n.is_obsolete = 0 AND n.client_email <> ''
                AND srv.is_enabled = 1 AND srv.maintenance_mode = 0
                AND i.is_enabled = 1 AND i.status = 'active'
                AND sub.status IN ('active', 'partial_sync', 'sync_error')
-               AND sub.starts_at <= NOW() AND (sub.expires_at IS NULL OR sub.expires_at > NOW())"
+               AND sub.starts_at <= NOW() AND (sub.expires_at IS NULL OR sub.expires_at > NOW())
+             ORDER BY srv.name, COALESCE(u.name, sub.manual_customer_name, ''), sub.id, n.id"
         )->get() ?: [];
+    }
+
+    public function recordPresence(array $connectionIds, string $checkedAt): void
+    {
+        $connectionIds = array_values(array_unique(array_filter(array_map('intval', $connectionIds), static fn(int $id): bool => $id > 0)));
+        foreach (array_chunk($connectionIds, 500) as $ids) {
+            db()->query(
+                'UPDATE vpn_v2_subscription_nodes SET presence_last_online_at = ?
+                 WHERE id IN (' . implode(', ', array_fill(0, count($ids), '?')) . ')
+                   AND (presence_last_online_at IS NULL OR presence_last_online_at < ?)',
+                [$checkedAt, ...$ids, $checkedAt]
+            );
+        }
     }
 
     private function adminListWhere(string $search, string $status, ?array $onlyIds = null): array

@@ -307,6 +307,11 @@ final class FireballPluginVpnManagerV2 implements PluginInterface, \FBL\Plugins\
                 'schedule' => '* * * * *',
                 'plugin' => self::SLUG,
             ],
+            'vpn_v2_presence' => [
+                'class' => \Fireball\VpnManagerV2\Jobs\VpnV2PresenceJob::class,
+                'schedule' => '* * * * *',
+                'plugin' => self::SLUG,
+            ],
             'vpn_v2_sync_configuration' => [
                 'class' => VpnV2SyncConfigurationJob::class,
                 'schedule' => '*/10 * * * *',
@@ -373,6 +378,7 @@ final class FireballPluginVpnManagerV2 implements PluginInterface, \FBL\Plugins\
             'inbounds' => ['vpn_manager_v2_tab_inbounds', '/admin/plugins/vpn-manager-v2/inbounds', 'ci-log-in'],
             'plans' => ['vpn_manager_v2_tab_plans', '/admin/plugins/vpn-manager-v2/plans', 'ci-package'],
             'subscriptions' => ['vpn_manager_v2_tab_subscriptions', '/admin/plugins/vpn-manager-v2/subscriptions', 'ci-link'],
+            'online' => ['vpn_manager_v2_tab_online', '/admin/plugins/vpn-manager-v2/online', 'ci-activity'],
             'connections' => ['vpn_manager_v2_tab_connections', '/admin/plugins/vpn-manager-v2/connections', 'ci-share-2'],
             'discrepancies' => ['vpn_manager_v2_discrepancies_title', '/admin/plugins/vpn-manager-v2/discrepancies', 'ci-activity'],
             'operations' => ['vpn_manager_v2_tab_operations', '/admin/plugins/vpn-manager-v2/operations', 'ci-refresh-cw'],

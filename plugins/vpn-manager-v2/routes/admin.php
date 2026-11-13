@@ -9,6 +9,7 @@ $router->post('/admin/plugins/vpn-manager-v2/servers/(?P<id>\d+)/xray/inbound-pr
 $router->post('/admin/plugins/vpn-manager-v2/servers/(?P<id>\d+)/xray/inbound-apply', [NativeXrayController::class, 'inboundApply'])->middleware(['auth', 'admin']);
 
 use Fireball\VpnManagerV2\Controllers\Admin\OverviewController;
+use Fireball\VpnManagerV2\Controllers\Admin\OnlineController;
 use Fireball\VpnManagerV2\Controllers\Admin\InboundController;
 use Fireball\VpnManagerV2\Controllers\Admin\PlanController;
 use Fireball\VpnManagerV2\Controllers\Admin\ServerController;
@@ -20,6 +21,11 @@ use Fireball\VpnManagerV2\Controllers\Admin\SettingsController;
 use Fireball\VpnManagerV2\Controllers\Admin\SyncController;
 
 /** @var \FBL\Router $router */
+
+$router->get('/admin/plugins/vpn-manager-v2/online', [OnlineController::class, 'index'])
+    ->middleware(['auth', 'admin']);
+$router->get('/admin/plugins/vpn-manager-v2/online/data', [OnlineController::class, 'data'])
+    ->middleware(['auth', 'admin']);
 
 $router->get('/admin/plugins/vpn-manager-v2', static function (): string {
     return (new OverviewController())->index();

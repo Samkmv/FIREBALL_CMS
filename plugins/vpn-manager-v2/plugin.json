@@ -1,7 +1,7 @@
 {
   "name": "Управление VPN",
   "slug": "vpn-manager-v2",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "type": "system",
   "description": "Управление VPN на самостоятельном Xray-core через FIREBALL Agent, совместимые подписки и поэтапный переход с 3x-ui.",
   "description_i18n": {
@@ -19,6 +19,7 @@
   },
   "auto_migrate": true,
   "release_notes": [
+    "Online tab after Subscriptions with live statistics, user/server connections, search, sorting, last-seen history and 10-second refresh.",
     "Native Xray backend with an authenticated local agent, migration preview, persistent client management, inbound editing and usage synchronization.",
     "The Xray link serves Auto Select only. Manual servers and external connections remain in the standard subscription.",
     "The Xray subscription now lists compatible manual servers alongside Auto Select.",
@@ -48,6 +49,7 @@
   ],
   "release_notes_i18n": {
     "en": [
+      "Online tab after Subscriptions with live statistics, user/server connections, search, sorting, last-seen history and 10-second refresh.",
       "Native Xray backend with an authenticated local agent, migration preview, persistent client management, inbound editing and usage synchronization.",
       "The Xray link serves Auto Select only. Manual servers and external connections remain in the standard subscription.",
       "The Xray subscription now lists compatible manual servers alongside Auto Select.",
@@ -76,6 +78,7 @@
       "Added quick server replacement and Happ notices for expiry and maintenance."
     ],
     "ru": [
+      "Вкладка «Онлайн» после подписок. Карточки статистики, пользователи и серверы, поиск, сортировка, последнее подтверждение онлайн и автообновление каждые 10 секунд.",
       "Управление самостоятельным Xray-core через FIREBALL Agent. Проверка переноса с сохранением UUID и ссылок, управление клиентами и inbound через API, статистика и журнал ошибок.",
       "Ссылка Xray снова выдаёт только автовыбор. Ручные серверы и внешние подключения остаются в обычной подписке.",
       "В подписке Xray появились отдельные профили совместимых серверов для ручного выбора рядом с автовыбором.",
@@ -104,6 +107,7 @@
       "Добавлены быстрая замена сервера и уведомления об истечении подписки и техработах в Happ."
     ],
     "de": [
+      "Online-Registerkarte nach Abonnements mit Statistik, Benutzer- und Serververbindungen, Suche, Sortierung, Verlauf und Aktualisierung alle 10 Sekunden.",
       "Direkte Xray-Verwaltung über FIREBALL Agent mit Migrationsprüfung, stabilen Zugangsdaten, Inbound-Verwaltung und Verkehrsstatistik.",
       "Der Xray-Link liefert nur die automatische Auswahl. Manuelle Server und externe Verbindungen bleiben im normalen Abonnement.",
       "Das Xray-Abonnement zeigt kompatible Server zur manuellen Auswahl neben der automatischen Auswahl.",
@@ -132,6 +136,7 @@
       "Schneller Serverwechsel und Happ-Hinweise zu Ablauf und Wartung hinzugefügt."
     ],
     "zh-cn": [
+      "订阅后新增在线页面，支持统计卡片、用户和服务器连接、搜索、排序、最后在线记录和每 10 秒刷新。",
       "通过 FIREBALL Agent 管理独立 Xray，支持迁移预览、保留凭据、入站管理和流量统计。",
       "Xray 链接仅提供自动选择。手动服务器和外部连接仍通过普通订阅提供。",
       "Xray 订阅现在会在自动选择旁列出兼容的手动服务器。",

@@ -101,6 +101,7 @@ $columns = [
     'vpn_v2_subscription_nodes.sort_order',
     'vpn_v2_subscription_nodes.traffic_used_bytes',
     'vpn_v2_subscription_nodes.encrypted_client_credential',
+    'vpn_v2_subscription_nodes.presence_last_online_at',
     'vpn_v2_subscription_items.effective_status',
     'vpn_v2_external_sources.encrypted_snapshot',
     'vpn_v2_external_sources.plan_id',

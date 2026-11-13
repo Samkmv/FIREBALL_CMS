@@ -52,6 +52,7 @@ try {
     }
     if ($arguments === [] || in_array('--health-only', $arguments, true)) {
         $result['health'] = (new \Fireball\VpnManagerV2\Jobs\VpnV2ServerHealthJob())->handle();
+        $result['presence'] = (new \Fireball\VpnManagerV2\Jobs\VpnV2PresenceJob())->handle();
     }
     fwrite(STDOUT, json_encode([
         'status' => $failed ? 'partial_failure' : 'ok',

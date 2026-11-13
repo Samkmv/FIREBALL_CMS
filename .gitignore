@@ -65,3 +65,5 @@ __pycache__/
 !/tests/vpn_xray_auto_lab.py
 !/tests/vpn_native_agent_test.py
 !/tests/vpn_native_client_unit.php
+!/tests/vpn_online_unit.php
+!/tests/vpn_online_browser.mjs
