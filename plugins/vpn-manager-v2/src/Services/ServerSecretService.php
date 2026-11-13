@@ -38,7 +38,7 @@ final class ServerSecretService
             authType: $authType,
             username: $authType === 'password' ? SecretCipher::decrypt($server['encrypted_username'] ?? null) : '',
             password: $authType === 'password' ? SecretCipher::decrypt($server['encrypted_password'] ?? null) : '',
-            token: $authType === 'token' ? SecretCipher::decrypt($server['encrypted_token'] ?? null) : '',
+            token: in_array($authType, ['token', 'xray'], true) ? SecretCipher::decrypt($server['encrypted_token'] ?? null) : '',
             connectTimeout: $connectTimeout ?? (int)($server['connect_timeout'] ?? 5),
             readTimeout: $readTimeout ?? (int)($server['read_timeout'] ?? 15),
             apiUrl: isset($server['api_url']) ? (string)$server['api_url'] : null,

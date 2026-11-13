@@ -2,7 +2,7 @@
 
 namespace Fireball\VpnManagerV2\Services;
 
-use Fireball\VpnManagerV2\Clients\ThreeXuiClient;
+use Fireball\VpnManagerV2\Clients\ServerClientFactory;
 use Fireball\VpnManagerV2\Clients\ThreeXuiClientInterface;
 use Fireball\VpnManagerV2\DTO\ProvisioningResult;
 use Fireball\VpnManagerV2\Exceptions\ClientVerificationException;
@@ -656,7 +656,7 @@ final class SubscriptionProvisioningService
             return $client;
         }
 
-        return new ThreeXuiClient((new ServerSecretService())->clientConfig($server));
+        return ServerClientFactory::create((new ServerSecretService())->clientConfig($server));
     }
 
     private function repository(): SubscriptionRepository

@@ -2,7 +2,7 @@
 
 namespace Fireball\VpnManagerV2\Services;
 
-use Fireball\VpnManagerV2\Clients\ThreeXuiClient;
+use Fireball\VpnManagerV2\Clients\ServerClientFactory;
 use Fireball\VpnManagerV2\Exceptions\ProvisioningException;
 use Fireball\VpnManagerV2\Repositories\ServerRepository;
 use Fireball\VpnManagerV2\Repositories\SubscriptionRepository;
@@ -81,7 +81,7 @@ final class SubscriptionDeviceService
             throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_connection_topology'));
         }
         $client = $this->clientFactory !== null ? ($this->clientFactory)($server, $inbound, $node)
-            : new ThreeXuiClient((new ServerSecretService())->clientConfig($server));
+            : ServerClientFactory::create((new ServerSecretService())->clientConfig($server));
         foreach (['listClientDevices', 'deleteClientDevice', 'clearClientDevices'] as $method) {
             if (!method_exists($client, $method)) {
                 throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_devices_unsupported'));

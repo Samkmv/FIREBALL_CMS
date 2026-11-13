@@ -64,7 +64,7 @@ final class ServerManagerService
             if (!$current) {
                 throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_server_not_found'));
             }
-            foreach (['panel_url', 'panel_path', 'api_url'] as $key) {
+            foreach (['panel_url', 'panel_path', 'api_url', 'auth_type'] as $key) {
                 $replacement = $replacement || (string)($current[$key] ?? '') !== (string)($updated[$key] ?? '');
             }
             if ($replacement) {
@@ -143,9 +143,17 @@ final class ServerManagerService
         string $authType,
         ServerSecretService $secrets
     ): void {
-        if ($authType === 'token') {
+        if (in_array($authType, ['token', 'xray'], true)) {
             if (!$secrets->submittedOrStored($input, $existing, 'token')) {
                 throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_token_required'));
+            }
+            if ($authType === 'xray') {
+                $plainToken = \Fireball\VpnManagerV2\Support\SecretCipher::shouldReplace((string)($input['token'] ?? ''))
+                    ? trim((string)$input['token'])
+                    : \Fireball\VpnManagerV2\Support\SecretCipher::decrypt($existing['encrypted_token'] ?? null);
+                if (strlen($plainToken) < 32 || preg_match('/[\r\n]/', $plainToken)) {
+                    throw new ValidationException('Xray agent token must contain at least 32 characters and no line breaks.');
+                }
             }
 
             return;

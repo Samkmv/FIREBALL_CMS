@@ -33,6 +33,11 @@ $serverActions = static function (array $server): array {
 
     return [
         [
+            'label' => 'Xray-core · перенос',
+            'href' => base_href('/admin/plugins/vpn-manager-v2/servers/' . $id . '/xray'),
+            'icon' => 'ci-server',
+        ],
+        [
             'label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_action'),
             'href' => base_href('/admin/plugins/vpn-manager-v2/servers/' . $id . '/recovery'),
             'icon' => 'ci-refresh-cw',
@@ -91,7 +96,7 @@ foreach ($servers as $server) {
     $location = implode(', ', $locationParts) ?: '-';
     $panel = rtrim((string)($server['panel_url'] ?? ''), '/') . (string)($server['panel_path'] ?? '');
     $authType = (string)($server['auth_type'] ?? 'token');
-    $authLabel = FireballPluginVpnManagerV2::t(
+    $authLabel = $authType === 'xray' ? 'Xray-core · FIREBALL Agent' : FireballPluginVpnManagerV2::t(
         $authType === 'password' ? 'vpn_manager_v2_auth_password' : 'vpn_manager_v2_auth_token'
     );
     $lastCheck = trim((string)($server['last_check_at'] ?? ''));

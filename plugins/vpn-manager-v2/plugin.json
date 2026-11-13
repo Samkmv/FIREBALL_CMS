@@ -1,14 +1,14 @@
 {
   "name": "Управление VPN",
   "slug": "vpn-manager-v2",
-  "version": "3.2.4",
+  "version": "3.3.0",
   "type": "system",
-  "description": "Управление VPN-серверами, тарифами, подписками и подключениями с двусторонней синхронизацией с панелью 3x-ui и поддержкой Happ.",
+  "description": "Управление VPN на самостоятельном Xray-core через FIREBALL Agent, совместимые подписки и поэтапный переход с 3x-ui.",
   "description_i18n": {
-    "ru": "Управление VPN-серверами, тарифами, подписками и подключениями с двусторонней синхронизацией с панелью 3x-ui и поддержкой Happ.",
-    "en": "Manage VPN servers, plans, subscriptions and connections with bidirectional 3x-ui synchronization and Happ support.",
-    "de": "Verwaltung von VPN-Servern, Tarifen, Abonnements und Verbindungen mit bidirektionaler 3x-ui-Synchronisierung und Happ-Unterstützung.",
-    "zh-cn": "管理 VPN 服务器、套餐、订阅和连接，支持与 3x-ui 面板双向同步及 Happ 集成。"
+    "ru": "Управление VPN на самостоятельном Xray-core через FIREBALL Agent, совместимые подписки и поэтапный переход с 3x-ui.",
+    "en": "Manage standalone Xray-core through FIREBALL Agent with compatible subscriptions and staged migration from 3x-ui.",
+    "de": "VPN-Verwaltung auf eigenständigem Xray-core über FIREBALL Agent mit kompatiblen Abonnements und schrittweiser Migration von 3x-ui.",
+    "zh-cn": "通过 FIREBALL Agent 管理独立 Xray-core，保留订阅兼容性并支持从 3x-ui 分步迁移。"
   },
   "author": "FIREBALL CMS",
   "name_i18n": {
@@ -19,6 +19,7 @@
   },
   "auto_migrate": true,
   "release_notes": [
+    "Native Xray backend with an authenticated local agent, migration preview, persistent client management, inbound editing and usage synchronization.",
     "The Xray link serves Auto Select only. Manual servers and external connections remain in the standard subscription.",
     "The Xray subscription now lists compatible manual servers alongside Auto Select.",
     "Added an opt-in HTTPS subscription for Xray server selection in Happ.",
@@ -47,6 +48,7 @@
   ],
   "release_notes_i18n": {
     "en": [
+      "Native Xray backend with an authenticated local agent, migration preview, persistent client management, inbound editing and usage synchronization.",
       "The Xray link serves Auto Select only. Manual servers and external connections remain in the standard subscription.",
       "The Xray subscription now lists compatible manual servers alongside Auto Select.",
       "Added an opt-in HTTPS subscription for Xray server selection in Happ.",
@@ -74,6 +76,7 @@
       "Added quick server replacement and Happ notices for expiry and maintenance."
     ],
     "ru": [
+      "Управление самостоятельным Xray-core через FIREBALL Agent. Проверка переноса с сохранением UUID и ссылок, управление клиентами и inbound через API, статистика и журнал ошибок.",
       "Ссылка Xray снова выдаёт только автовыбор. Ручные серверы и внешние подключения остаются в обычной подписке.",
       "В подписке Xray появились отдельные профили совместимых серверов для ручного выбора рядом с автовыбором.",
       "Добавлена отдельная HTTPS-подписка для тестирования автовыбора серверов Xray в Happ.",
@@ -101,6 +104,7 @@
       "Добавлены быстрая замена сервера и уведомления об истечении подписки и техработах в Happ."
     ],
     "de": [
+      "Direkte Xray-Verwaltung über FIREBALL Agent mit Migrationsprüfung, stabilen Zugangsdaten, Inbound-Verwaltung und Verkehrsstatistik.",
       "Der Xray-Link liefert nur die automatische Auswahl. Manuelle Server und externe Verbindungen bleiben im normalen Abonnement.",
       "Das Xray-Abonnement zeigt kompatible Server zur manuellen Auswahl neben der automatischen Auswahl.",
       "Ein separates HTTPS-Abonnement zur optionalen Xray-Serverauswahl in Happ wurde hinzugefügt.",
@@ -128,6 +132,7 @@
       "Schneller Serverwechsel und Happ-Hinweise zu Ablauf und Wartung hinzugefügt."
     ],
     "zh-cn": [
+      "通过 FIREBALL Agent 管理独立 Xray，支持迁移预览、保留凭据、入站管理和流量统计。",
       "Xray 链接仅提供自动选择。手动服务器和外部连接仍通过普通订阅提供。",
       "Xray 订阅现在会在自动选择旁列出兼容的手动服务器。",
       "新增独立 HTTPS 订阅，可在 Happ 中试用 Xray 自动选服。",

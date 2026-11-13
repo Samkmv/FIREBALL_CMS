@@ -39,8 +39,12 @@ final class ServerValidator
         }
 
         $authType = (string)($input['auth_type'] ?? 'token');
-        if (!in_array($authType, ['token', 'password'], true)) {
+        if (!in_array($authType, ['token', 'password', 'xray'], true)) {
             throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_invalid_auth_type'));
+        }
+        if ($authType === 'xray' && (parse_url($apiUrl ?? $panelUrl, PHP_URL_SCHEME) !== 'https'
+            || (array_key_exists('verify_ssl', $input) && empty($input['verify_ssl'])))) {
+            throw new ValidationException('Xray agent requires HTTPS with TLS verification.');
         }
 
         $countryCode = strtoupper(trim((string)($input['country_code'] ?? '')));

@@ -2,7 +2,7 @@
 
 namespace Fireball\VpnManagerV2\Services;
 
-use Fireball\VpnManagerV2\Clients\ThreeXuiClient;
+use Fireball\VpnManagerV2\Clients\ServerClientFactory;
 use Fireball\VpnManagerV2\Repositories\ServerHealthRepository;
 use Fireball\VpnManagerV2\Repositories\ServerRepository;
 use Fireball\VpnManagerV2\Support\NetworkTargetGuard;
@@ -48,7 +48,7 @@ final class ServerHealthMonitorService
             'xray' => 'unknown', 'ports' => [], 'load' => [], 'error' => '', 'checked_at' => date('Y-m-d H:i:s')];
         try {
             $raw = $this->panelProbe !== null ? ($this->panelProbe)($server)
-                : (new ThreeXuiClient((new ServerSecretService())->clientConfig($server, 2, 4)))->serverStatus();
+                : (ServerClientFactory::create((new ServerSecretService())->clientConfig($server, 2, 4)))->serverStatus();
             $metrics = (new ServerMetricsService())->normalize((array)$raw);
             $snapshot['panel'] = 'online';
             $snapshot['xray'] = in_array(strtolower($metrics['xray']['state']), ['running', 'stopped', 'error'], true)

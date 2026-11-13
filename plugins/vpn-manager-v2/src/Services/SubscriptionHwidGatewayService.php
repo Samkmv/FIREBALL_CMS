@@ -2,7 +2,7 @@
 
 namespace Fireball\VpnManagerV2\Services;
 
-use Fireball\VpnManagerV2\Clients\ThreeXuiClient;
+use Fireball\VpnManagerV2\Clients\ServerClientFactory;
 use Fireball\VpnManagerV2\Exceptions\ThreeXuiTransportException;
 use Fireball\VpnManagerV2\Repositories\ServerRepository;
 use Fireball\VpnManagerV2\Support\ServerConfigurationSignature;
@@ -96,7 +96,7 @@ final class SubscriptionHwidGatewayService
                 if (!isset($offline[$serverId])) {
                     $client = $clients[$serverId] ??= $this->clientFactory !== null
                         ? ($this->clientFactory)($server)
-                        : new ThreeXuiClient((new ServerSecretService())->clientConfig($server));
+                        : ServerClientFactory::create((new ServerSecretService())->clientConfig($server));
                     $status = (int)$client->probeSubscriptionHwid($subId, $requestHeaders);
                 }
             } catch (ThreeXuiTransportException) {

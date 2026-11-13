@@ -3,7 +3,7 @@
 namespace Fireball\VpnManagerV2\Services;
 
 use Fireball\VpnManagerV2\Clients\ThreeXuiCapabilities;
-use Fireball\VpnManagerV2\Clients\ThreeXuiClient;
+use Fireball\VpnManagerV2\Clients\ServerClientFactory;
 use Fireball\VpnManagerV2\Clients\ThreeXuiClientInterface;
 use Fireball\VpnManagerV2\Clients\ThreeXuiResponseMapper;
 use Fireball\VpnManagerV2\Exceptions\VpnManagerV2Exception;
@@ -374,7 +374,7 @@ final class ConfigurationSyncService
             return $client;
         }
 
-        return new ThreeXuiClient(($this->secrets ?? new ServerSecretService())->clientConfig($server));
+        return ServerClientFactory::create(($this->secrets ?? new ServerSecretService())->clientConfig($server));
     }
 
     private function indexInbounds(array $inbounds): array

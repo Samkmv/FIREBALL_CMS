@@ -2,7 +2,7 @@
 
 namespace Fireball\VpnManagerV2\Services;
 
-use Fireball\VpnManagerV2\Clients\ThreeXuiClient;
+use Fireball\VpnManagerV2\Clients\ServerClientFactory;
 use Fireball\VpnManagerV2\Clients\ThreeXuiClientInterface;
 use Fireball\VpnManagerV2\Exceptions\ProvisioningException;
 use Fireball\VpnManagerV2\Exceptions\ValidationException;
@@ -38,7 +38,7 @@ final class SubscriptionClientInfoService
             throw new ProvisioningException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_connection_topology'));
         }
         $client = $this->clientFactory !== null ? ($this->clientFactory)($server, $inbound, $node)
-            : new ThreeXuiClient((new ServerSecretService())->clientConfig($server, 3, 5));
+            : ServerClientFactory::create((new ServerSecretService())->clientConfig($server, 3, 5));
         if (!$client instanceof ThreeXuiClientInterface) { throw new \LogicException('Invalid client inspection factory.'); }
         $remote = (new RemoteClientSyncService())->readClientState(
             $client, $client->getInbound((int)$inbound['remote_inbound_id']), $node

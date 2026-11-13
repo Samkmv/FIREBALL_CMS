@@ -2,7 +2,7 @@
 
 namespace Fireball\VpnManagerV2\Services;
 
-use Fireball\VpnManagerV2\Clients\ThreeXuiClient;
+use Fireball\VpnManagerV2\Clients\ServerClientFactory;
 use Fireball\VpnManagerV2\DTO\ConnectionTestResult;
 use Fireball\VpnManagerV2\Exceptions\ThreeXuiTransportException;
 use Fireball\VpnManagerV2\Exceptions\VpnManagerV2Exception;
@@ -30,7 +30,7 @@ final class ServerConnectionService
 
         try {
             $config = ($this->secrets ?? new ServerSecretService())->clientConfig($server);
-            $result = (new ThreeXuiClient($config))->testConnection();
+            $result = (ServerClientFactory::create($config))->testConnection();
             $repository->recordConnectionSuccess($serverId, $result->inboundCount);
 
             return $result;

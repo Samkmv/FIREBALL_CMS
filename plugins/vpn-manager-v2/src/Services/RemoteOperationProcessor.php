@@ -2,7 +2,7 @@
 
 namespace Fireball\VpnManagerV2\Services;
 
-use Fireball\VpnManagerV2\Clients\ThreeXuiClient;
+use Fireball\VpnManagerV2\Clients\ServerClientFactory;
 use Fireball\VpnManagerV2\Exceptions\ObsoleteOperationException;
 use Fireball\VpnManagerV2\Repositories\AutomationRepository;
 use Fireball\VpnManagerV2\Repositories\ConfigurationSyncRepository;
@@ -593,7 +593,7 @@ final class RemoteOperationProcessor
         if (!$server || !$inbound) {
             throw new \RuntimeException('VPN server or inbound not found.');
         }
-        $client = new ThreeXuiClient((new ServerSecretService())->clientConfig($server));
+        $client = ServerClientFactory::create((new ServerSecretService())->clientConfig($server));
         $client->resetClientTraffic((int)$inbound['remote_inbound_id'], (string)$node['client_email']);
         $traffic = TrafficSyncService::trafficFromResponse($client->getClientTraffic((string)$node['client_email']));
         if ($traffic['total'] !== 0) {

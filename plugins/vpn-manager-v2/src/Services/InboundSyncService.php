@@ -2,7 +2,7 @@
 
 namespace Fireball\VpnManagerV2\Services;
 
-use Fireball\VpnManagerV2\Clients\ThreeXuiClient;
+use Fireball\VpnManagerV2\Clients\ServerClientFactory;
 use Fireball\VpnManagerV2\DTO\InboundSyncResult;
 use Fireball\VpnManagerV2\Exceptions\InboundSyncException;
 use Fireball\VpnManagerV2\Exceptions\ThreeXuiTransportException;
@@ -30,7 +30,7 @@ final class InboundSyncService
 
         try {
             $config = ($this->secrets ?? new ServerSecretService())->clientConfig($server);
-            $remoteItems = (new ThreeXuiClient($config))->listInbounds();
+            $remoteItems = (ServerClientFactory::create($config))->listInbounds();
             $parser = $this->parser ?? new InboundParser();
             $parsed = [];
             foreach ($remoteItems as $item) {

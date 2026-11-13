@@ -2,7 +2,7 @@
 
 namespace Fireball\VpnManagerV2\Services;
 
-use Fireball\VpnManagerV2\Clients\ThreeXuiClient;
+use Fireball\VpnManagerV2\Clients\ServerClientFactory;
 use Fireball\VpnManagerV2\Clients\ThreeXuiClientInterface;
 use Fireball\VpnManagerV2\Exceptions\ProvisioningException;
 use Fireball\VpnManagerV2\Exceptions\ValidationException;
@@ -216,7 +216,7 @@ final class RemoteClientSyncService
             return $client;
         }
 
-        return new ThreeXuiClient((new ServerSecretService())->clientConfig($server));
+        return ServerClientFactory::create((new ServerSecretService())->clientConfig($server));
     }
 
     private function subscriptionState(array $node): array

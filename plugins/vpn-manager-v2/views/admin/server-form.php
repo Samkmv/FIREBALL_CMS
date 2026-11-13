@@ -42,9 +42,9 @@ $secretPlaceholder = static function (string $key) use ($server): string {
             <div class="form-text"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_server_code_help')) ?></div>
         </div>
         <div class="col-md-8">
-            <label class="form-label" for="vpnV2ApiUrl"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_api_url')) ?></label>
+            <label class="form-label" for="vpnV2ApiUrl"><?= htmlSC($authType === 'xray' ? 'HTTPS URL FIREBALL Agent' : FireballPluginVpnManagerV2::t('vpn_manager_v2_field_api_url')) ?></label>
             <input class="form-control" id="vpnV2ApiUrl" type="url" name="api_url" maxlength="500" placeholder="https://api.example.com" value="<?= htmlSC((string)($server['api_url'] ?? '')) ?>">
-            <div class="form-text"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_api_url_help')) ?></div>
+            <div class="form-text"><?= htmlSC($authType === 'xray' ? 'Адрес управления ядром, например https://control.example/fireball-xray.' : FireballPluginVpnManagerV2::t('vpn_manager_v2_api_url_help')) ?></div>
         </div>
         <div class="col-md-2">
             <label class="form-label" for="vpnV2ConnectTimeout"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_connect_timeout')) ?></label>
@@ -55,9 +55,9 @@ $secretPlaceholder = static function (string $key) use ($server): string {
             <input class="form-control" id="vpnV2ReadTimeout" type="number" name="read_timeout" min="2" max="90" value="<?= (int)($server['read_timeout'] ?? 15) ?>">
         </div>
         <div class="col-md-8">
-            <label class="form-label" for="vpnV2PanelUrl"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_panel_url')) ?></label>
+            <label class="form-label" for="vpnV2PanelUrl"><?= htmlSC($authType === 'xray' ? 'Адрес VPN-сервера' : FireballPluginVpnManagerV2::t('vpn_manager_v2_field_panel_url')) ?></label>
             <input class="form-control" id="vpnV2PanelUrl" type="url" name="panel_url" maxlength="500" required placeholder="https://panel.example.com:2053" value="<?= htmlSC((string)($server['panel_url'] ?? '')) ?>">
-            <div class="form-text"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_panel_url_help')) ?></div>
+            <div class="form-text"><?= htmlSC($authType === 'xray' ? 'Сохраните прежний адрес подключения клиентов. Адрес управления задаётся отдельно выше.' : FireballPluginVpnManagerV2::t('vpn_manager_v2_panel_url_help')) ?></div>
         </div>
         <div class="col-md-4">
             <label class="form-label" for="vpnV2PanelPath"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_panel_path')) ?></label>
@@ -70,9 +70,11 @@ $secretPlaceholder = static function (string $key) use ($server): string {
         <div class="col-md-4">
             <label class="form-label" for="vpnV2AuthType"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_auth_type')) ?></label>
             <select class="form-select" id="vpnV2AuthType" name="auth_type">
+                <option value="xray" <?= $authType === 'xray' ? 'selected' : '' ?>>Xray-core · FIREBALL Agent</option>
                 <option value="token" <?= $authType === 'token' ? 'selected' : '' ?>><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_auth_token')) ?></option>
                 <option value="password" <?= $authType === 'password' ? 'selected' : '' ?>><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_auth_password')) ?></option>
             </select>
+            <div class="form-text">Для Xray укажите HTTPS-адрес агента в отдельном API URL и его токен. Адрес сервера сохраните прежним, чтобы подключения клиентов сохранили свой адрес. Проверка TLS обязательна.</div>
         </div>
         <div class="col-md-8">
             <label class="form-label" for="vpnV2Token"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_token')) ?></label>

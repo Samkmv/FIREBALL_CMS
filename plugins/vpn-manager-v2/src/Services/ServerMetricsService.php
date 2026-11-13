@@ -2,7 +2,7 @@
 
 namespace Fireball\VpnManagerV2\Services;
 
-use Fireball\VpnManagerV2\Clients\ThreeXuiClient;
+use Fireball\VpnManagerV2\Clients\ServerClientFactory;
 use Fireball\VpnManagerV2\Exceptions\ValidationException;
 use Fireball\VpnManagerV2\Repositories\ServerRepository;
 
@@ -28,7 +28,7 @@ final class ServerMetricsService
         $config = ($this->secrets ?? new ServerSecretService())->clientConfig($server, 3, 8);
         $client = $this->clientFactory !== null
             ? ($this->clientFactory)($server, $config)
-            : new ThreeXuiClient($config);
+            : ServerClientFactory::create($config);
         if (!is_object($client) || !method_exists($client, 'serverStatus')) {
             throw new \RuntimeException('VPN server metrics client is unavailable.');
         }

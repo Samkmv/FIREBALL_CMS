@@ -1,5 +1,13 @@
 <?php
 
+use Fireball\VpnManagerV2\Controllers\Admin\NativeXrayController;
+
+$router->get('/admin/plugins/vpn-manager-v2/servers/(?P<id>\d+)/xray', [NativeXrayController::class, 'show'])->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/servers/(?P<id>\d+)/xray/preview', [NativeXrayController::class, 'preview'])->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/servers/(?P<id>\d+)/xray/adopt', [NativeXrayController::class, 'adopt'])->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/servers/(?P<id>\d+)/xray/inbound-preview', [NativeXrayController::class, 'inboundPreview'])->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/servers/(?P<id>\d+)/xray/inbound-apply', [NativeXrayController::class, 'inboundApply'])->middleware(['auth', 'admin']);
+
 use Fireball\VpnManagerV2\Controllers\Admin\OverviewController;
 use Fireball\VpnManagerV2\Controllers\Admin\InboundController;
 use Fireball\VpnManagerV2\Controllers\Admin\PlanController;

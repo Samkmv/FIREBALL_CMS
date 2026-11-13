@@ -2,7 +2,7 @@
 
 namespace Fireball\VpnManagerV2\Services;
 
-use Fireball\VpnManagerV2\Clients\ThreeXuiClient;
+use Fireball\VpnManagerV2\Clients\ServerClientFactory;
 use Fireball\VpnManagerV2\Repositories\ServerRepository;
 use Fireball\VpnManagerV2\Repositories\SubscriptionRepository;
 use Fireball\VpnManagerV2\Support\ServerConfigurationSignature;
@@ -30,7 +30,7 @@ final class SubscriptionPresenceService
                 $names = cache()->get($key);
                 if (!is_array($names)) {
                     $config = (new ServerSecretService())->clientConfig($server, 2, 3);
-                    $names = array_fill_keys((new ThreeXuiClient($config))->onlineClientNames(), true);
+                    $names = array_fill_keys((ServerClientFactory::create($config))->onlineClientNames(), true);
                     cache()->set($key, $names, 10);
                 }
                 foreach ($nodes as $node) {

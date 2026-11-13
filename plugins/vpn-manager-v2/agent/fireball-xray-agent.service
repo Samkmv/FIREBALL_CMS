@@ -1,0 +1,26 @@
+[Unit]
+Description=FIREBALL native Xray management agent
+After=network.target xray.service
+Wants=xray.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/fireball-xray/fireball_xray_agent.py
+Restart=on-failure
+RestartSec=5
+UMask=0077
+StateDirectory=fireball-xray
+StateDirectoryMode=0700
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ReadWritePaths=/usr/local/etc/xray /var/lib/fireball-xray
+
+[Install]
+WantedBy=multi-user.target
