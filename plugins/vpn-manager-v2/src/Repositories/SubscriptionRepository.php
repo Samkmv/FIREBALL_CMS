@@ -966,6 +966,49 @@ final class SubscriptionRepository
         }
     }
 
+    /** Rotate only the CMS access link; remote client identities stay untouched. */
+    public function rotateAccessToken(int $id, string $expectedHash, ?int $adminId): array
+    {
+        $database = db();
+        $ownsTransaction = !$database->inTransaction();
+        if ($ownsTransaction) {
+            $database->beginTransaction();
+        }
+        try {
+            $before = $database->query(
+                'SELECT id, user_id, status, subscription_token, revision FROM vpn_v2_subscriptions WHERE id = ? FOR UPDATE',
+                [$id]
+            )->getOne();
+            if (!$before) {
+                throw new \InvalidArgumentException('subscription_not_found');
+            }
+            if (ProvisioningStatus::deletionStarted((string)$before['status'])) {
+                throw new \InvalidArgumentException('subscription_deleting');
+            }
+            if (!hash_equals(hash('sha256', (string)$before['subscription_token']), $expectedHash)) {
+                throw new \InvalidArgumentException('subscription_link_changed');
+            }
+            $token = \Fireball\VpnManagerV2\Support\SubscriptionToken::generate();
+            $now = date('Y-m-d H:i:s');
+            $database->query(
+                'UPDATE vpn_v2_subscriptions SET subscription_token = ?, subscription_token_hash = ?,
+                    revision = revision + 1, config_updated_at = ?, updated_at = ? WHERE id = ?',
+                [$token, hash('sha256', $token), $now, $now, $id]
+            );
+            $this->logEvent('subscription.access_link_rotated', $id, null, null,
+                (int)$before['user_id'], $adminId, ['remote_request' => false]);
+            if ($ownsTransaction) {
+                $database->commit();
+            }
+            return $before;
+        } catch (\Throwable $exception) {
+            if ($ownsTransaction && $database->inTransaction()) {
+                $database->rollBack();
+            }
+            throw $exception;
+        }
+    }
+
     public function claimRetry(int $id): bool
     {
         db()->query(

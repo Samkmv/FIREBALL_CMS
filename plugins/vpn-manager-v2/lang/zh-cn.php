@@ -1,6 +1,12 @@
 <?php
 
 return [
+    'vpn_manager_v2_incy_routing_help' => '留空并启用 Incy 即可使用当前 Happ 规则、DNS 和原始 Geo 文件。也支持 Happ 链接或独立 Incy 配置。这些设置尚不应用于 JSON 自动选择。',
+    'vpn_manager_v2_link_rotate' => '更换订阅链接',
+    'vpn_manager_v2_link_rotate_help' => '旧链接和二维码将无法更新，包括自动选择。请将新链接交给客户并在应用中导入。UUID 和密钥保持不变；此按钮不会撤销已导入的连接。',
+    'vpn_manager_v2_link_rotated' => '链接已更换，请将新链接或二维码交给客户。',
+    'vpn_manager_v2_link_changed' => '链接已更换，请刷新页面后重试。',
+    'vpn_manager_v2_link_rotate_failed' => '无法更换链接；详情已记录。',
     'vpn_manager_v2_tab_online' => '在线',
     'vpn_manager_v2_online_subtitle' => '3x-UI 和 Xray 报告的 VPN 在线客户端与服务器。',
     'vpn_manager_v2_online_users' => '在线用户',

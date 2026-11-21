@@ -194,6 +194,7 @@ final class SubscriptionController
         }
         $subscriptionUrl = '';
         $subscriptionQr = '';
+        $linkFingerprint = '';
         $dependencies = new VpnV2SubscriptionDependencyService();
         $effectiveStatus = $dependencies->calculateEffectiveStatus($subscription);
         $dependentChild = $dependencies->isDependentChild((int)$subscription['id']);
@@ -211,6 +212,7 @@ final class SubscriptionController
             if ($token !== null) {
                 $subscriptionUrl = (new VpnSubscriptionUrlService())->forToken($token);
                 $subscriptionQr = (new QrCodeService())->renderForToken($token);
+                $linkFingerprint = hash('sha256', $token);
             }
         }
 
@@ -270,6 +272,7 @@ final class SubscriptionController
                 'checked_at' => date('Y-m-d H:i:s'),
             ],
             'subscriptionUrl' => $subscriptionUrl,
+            'linkFingerprint' => $linkFingerprint,
             'smartConnectSettings' => $settings,
             'xrayDiagnostics' => $xrayDiagnostics,
             'subscriptionQr' => $subscriptionQr,
@@ -589,6 +592,31 @@ final class SubscriptionController
             '/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId,
             $returnQuery
         ));
+    }
+
+    public function rotateLink(): void
+    {
+        Permissions::authorize(Permissions::MANAGE_SUBSCRIPTIONS);
+        $id = (int)get_route_param('id');
+        $returnQuery = AdminTableState::sanitize(request()->post('return_query', ''));
+        try {
+            $fingerprint = request()->post('link_fingerprint', '');
+            (new \Fireball\VpnManagerV2\Services\SubscriptionLinkService())->rotate(
+                $id, is_string($fingerprint) ? $fingerprint : '', $this->adminId()
+            );
+            session()->setFlash('success', \FireballPluginVpnManagerV2::t('vpn_manager_v2_link_rotated'));
+        } catch (\InvalidArgumentException $exception) {
+            $key = match ($exception->getMessage()) {
+                'subscription_not_found' => 'vpn_manager_v2_error_subscription_not_found',
+                'subscription_deleting' => 'vpn_manager_v2_error_subscription_deletion_started',
+                default => 'vpn_manager_v2_link_changed',
+            };
+            session()->setFlash('error', \FireballPluginVpnManagerV2::t($key));
+        } catch (\Throwable $exception) {
+            error_log('VPN Manager access link rotation failed: ' . $exception::class);
+            session()->setFlash('error', \FireballPluginVpnManagerV2::t('vpn_manager_v2_link_rotate_failed'));
+        }
+        response()->redirect(AdminTableState::asParameter('/admin/plugins/vpn-manager-v2/subscriptions/' . $id, $returnQuery));
     }
 
     public function suspend(): void

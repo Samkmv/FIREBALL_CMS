@@ -155,10 +155,8 @@ final class VpnSubscriptionEndpointService
         );
         if ($incy) {
             unset($headers['routing'], $headers['routing-enable']);
-            if (!empty($settings['incy_routing_link'])) {
-                $headers['routing'] = !empty($settings['incy_routing_enabled'])
-                    ? $settings['incy_routing_link'] : 'off';
-            }
+            $headers = array_replace($headers,
+                (new \Fireball\VpnManagerV2\Support\HappRoutingProfile())->incyHeaders($settings));
         }
         if ($format === 'singbox') {
             // A full JSON profile is exportable; do not imply Happ UI restrictions apply to it.

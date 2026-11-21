@@ -158,6 +158,7 @@ $switch = static function (string $key, string $label, string $help = '') use ($
         <label class="form-label mt-3" for="vpnV2IncyRouting"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_incy_routing_field')) ?></label>
         <textarea class="form-control font-monospace" id="vpnV2IncyRouting" name="incy_routing_link"
                   rows="4" maxlength="65536" spellcheck="false" placeholder="incy://routing/onadd/…"><?= htmlSC((string)($settings['incy_routing_link'] ?? '')) ?></textarea>
+        <div class="form-text"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_incy_routing_help')) ?></div>
     </section>
 
     <section class="border rounded-5 p-3 p-md-4 mb-4">

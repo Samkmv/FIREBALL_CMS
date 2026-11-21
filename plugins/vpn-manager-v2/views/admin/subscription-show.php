@@ -440,6 +440,21 @@ foreach ($nodes as $node) {
                     </div>
                 </div>
                 <div class="form-text"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscription_url_help')) ?></div>
+                <?php if (Permissions::allows(Permissions::MANAGE_SUBSCRIPTIONS) && !empty($linkFingerprint)): ?>
+                    <details class="mt-3 small">
+                        <summary><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_link_rotate')) ?></summary>
+                        <p class="text-body-secondary my-2"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_link_rotate_help')) ?></p>
+                        <form method="post" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId . '/rotate-link')) ?>">
+                            <?= get_csrf_field() ?>
+                            <input type="hidden" name="return_query" value="<?= htmlSC($returnQuery) ?>">
+                            <input type="hidden" name="link_fingerprint" value="<?= htmlSC($linkFingerprint) ?>">
+                            <button class="btn btn-outline-warning rounded-pill d-inline-flex align-items-center gap-2" type="submit">
+                                <i class="ci-refresh-cw" aria-hidden="true"></i>
+                                <span><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_link_rotate')) ?></span>
+                            </button>
+                        </form>
+                    </details>
+                <?php endif; ?>
             </div>
             <div class="col-lg-5 text-lg-center">
                 <?= $subscriptionQr ?>

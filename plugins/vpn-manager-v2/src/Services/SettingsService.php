@@ -19,7 +19,7 @@ final class SettingsService
         'support_url',
         'happ_routing_enabled',
         'happ_routing_link',
-        'incy_routing_enabled', 'incy_routing_link',
+        'incy_routing_enabled', 'incy_routing_link', 'incy_routing_managed',
         'happ_server_settings_policy',
         'smart_connect_enabled', 'smart_connect_mode', 'smart_connect_happ_enabled',
         'smart_connect_happ_provider_id', 'smart_connect_happ_ping_on_open',
@@ -74,6 +74,7 @@ final class SettingsService
             'happ_routing_link' => '',
             'incy_routing_enabled' => false,
             'incy_routing_link' => '',
+            'incy_routing_managed' => false,
             'happ_server_settings_policy' => 'default',
             'xray_auto' => XrayAutoSettings::defaults(),
         ], \Fireball\VpnManagerV2\DTO\SmartConnectData::defaults());
@@ -158,6 +159,10 @@ final class SettingsService
         try {
             $before = $this->normalize(array_replace(self::defaults(), $repository->stored(true)));
             $expected = ($this->validator ?? new SettingsValidator())->validate($input, $before, $manageSmartConnect)->toArray();
+            $routing = new \Fireball\VpnManagerV2\Support\HappRoutingProfile();
+            foreach (['happ_routing_link', 'incy_routing_link'] as $key) {
+                $expected[$key] = $routing->markUpdated($expected[$key], $before[$key], $key === 'incy_routing_link');
+            }
             $changedKeys = $this->changedKeys($before, $expected);
             $metadata = $this->subscriptionRepository()->activeRevisionMetadata();
             $repository->write($expected);

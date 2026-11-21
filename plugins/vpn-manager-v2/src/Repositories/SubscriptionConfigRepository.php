@@ -166,7 +166,7 @@ final class SubscriptionConfigRepository
         return db()->query(
             "SELECT id, subscription_token, revision, config_updated_at, updated_at
              FROM vpn_v2_subscriptions
-             WHERE status = 'active'
+             WHERE status IN ('active', 'partial_sync', 'sync_error')
              ORDER BY id ASC"
         )->get() ?: [];
     }

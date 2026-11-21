@@ -121,6 +121,8 @@ $router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/rename/?'
     ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/suspend/?', [SubscriptionController::class, 'suspend'])
     ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/rotate-link/?', [SubscriptionController::class, 'rotateLink'])
+    ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/delete/?', [SubscriptionController::class, 'delete'])
     ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/subscriptions/(?P<id>\d+)/create-missing/?', [SubscriptionController::class, 'createMissing'])

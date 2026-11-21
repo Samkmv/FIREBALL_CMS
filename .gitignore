@@ -67,3 +67,7 @@ __pycache__/
 !/tests/vpn_native_client_unit.php
 !/tests/vpn_online_unit.php
 !/tests/vpn_online_browser.mjs
+!/tests/vpn_subscription_controls_unit.php
+!/tests/roscomvpn_routing.py
+!/tests/roscomvpn_lab.py
+!/tests/roscomvpn_preview.php

@@ -46,6 +46,9 @@ final class SettingsValidator
     public function validate(array $input, array $current, bool $manageSmartConnect = true): VpnSettingsData
     {
         $data = array_replace($current, $input);
+        // Internal opt-in history: an upgrade must not send routing:off to
+        // clients whose routing has never been managed by this installation.
+        $data['incy_routing_managed'] = $current['incy_routing_managed'] ?? false;
         foreach (self::CHECKBOXES as $key) {
             $data[$key] = array_key_exists($key, $input) ? $input[$key] : false;
         }
@@ -110,7 +113,7 @@ final class SettingsValidator
             $incyLink = $this->invalid($strict, 'vpn_manager_v2_incy_routing_invalid', '');
         }
         $incyEnabled = $this->boolean($data['incy_routing_enabled'] ?? false);
-        if ($incyEnabled && $incyLink === '') {
+        if ($incyEnabled && $incyLink === '' && $routingLink === '') {
             $incyEnabled = $this->invalid($strict, 'vpn_manager_v2_incy_routing_invalid', false);
         }
         $serverSettingsPolicy = $data['happ_server_settings_policy'] ?? 'default';
@@ -165,6 +168,7 @@ final class SettingsValidator
             $incyEnabled,
             $incyLink,
             XrayAutoSettings::normalize($data['xray_auto'] ?? XrayAutoSettings::defaults(), $strict),
+            $incyEnabled || $incyLink !== '' || $this->boolean($data['incy_routing_managed'] ?? false),
         );
     }
 

@@ -1,6 +1,12 @@
 <?php
 
 return [
+    'vpn_manager_v2_incy_routing_help' => 'Leave empty and enable Incy to use the current Happ rules, DNS and original geo files. A Happ link or separate Incy profile is also accepted. These settings do not yet apply to the JSON Auto Select export.',
+    'vpn_manager_v2_link_rotate' => 'Change subscription link',
+    'vpn_manager_v2_link_rotate_help' => 'The old link and QR code will stop updating, including Auto Select. Share the new link with the client and import it in the app. UUIDs and keys are preserved. This button does not revoke previously imported connections.',
+    'vpn_manager_v2_link_rotated' => 'Link changed. Share the new link or QR code with the client.',
+    'vpn_manager_v2_link_changed' => 'The link has already changed. Reload the page before changing it again.',
+    'vpn_manager_v2_link_rotate_failed' => 'Unable to change the link. Try again; details were logged.',
     'vpn_manager_v2_tab_online' => 'Online',
     'vpn_manager_v2_online_subtitle' => 'Connected VPN clients and servers reported by 3x-UI and Xray.',
     'vpn_manager_v2_online_users' => 'Users online',

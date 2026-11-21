@@ -1,7 +1,7 @@
 {
   "name": "Управление VPN",
   "slug": "vpn-manager-v2",
-  "version": "3.4.0",
+  "version": "3.4.1",
   "type": "system",
   "description": "Управление VPN на самостоятельном Xray-core через FIREBALL Agent, совместимые подписки и поэтапный переход с 3x-ui.",
   "description_i18n": {
@@ -19,6 +19,7 @@
   },
   "auto_migrate": true,
   "release_notes": [
+    "Shared Happ/Incy routing, subscription link rotation and configuration refresh for partially provisioned subscriptions.",
     "Online tab after Subscriptions with live statistics, user/server connections, search, sorting, last-seen history and 10-second refresh.",
     "Native Xray backend with an authenticated local agent, migration preview, persistent client management, inbound editing and usage synchronization.",
     "The Xray link serves Auto Select only. Manual servers and external connections remain in the standard subscription.",
@@ -49,6 +50,7 @@
   ],
   "release_notes_i18n": {
     "en": [
+      "Shared Happ/Incy routing, subscription link rotation and configuration refresh for partially provisioned subscriptions.",
       "Online tab after Subscriptions with live statistics, user/server connections, search, sorting, last-seen history and 10-second refresh.",
       "Native Xray backend with an authenticated local agent, migration preview, persistent client management, inbound editing and usage synchronization.",
       "The Xray link serves Auto Select only. Manual servers and external connections remain in the standard subscription.",
@@ -78,6 +80,7 @@
       "Added quick server replacement and Happ notices for expiry and maintenance."
     ],
     "ru": [
+      "Общий профиль маршрутизации Happ/Incy, смена ссылки подписки кнопкой и обновление конфигурации частично созданных подписок.",
       "Вкладка «Онлайн» после подписок. Карточки статистики, пользователи и серверы, поиск, сортировка, последнее подтверждение онлайн и автообновление каждые 10 секунд.",
       "Управление самостоятельным Xray-core через FIREBALL Agent. Проверка переноса с сохранением UUID и ссылок, управление клиентами и inbound через API, статистика и журнал ошибок.",
       "Ссылка Xray снова выдаёт только автовыбор. Ручные серверы и внешние подключения остаются в обычной подписке.",
@@ -107,6 +110,7 @@
       "Добавлены быстрая замена сервера и уведомления об истечении подписки и техработах в Happ."
     ],
     "de": [
+      "Gemeinsames Happ/Incy-Routing, Wechsel des Abonnementlinks und Konfigurationsaktualisierung teilweise angelegter Abonnements.",
       "Online-Registerkarte nach Abonnements mit Statistik, Benutzer- und Serververbindungen, Suche, Sortierung, Verlauf und Aktualisierung alle 10 Sekunden.",
       "Direkte Xray-Verwaltung über FIREBALL Agent mit Migrationsprüfung, stabilen Zugangsdaten, Inbound-Verwaltung und Verkehrsstatistik.",
       "Der Xray-Link liefert nur die automatische Auswahl. Manuelle Server und externe Verbindungen bleiben im normalen Abonnement.",
@@ -136,6 +140,7 @@
       "Schneller Serverwechsel und Happ-Hinweise zu Ablauf und Wartung hinzugefügt."
     ],
     "zh-cn": [
+      "共享 Happ/Incy 路由配置、订阅链接更换及部分创建订阅的配置刷新。",
       "订阅后新增在线页面，支持统计卡片、用户和服务器连接、搜索、排序、最后在线记录和每 10 秒刷新。",
       "通过 FIREBALL Agent 管理独立 Xray，支持迁移预览、保留凭据、入站管理和流量统计。",
       "Xray 链接仅提供自动选择。手动服务器和外部连接仍通过普通订阅提供。",

@@ -19,7 +19,7 @@ final class HappRoutingProfile
         }
 
         $scheme = $incy ? 'incy' : 'happ';
-        $inputScheme = $incy ? '(?:incy)?' : 'happ';
+        $inputScheme = $incy ? '(?:incy|happ)?' : 'happ';
         if (str_starts_with($input, '{')) {
             $json = $input;
         } elseif (preg_match('~\A' . $inputScheme . '://routing/(?:onadd|add)/([A-Za-z0-9+/]+={0,2})\z~D', $input, $matches) === 1) {
@@ -64,6 +64,14 @@ final class HappRoutingProfile
             $profile->$key = in_array($profile->$key, [true, 'true'], true) ? 'true' : 'false';
         }
 
+        if ($incy && property_exists($profile, 'UseChunkFiles') && !property_exists($profile, 'useChunkFiles')) {
+            if (!in_array($profile->UseChunkFiles, [true, false, 'true', 'false'], true)) {
+                throw new \InvalidArgumentException('Invalid geo trimming setting.');
+            }
+            $profile->useChunkFiles = in_array($profile->UseChunkFiles, [true, 'true'], true);
+            unset($profile->UseChunkFiles);
+        }
+
         $link = $scheme . '://routing/onadd/' . base64_encode(json_encode(
             $profile, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
         ));
@@ -89,6 +97,48 @@ final class HappRoutingProfile
         return !empty($settings['happ_routing_enabled'])
             ? ['routing' => $link, 'routing-enable' => 'true']
             : ['routing' => 'happ://routing/off', 'routing-enable' => '0'];
+    }
+
+    /** An empty Incy override deliberately follows the current Happ profile. */
+    public function incyHeaders(array $settings): array
+    {
+        try {
+            $input = $settings['incy_routing_link'] ?? '';
+            if ($input === '') {
+                if (empty($settings['incy_routing_enabled']) && empty($settings['incy_routing_managed'])) {
+                    return [];
+                }
+                $input = $settings['happ_routing_link'] ?? '';
+            }
+            $link = $this->normalize($input, incy: true);
+        } catch (\InvalidArgumentException) {
+            return [];
+        }
+        if ($link === '') {
+            return [];
+        }
+        return ['routing' => !empty($settings['incy_routing_enabled']) ? $link : 'off'];
+    }
+
+    public function markUpdated(string $link, string $previous, bool $incy = false): string
+    {
+        $normalized = $this->normalize($link, $incy);
+        if ($normalized === '' || $normalized === $previous) {
+            return $normalized;
+        }
+        $profile = json_decode(base64_decode(substr($normalized, strpos($normalized, '/onadd/') + 7)), false, 32, JSON_THROW_ON_ERROR);
+        $oldTime = 0;
+        if ($previous !== '') {
+            try {
+                $old = $this->normalize($previous, $incy);
+                $oldProfile = json_decode(base64_decode(substr($old, strpos($old, '/onadd/') + 7)), false, 32, JSON_THROW_ON_ERROR);
+                $oldTime = (int)($oldProfile->LastUpdated ?? 0);
+            } catch (\InvalidArgumentException) {
+                // Invalid old settings must not prevent saving a valid profile.
+            }
+        }
+        $profile->LastUpdated = (string)max(time(), min($oldTime, PHP_INT_MAX - 1) + 1);
+        return $this->normalize(json_encode($profile, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), $incy);
     }
 
     private function storedLink(array $settings): string
