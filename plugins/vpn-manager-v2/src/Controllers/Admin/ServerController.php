@@ -131,11 +131,25 @@ final class ServerController
         $this->redirect('/admin/plugins/vpn-manager-v2/servers');
     }
 
+    public function deletePreview(): string
+    {
+        Permissions::authorize(Permissions::MANAGE_SERVERS);
+        try {
+            $data = (new \Fireball\VpnManagerV2\Services\ServerRemovalService())->preview((int)get_route_param('id'));
+        } catch (VpnManagerV2Exception $exception) {
+            session()->setFlash('error', $exception->getMessage());
+            $this->redirect('/admin/plugins/vpn-manager-v2/servers');
+        }
+        return plugin_view(\FireballPluginVpnManagerV2::SLUG, 'admin/server-delete', \FireballPluginVpnManagerV2::viewData('servers',
+            $data + ['title' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_action_delete_server')]));
+    }
+
     public function delete(): void
     {
         Permissions::authorize(Permissions::MANAGE_SERVERS);
 
         $id = (int)request()->post('id');
+        $local = request()->post('remove_locally', '') === '1';
         $expected = 'delete_vpn_server_' . $id;
         if ($id <= 0 || !hash_equals($expected, trim((string)request()->post('confirmation', '')))) {
             session()->setFlash('error', \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_server_delete_confirmation'));
@@ -143,13 +157,26 @@ final class ServerController
         }
 
         try {
-            $name = (new ServerManagerService())->delete($id);
+            if ($local) {
+                Permissions::authorize(Permissions::DELETE_CONNECTIONS);
+                if (request()->post('server_is_gone', '') !== '1') {
+                    throw new \Fireball\VpnManagerV2\Exceptions\ValidationException(
+                        \FireballPluginVpnManagerV2::t('vpn_manager_v2_remove_server_ack_required'));
+                }
+                $fingerprint = request()->post('fingerprint', '');
+                $user = get_user();
+                $name = (new \Fireball\VpnManagerV2\Services\ServerRemovalService())->remove(
+                    $id, is_string($fingerprint) ? $fingerprint : '', is_array($user) ? (int)$user['id'] : null);
+            } else {
+                $name = (new ServerManagerService())->delete($id);
+            }
             session()->setFlash('success', sprintf(
                 \FireballPluginVpnManagerV2::t('vpn_manager_v2_flash_server_deleted'),
                 $name
             ));
         } catch (VpnManagerV2Exception $exception) {
             session()->setFlash('error', $exception->getMessage());
+            $this->redirect('/admin/plugins/vpn-manager-v2/servers/' . $id . '/delete');
         } catch (\Throwable $exception) {
             log_error_details('VPN Manager V2 server delete failed', ['Server' => $id], $exception);
             session()->setFlash('error', \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_server_delete_generic'));

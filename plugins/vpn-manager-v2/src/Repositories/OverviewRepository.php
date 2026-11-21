@@ -200,7 +200,7 @@ final class OverviewRepository
         $data = self::emptyDataSummary();
         if (in_array('vpn_v2_servers', $presentTables, true)) {
             $data['servers'] = [
-                'total' => $this->safeCount('SELECT COUNT(*) FROM vpn_v2_servers'),
+                'total' => $this->safeCount("SELECT COUNT(*) FROM vpn_v2_servers WHERE status <> 'archived'"),
                 'active' => $this->safeCount("SELECT COUNT(*) FROM vpn_v2_servers WHERE status = 'online'"),
                 'enabled' => $this->safeCount('SELECT COUNT(*) FROM vpn_v2_servers WHERE is_enabled = 1'),
                 'errors' => $this->safeCount("SELECT COUNT(*) FROM vpn_v2_servers WHERE status IN ('offline', 'error')"),
@@ -208,7 +208,7 @@ final class OverviewRepository
         }
         if (in_array('vpn_v2_inbounds', $presentTables, true)) {
             $data['inbounds'] = [
-                'total' => $this->safeCount('SELECT COUNT(*) FROM vpn_v2_inbounds'),
+                'total' => $this->safeCount("SELECT COUNT(*) FROM vpn_v2_inbounds WHERE status <> 'archived'"),
                 'active' => $this->safeCount("SELECT COUNT(*) FROM vpn_v2_inbounds WHERE status = 'active'"),
                 'enabled' => $this->safeCount('SELECT COUNT(*) FROM vpn_v2_inbounds WHERE is_enabled = 1'),
                 'errors' => $this->safeCount("SELECT COUNT(*) FROM vpn_v2_inbounds WHERE status IN ('sync_missing', 'error')"),

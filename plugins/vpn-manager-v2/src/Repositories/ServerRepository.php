@@ -19,14 +19,14 @@ final class ServerRepository
                 (SELECT COUNT(*) FROM vpn_v2_inbounds vi WHERE vi.server_id = vpn_v2_servers.id) AS inbound_count,
                 (SELECT COUNT(*) FROM vpn_v2_subscription_nodes vn
                  WHERE vn.server_id = vpn_v2_servers.id AND vn.status NOT IN (\'deleted\', \'deleting\')) AS client_count
-             FROM vpn_v2_servers ORDER BY id ASC'
+             FROM vpn_v2_servers WHERE status <> \'archived\' ORDER BY id ASC'
         )->get() ?: [];
     }
 
     public function find(int $id): ?array
     {
         $row = db()->query(
-            'SELECT ' . self::PUBLIC_COLUMNS . ' FROM vpn_v2_servers WHERE id = ? LIMIT 1',
+            'SELECT ' . self::PUBLIC_COLUMNS . ' FROM vpn_v2_servers WHERE id = ? AND status <> \'archived\' LIMIT 1',
             [$id]
         )->getOne();
 
@@ -36,7 +36,7 @@ final class ServerRepository
     public function findForUpdate(int $id): ?array
     {
         $row = db()->query(
-            'SELECT ' . self::PUBLIC_COLUMNS . ' FROM vpn_v2_servers WHERE id = ? LIMIT 1 FOR UPDATE',
+            'SELECT ' . self::PUBLIC_COLUMNS . ' FROM vpn_v2_servers WHERE id = ? AND status <> \'archived\' LIMIT 1 FOR UPDATE',
             [$id]
         )->getOne();
 
@@ -76,7 +76,7 @@ final class ServerRepository
                 CASE WHEN encrypted_username IS NOT NULL AND encrypted_username <> "" THEN 1 ELSE 0 END AS has_username,
                 CASE WHEN encrypted_password IS NOT NULL AND encrypted_password <> "" THEN 1 ELSE 0 END AS has_password,
                 CASE WHEN encrypted_token IS NOT NULL AND encrypted_token <> "" THEN 1 ELSE 0 END AS has_token
-             FROM vpn_v2_servers WHERE id = ? LIMIT 1',
+             FROM vpn_v2_servers WHERE id = ? AND status <> \'archived\' LIMIT 1',
             [$id]
         )->getOne();
 
@@ -197,14 +197,14 @@ final class ServerRepository
         }
 
         $params[] = $id;
-        db()->query($sql . ' WHERE id = ?', $params);
+        db()->query($sql . " WHERE id = ? AND status <> 'archived'", $params);
         $this->logEvent('server.updated', $id, ['code' => $data['code'], 'auth_type' => $data['auth_type']]);
     }
 
     public function toggle(int $id): bool
     {
         db()->query(
-            'UPDATE vpn_v2_servers SET is_enabled = IF(is_enabled = 1, 0, 1), updated_at = ? WHERE id = ?',
+            'UPDATE vpn_v2_servers SET is_enabled = IF(is_enabled = 1, 0, 1), updated_at = ? WHERE id = ? AND status <> \'archived\'',
             [date('Y-m-d H:i:s'), $id]
         );
         $row = $this->find($id);
@@ -220,7 +220,7 @@ final class ServerRepository
         db()->query(
             'UPDATE vpn_v2_servers
              SET status = ?, last_check_at = ?, last_success_at = ?, last_error = NULL, updated_at = ?
-             WHERE id = ?',
+             WHERE id = ? AND status <> \'archived\'',
             ['online', $now, $now, $now, $id]
         );
         $this->logEvent('server.check.success', $id, ['inbound_count' => $inboundCount]);
@@ -234,7 +234,7 @@ final class ServerRepository
         db()->query(
             'UPDATE vpn_v2_servers
              SET status = ?, last_check_at = ?, last_error = ?, updated_at = ?
-             WHERE id = ?',
+             WHERE id = ? AND status <> \'archived\'',
             [$status, $now, $safeMessage, $now, $id]
         );
         $this->logEvent('server.check.failed', $id, [

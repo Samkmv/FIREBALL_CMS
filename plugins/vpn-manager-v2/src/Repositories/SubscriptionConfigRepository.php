@@ -38,7 +38,7 @@ final class SubscriptionConfigRepository
                     COALESCE(SUM(download_bytes), 0) AS download_bytes,
                     COALESCE(SUM(traffic_used_bytes), 0) AS traffic_used_bytes
              FROM vpn_v2_subscription_nodes
-             WHERE subscription_id = ? AND status <> 'deleted'",
+             WHERE subscription_id = ? AND (status <> 'deleted' OR sync_status = 'server_removed')",
             [$subscriptionId]
         )->getOne();
 

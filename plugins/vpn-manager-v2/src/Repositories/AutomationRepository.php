@@ -100,7 +100,7 @@ final class AutomationRepository
         $total = (int)db()->query(
             "SELECT COALESCE(SUM(traffic_used_bytes), 0)
              FROM vpn_v2_subscription_nodes
-             WHERE subscription_id = ? AND status <> 'deleted'",
+             WHERE subscription_id = ? AND (status <> 'deleted' OR sync_status = 'server_removed')",
             [$subscriptionId]
         )->getColumn();
         $total = max(0, $total);
@@ -135,7 +135,7 @@ final class AutomationRepository
             $subscriptionId = (int)$node['subscription_id'];
             $total = (int)$database->query(
                 "SELECT COALESCE(SUM(traffic_used_bytes), 0) FROM vpn_v2_subscription_nodes
-                 WHERE subscription_id = ? AND status <> 'deleted'",
+                 WHERE subscription_id = ? AND (status <> 'deleted' OR sync_status = 'server_removed')",
                 [$subscriptionId]
             )->getColumn();
             $database->query(

@@ -11,6 +11,10 @@ $xrayText = static fn(string $key): string => htmlSC(FireballPluginVpnManagerV2:
 <div class="border rounded-4 p-3 mb-3" data-vpn-v2-access>
     <div class="fw-semibold"><?= $xrayText('name') ?></div>
     <p class="small text-body-secondary mb-2"><?= $xrayText('access_help') ?></p>
+    <?php if (($xrayAccess['routing'] ?? 'none') === 'roscomvpn'): ?>
+        <div class="small mb-2"><span class="badge rounded-pill text-bg-info">RoscomVPN</span>
+            <span class="text-body-secondary"><?= $xrayText('routing_active') ?></span></div>
+    <?php endif; ?>
     <?php if (!empty($xrayAdmin) && is_array($xrayDiagnostics ?? null)): ?>
         <p class="small text-body-secondary mb-2">
             <?= !empty($xrayDiagnostics['error']) ? $xrayText('diagnostic_error') : htmlSC(sprintf(
@@ -18,6 +22,12 @@ $xrayText = static fn(string $key): string => htmlSC(FireballPluginVpnManagerV2:
                 $xrayDiagnostics['count'], $xrayDiagnostics['skipped']
             )) ?>
         </p>
+        <?php if (!empty($xrayAccess['manual_servers']) && empty($xrayDiagnostics['error'])): ?>
+            <p class="small text-body-secondary mb-2"><?= htmlSC(sprintf(
+                FireballPluginVpnManagerV2::t('vpn_manager_v2_xray_manual_diagnostic'),
+                (int)($xrayDiagnostics['manual_count'] ?? 0), (int)($xrayDiagnostics['manual_skipped'] ?? 0)
+            )) ?></p>
+        <?php endif; ?>
     <?php endif; ?>
     <button class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" type="button"
             data-vpn-v2-copy-value="<?= htmlSC($xrayLink) ?>"

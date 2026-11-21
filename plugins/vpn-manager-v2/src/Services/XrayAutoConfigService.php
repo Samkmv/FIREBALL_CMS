@@ -11,6 +11,46 @@ final class XrayAutoConfigService
     private const BALANCER = 'vpn-auto';
     private const DNS = 'vpn-dns';
 
+    /** Each array entry is a complete independently runnable Xray profile. */
+    public function buildProfiles(array $uris, array $settings, string $name, array $manualUris = []): array
+    {
+        $result = $this->build($uris, $settings, $name);
+        $result['profiles'] = [$result['profile']];
+        $result['manual_count'] = 0;
+        $result['manual_skipped'] = 0;
+        $names = [$name => true];
+        if (empty($settings['manual_servers'])) return $result;
+        foreach (array_values(array_unique($manualUris)) as $index => $uri) {
+            $label = rawurldecode((string)(parse_url($uri, PHP_URL_FRAGMENT) ?? ''));
+            $label = trim(preg_replace('/[\x00-\x1f\x7f]/u', '', $label) ?? '');
+            if ($label === '') $label = 'VPN #' . ($index + 1);
+            $single = $this->build([$uri], $settings, mb_substr($label, 0, 160));
+            if ($single['count'] !== 1) {
+                $result['manual_skipped']++;
+                continue;
+            }
+            $profile = $single['profile'];
+            if (isset($names[$profile['remarks']])) {
+                $address = (string)parse_url($uri, PHP_URL_HOST) . ':' . (int)parse_url($uri, PHP_URL_PORT);
+                $profile['remarks'] = mb_substr($profile['remarks'], 0, 100) . ' · ' . $address;
+                $base = $profile['remarks'];
+                for ($suffix = 2; isset($names[$profile['remarks']]); $suffix++) {
+                    $profile['remarks'] = $base . ' #' . $suffix;
+                }
+            }
+            $names[$profile['remarks']] = true;
+            // The primary outbound is the selected server, not a placeholder.
+            // One-node selector/observatory can never switch to another server.
+            $primary = array_values(array_filter($profile['outbounds'], static fn(array $o): bool => $o['protocol'] === 'vless'))[0];
+            $profile['outbounds'] = array_merge([$primary], array_values(array_filter(
+                $profile['outbounds'], static fn(array $o): bool => $o['tag'] !== $primary['tag']
+            )));
+            $result['profiles'][] = $profile;
+            $result['manual_count']++;
+        }
+        return $result;
+    }
+
     public function subscriptionUris(array $subscription, array $nodes, array $settings, VpnSubscriptionBuilder $builder, bool $allowExternal): array
     {
         $nodes = array_filter($nodes, static fn(array $node): bool => empty($node['maintenance_mode'])
@@ -25,6 +65,10 @@ final class XrayAutoConfigService
         $count = 0;
         foreach ($uris as $uri) {
             $outbound = $this->outbound($uri, self::NODE_PREFIX . ($count + 1));
+            if ($outbound !== null && ($settings['routing'] ?? 'none') === 'roscomvpn'
+                && filter_var($outbound['settings']['vnext'][0]['address'], FILTER_VALIDATE_IP) === false) {
+                $outbound = null; // A domain endpoint would require DNS before VPN bootstrap.
+            }
             if ($outbound !== null) {
                 $outbounds[] = $outbound;
                 $count++;
@@ -83,6 +127,9 @@ final class XrayAutoConfigService
                 'probeInterval' => $settings['interval'] . 's',
                 'enableConcurrency' => true,
             ];
+        }
+        if (($settings['routing'] ?? 'none') === 'roscomvpn') {
+            $profile = (new RoscomVpnRouting())->apply($profile, $settings);
         }
         return ['profile' => $profile, 'count' => $count, 'skipped' => count($uris) - $count];
     }

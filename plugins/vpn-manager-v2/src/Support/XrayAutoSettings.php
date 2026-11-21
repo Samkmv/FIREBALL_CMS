@@ -19,6 +19,8 @@ final class XrayAutoSettings
             'timeout' => 5,
             'fallback' => 'block',
             'servers' => [],
+            'routing' => 'none',
+            'manual_servers' => false,
         ];
     }
 
@@ -36,10 +38,10 @@ final class XrayAutoSettings
             return $defaults;
         }
         $data = array_replace($defaults, array_intersect_key($input, $defaults));
-        foreach (['enabled', 'export', 'visible', 'include_external'] as $key) {
+        foreach (['enabled', 'export', 'visible', 'include_external', 'manual_servers'] as $key) {
             $data[$key] = filter_var($data[$key], FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE) ?? $invalid($key);
         }
-        foreach (['strategy' => ['leastPing', 'leastLoad'], 'fallback' => ['block', 'first']] as $key => $options) {
+        foreach (['strategy' => ['leastPing', 'leastLoad'], 'fallback' => ['block', 'first'], 'routing' => ['none', 'roscomvpn']] as $key => $options) {
             if (!in_array($data[$key], $options, true)) {
                 $data[$key] = $invalid($key);
             }

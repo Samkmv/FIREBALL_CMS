@@ -127,16 +127,23 @@ final class VpnSubscriptionEndpointService
         }
 
         if ($format === 'xray') {
+            $manualUris = [];
             try {
                 $uris = (new XrayAutoConfigService())->subscriptionUris(
                     $subscription, $effectiveNodes, $settings['xray_auto'],
                     $this->builder ?? new VpnSubscriptionBuilder(repository: $repository, dependencies: $dependencies),
                     $includeExternal
                 );
+                if (!empty($settings['xray_auto']['manual_servers'])) {
+                    $manualUris = ($this->builder ?? new VpnSubscriptionBuilder())->buildFromNodes(
+                        $subscription, $effectiveNodes, skipInvalid: true);
+                }
             } catch (VpnManagerV2Exception) {
                 $uris = [];
             }
-            return $this->xrayResponse($subscription, $settings, $headers, $uris);
+            $incy = strcasecmp(trim((string)($requestHeaders['X-Client'] ?? '')), 'INCY') === 0
+                || preg_match('~^INCY/~i', (string)($requestHeaders['User-Agent'] ?? '')) === 1;
+            return $this->xrayResponse($subscription, $settings, $headers, $uris, incy: $incy, manualUris: $manualUris);
         }
 
         $incy = $format !== 'singbox' && (
@@ -323,15 +330,31 @@ final class VpnSubscriptionEndpointService
         );
     }
 
-    private function xrayResponse(array $subscription, array $settings, array $headers, array $uris, string $state = 'active'): SubscriptionEndpointResponse
+    private function xrayResponse(array $subscription, array $settings, array $headers, array $uris, string $state = 'active', bool $incy = false, array $manualUris = []): SubscriptionEndpointResponse
     {
         $name = \FireballPluginVpnManagerV2::t('vpn_manager_v2_xray_name');
-        $result = (new XrayAutoConfigService())->build($uris, $settings['xray_auto'], $name);
+        $result = (new XrayAutoConfigService())->buildProfiles($uris, $settings['xray_auto'], $name, $manualUris);
+        $roscom = ($settings['xray_auto']['routing'] ?? 'none') === 'roscomvpn'
+            && ($result['count'] > 0 || $result['manual_count'] > 0);
+        $headers['Vary'] = 'User-Agent, X-Client';
+        if ($roscom && $incy) {
+            $headers['Content-Type'] = 'application/json; charset=utf-8';
+            $headers['X-Fireball-VPN-Status'] = 'unsupported-client-dns';
+            return new SubscriptionEndpointResponse(409, json_encode([
+                'error' => 'incy_roscomvpn_dns_patch',
+                'message' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_xray_routing_incy'),
+            ], JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR), $headers);
+        }
+        if ($roscom) {
+            $headers = array_replace($headers, (new RoscomVpnRouting())->headers($incy));
+            $headers['X-Fireball-VPN-Routing'] = 'RoscomVPN';
+        }
         if ($result['count'] === 0) {
             $state = $state === 'active' ? 'unsupported' : $state;
             $notice = \FireballPluginVpnManagerV2::t($state === 'unsupported'
                 ? 'vpn_manager_v2_xray_no_nodes' : 'vpn_manager_v2_subscription_notice_' . $state);
             $result['profile']['remarks'] = $notice;
+            $result['profiles'][0]['remarks'] = $notice;
             $headers['announce'] = 'base64:' . base64_encode($notice);
         }
         $metadata = $this->metadata ?? new VpnSubscriptionMetadataService();
@@ -343,8 +366,10 @@ final class VpnSubscriptionEndpointService
         $headers['X-Fireball-VPN-Status'] = $state;
         $headers['X-Fireball-Xray-Nodes'] = (string)$result['count'];
         $headers['X-Fireball-Xray-Skipped'] = (string)$result['skipped'];
+        $headers['X-Fireball-Xray-Manual'] = (string)$result['manual_count'];
+        $headers['X-Fireball-Xray-Manual-Skipped'] = (string)$result['manual_skipped'];
         $body = json_encode(
-            [$result['profile']],
+            $result['profiles'],
             JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
         );
 

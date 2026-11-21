@@ -59,6 +59,8 @@ $router->post('/admin/plugins/vpn-manager-v2/servers/toggle', [ServerController:
     ->middleware(['auth', 'admin']);
 $router->post('/admin/plugins/vpn-manager-v2/servers/delete', [ServerController::class, 'delete'])
     ->middleware(['auth', 'admin']);
+$router->get('/admin/plugins/vpn-manager-v2/servers/(?P<id>\d+)/delete/?', [ServerController::class, 'deletePreview'])
+    ->middleware(['auth', 'admin']);
 
 $router->get('/admin/plugins/vpn-manager-v2/inbounds', [InboundController::class, 'index'])
     ->middleware(['auth', 'admin']);

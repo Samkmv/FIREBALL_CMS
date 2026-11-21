@@ -16,7 +16,7 @@ final class InboundRepository
                     i.created_at, i.updated_at, s.name AS server_name, s.code AS server_code
              FROM vpn_v2_inbounds i
              INNER JOIN vpn_v2_servers s ON s.id = i.server_id
-             WHERE i.status <> \'archived\' ORDER BY i.id ASC'
+             WHERE i.status <> \'archived\' AND s.status <> \'archived\' ORDER BY i.id ASC'
         )->get() ?: [];
     }
 
@@ -70,6 +70,9 @@ final class InboundRepository
         $database->beginTransaction();
 
         try {
+            if (!$database->query("SELECT id FROM vpn_v2_servers WHERE id = ? AND status <> 'archived' FOR UPDATE", [$serverId])->getOne()) {
+                throw new InboundSyncException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_server_not_found'));
+            }
             $existingRows = $database->query(
                 'SELECT id, remote_inbound_id, name, remark, protocol, port, network, security,
                         default_flow, settings_json, stream_settings_json, status, is_enabled

@@ -44,6 +44,6 @@ final class ServerHealthRepository
     public function all(): array
     {
         return db()->query('SELECT h.*, s.name AS server_name FROM vpn_v2_server_health h
-            INNER JOIN vpn_v2_servers s ON s.id = h.server_id ORDER BY s.id')->get() ?: [];
+            INNER JOIN vpn_v2_servers s ON s.id = h.server_id AND s.status <> \'archived\' ORDER BY s.id')->get() ?: [];
     }
 }

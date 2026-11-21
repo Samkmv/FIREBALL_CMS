@@ -246,12 +246,15 @@ final class SubscriptionController
         if ($subscriptionUrl !== '' && !empty($settings['xray_auto']['enabled']) && !empty($settings['xray_auto']['export'])) {
             try {
                 $xray = new \Fireball\VpnManagerV2\Services\XrayAutoConfigService();
+                $effectiveXrayNodes = $dependencies->collectEffectiveConnections($subscription);
                 $uris = $xray->subscriptionUris(
-                    $subscription, $dependencies->collectEffectiveConnections($subscription), $settings['xray_auto'],
+                    $subscription, $effectiveXrayNodes, $settings['xray_auto'],
                     new \Fireball\VpnManagerV2\Services\VpnSubscriptionBuilder(dependencies: $dependencies), true
                 );
-                $result = $xray->build($uris, $settings['xray_auto'], '');
-                $xrayDiagnostics = ['count' => $result['count'], 'skipped' => $result['skipped']];
+                $manualUris = !empty($settings['xray_auto']['manual_servers'])
+                    ? (new \Fireball\VpnManagerV2\Services\VpnSubscriptionBuilder())->buildFromNodes($subscription, $effectiveXrayNodes, skipInvalid: true) : [];
+                $result = $xray->buildProfiles($uris, $settings['xray_auto'], '', $manualUris);
+                $xrayDiagnostics = array_intersect_key($result, array_flip(['count', 'skipped', 'manual_count', 'manual_skipped']));
             } catch (\Throwable) {
                 $xrayDiagnostics = ['error' => true];
             }

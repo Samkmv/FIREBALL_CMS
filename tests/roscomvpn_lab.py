@@ -25,10 +25,13 @@ def main():
     parser.add_argument('--xray', type=Path, required=True)
     parser.add_argument('--artifacts', type=Path, required=True)
     parser.add_argument('--doh', action='store_true')
+    parser.add_argument('--config', type=Path, help='Production PHP-generated profile to test instead of the experimental compiler')
+    parser.add_argument('--manual-configs', type=Path, help='Complete Auto Select + manual profile array from the PHP builder')
     args = parser.parse_args()
     xray, artifacts = args.xray.resolve(), args.artifacts.resolve()
     source = decode_profile((artifacts / 'roscomvpn.original.json').read_text())
     nodes = json.loads((artifacts / 'nodes.example.json').read_text())
+    original_nodes = copy.deepcopy(nodes)
     result = {'xray_version': subprocess.check_output([xray, 'version'], text=True).splitlines()[0],
               'ordinary_subscriptions_changed': False, 'ios_device_tested': False}
     root = Path(__file__).resolve().parent
@@ -66,6 +69,7 @@ def main():
         servers, origins = [], []
         for i, node in enumerate(nodes):
             label = 'node-' + str(i+1)
+            node['tag'] = 'vpn-node-' + str(i+1)
             origin = serve(stack, label, (0.02, 0.14, 0.3)[i])
             origins.append(origin)
             keys = dict(line.split(': ', 1) for line in run([xray, 'x25519'], check=True, capture_output=True).stdout.splitlines() if ': ' in line)
@@ -88,7 +92,15 @@ def main():
                 'routing': {'rules': [{'type': 'field', 'ip': ['8.8.8.8'], 'port': '443', 'outboundTag': 'remote-doh'}]},
             }))
 
-        config = build_config(source, nodes, free_port(), 'http://probe-fixture.invalid/probe')
+        if args.config:
+            config = json.loads(args.config.read_text())
+            config['outbounds'] = [next(node for node in nodes if node['tag'] == outbound['tag'])
+                                   if outbound['protocol'] == 'vless' else outbound for outbound in config['outbounds']]
+            config['inbounds'][0]['port'] = free_port()
+            config['observatory']['probeUrl'] = 'http://probe-fixture.invalid/probe'
+        else:
+            config = build_config(source, nodes, free_port(), 'http://probe-fixture.invalid/probe')
+        block_tag = config['routing']['balancers'][0]['fallbackTag']
         config['observatory']['probeInterval'] = '2s'
         config['log'] = {'loglevel': 'debug', 'access': str(work / 'client-access.log')}
         config['dns']['hosts'].update({
@@ -98,20 +110,20 @@ def main():
         })
         config['dns']['disableCache'] = True
         direct = next(node for node in config['outbounds'] if node['tag'] == 'direct')
-        direct['settings']['finalRules'] = [{'action': 'allow', 'network': 'tcp',
-                                            'ip': ['127.0.0.1/32'], 'port': direct_origin.server_port}]
+        direct['settings'].setdefault('finalRules', []).append({'action': 'allow', 'network': 'tcp',
+                                            'ip': ['127.0.0.1/32'], 'port': direct_origin.server_port})
         client = start('client', config)
         socks = config['inbounds'][0]['port']
 
-        def request(domain='github.com', port=80):
+        def request(domain='github.com', port=80, proxy_port=None):
             return run(['curl', '--noproxy', '', '--silent', '--max-time', '2', '--socks5-hostname',
-                        '127.0.0.1:' + str(socks), 'http://' + domain + ':' + str(port) + '/which'], capture_output=True)
+                        '127.0.0.1:' + str(proxy_port or socks), 'http://' + domain + ':' + str(port) + '/which'], capture_output=True)
 
-        def expect(label, domain='github.com', port=80, timeout=16):
+        def expect(label, domain='github.com', port=80, timeout=16, proxy_port=None):
             deadline = time.monotonic() + timeout
             while time.monotonic() < deadline:
                 assert client.poll() is None, 'Xray client stopped'
-                response = request(domain, port)
+                response = request(domain, port, proxy_port)
                 if response.returncode == 0 and response.stdout == label:
                     return
                 time.sleep(0.25)
@@ -156,6 +168,25 @@ def main():
             host_b = dns_query('lknpd.nalog.ru')
             assert 'd51840af' in host_a['hex'] and 'd51840b5' in host_b['hex'], 'Static DNS host mapping changed'
             result['static_dns'] = 'PASS: both original nalog.ru IPs'
+            if args.manual_configs:
+                manual_profiles = json.loads(args.manual_configs.read_text())[1:]
+                assert len(manual_profiles) == 3
+                for manual in manual_profiles:
+                    proxy = [out for out in manual['outbounds'] if out['protocol'] == 'vless']
+                    assert len(proxy) == 1 and manual['outbounds'][0]['protocol'] == 'vless'
+                    target = proxy[0]['settings']['vnext'][0]
+                    index = next(i for i, node in enumerate(original_nodes)
+                                 if node['settings']['vnext'][0]['address'] == target['address'])
+                    tag = proxy[0]['tag']
+                    replacement = copy.deepcopy(nodes[index]); replacement['tag'] = tag
+                    manual['outbounds'] = [replacement if out['tag'] == tag else out for out in manual['outbounds']]
+                    manual_port = free_port(); manual['inbounds'][0]['port'] = manual_port
+                    manual['observatory'].update(probeUrl='http://probe-fixture.invalid/probe', probeInterval='2s')
+                    manual['dns']['hosts']['github.com'] = '127.0.0.1'
+                    manual_client = start('manual-' + str(index+1), manual)
+                    expect('node-' + str(index+1), proxy_port=manual_port, timeout=10)
+                    stop(manual_client)
+                result['manual_profiles'] = 'PASS: three independent full JSON profiles pin nodes 1, 2 and 3 despite node 1 having the lowest latency'
             if args.doh:
                 # These names are absent from the local hosts fixture. Query domains
                 # deliberately exercise original Proxy and Direct geosite categories.
@@ -187,7 +218,7 @@ def main():
                 assert request('github.com', direct_origin.server_port).returncode != 0, 'VPN bypass during health convergence'
                 lines = (work / 'client-access.log').read_text().splitlines()
                 last = [line for line in lines if 'github.com:' + str(direct_origin.server_port) in line][-1]
-                if '[vpn-socks -> block]' in last:
+                if '[vpn-socks -> ' + block_tag + ']' in last:
                     break
                 if time.monotonic() >= deadline:
                     raise AssertionError('Balancer did not converge to its blackhole fallback')
@@ -204,7 +235,7 @@ def main():
                 result['dns_all_down'] = 'PASS: uncached remote query fails; domestic DoH still answers'
             result['all_down'] = 'PASS: Proxy/default blocked, blackhole fallback observed; deliberate Direct exclusions remain reachable'
             access = (work / 'client-access.log').read_text()
-            assert '[vpn-socks -> block]' in access
+            assert '[vpn-socks -> ' + block_tag + ']' in access
             result['raw_dns'] = 'Only built-in DoH resolvers configured; non-A/AAAA queries drop; port 53 intercepted'
             (artifacts / 'core-lab-access.log').write_text((work / 'client-access.log').read_text())
             write_json(artifacts / 'core-lab-results.json', result)

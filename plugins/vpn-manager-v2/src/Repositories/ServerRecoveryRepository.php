@@ -101,7 +101,9 @@ final class ServerRecoveryRepository
         $database = db();
         $database->beginTransaction();
         try {
-            $database->query('SELECT id FROM vpn_v2_servers WHERE id = ? FOR UPDATE', [$serverId])->getOne();
+            if (!$database->query("SELECT id FROM vpn_v2_servers WHERE id = ? AND status <> 'archived' FOR UPDATE", [$serverId])->getOne()) {
+                throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_server_not_found'));
+            }
             $targets = $this->targets($serverId);
             $inbounds = [];
             foreach ((new InboundRepository())->forServer($serverId) as $inbound) {

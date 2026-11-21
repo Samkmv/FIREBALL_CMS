@@ -6,14 +6,23 @@ $xrayT = static fn(string $key): string => htmlSC(FireballPluginVpnManagerV2::t(
     <h2 class="h5" id="vpnXrayTitle"><?= $xrayT('settings') ?></h2>
     <p class="text-body-secondary"><?= $xrayT('settings_help') ?></p>
     <div class="row g-3">
-        <?php foreach (['enabled', 'export', 'visible', 'include_external'] as $key): ?>
+        <?php foreach (['enabled', 'export', 'visible', 'include_external', 'manual_servers'] as $key): ?>
             <div class="col-12 col-lg-6 form-check form-switch ps-5">
                 <input type="hidden" name="xray_auto[<?= $key ?>]" value="0">
                 <input class="form-check-input" type="checkbox" id="vpnXray-<?= $key ?>"
                        name="xray_auto[<?= $key ?>]" value="1" <?= $xray[$key] ? 'checked' : '' ?>>
                 <label class="form-check-label" for="vpnXray-<?= $key ?>"><?= $xrayT($key) ?></label>
+                <?php if ($key === 'manual_servers'): ?><div class="form-text"><?= $xrayT('manual_servers_help') ?></div><?php endif; ?>
             </div>
         <?php endforeach; ?>
+        <div class="col-12">
+            <label for="vpnXrayRouting" class="form-label"><?= $xrayT('routing') ?></label>
+            <select id="vpnXrayRouting" name="xray_auto[routing]" class="form-select">
+                <option value="none" <?= ($xray['routing'] ?? 'none') === 'none' ? 'selected' : '' ?>><?= $xrayT('routing_none') ?></option>
+                <option value="roscomvpn" <?= ($xray['routing'] ?? '') === 'roscomvpn' ? 'selected' : '' ?>>RoscomVPN</option>
+            </select>
+            <div class="form-text"><?= $xrayT('routing_help') ?></div>
+        </div>
         <div class="col-12 col-md-6">
             <label for="vpnXrayStrategy" class="form-label"><?= $xrayT('strategy') ?></label>
             <select id="vpnXrayStrategy" name="xray_auto[strategy]" class="form-select">

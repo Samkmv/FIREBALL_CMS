@@ -73,13 +73,16 @@ final class ConfigurationSyncRepository
         try {
             $current = $database->query(
                 'SELECT id, subscription_id, server_id, inbound_id, client_uuid,
-                        encrypted_client_credential, desired_enabled, status,
+                        encrypted_client_credential, desired_enabled, status, sync_status,
                         lkg_snapshot_json, lkg_snapshot_hash, lkg_snapshot_version
                  FROM vpn_v2_subscription_nodes WHERE id = ? FOR UPDATE',
                 [(int)$node['id']]
             )->getOne();
             if (!is_array($current)) {
                 throw new \RuntimeException('VPN connection disappeared during synchronization.');
+            }
+            if ($current['status'] === 'deleted' && $current['sync_status'] === 'server_removed') {
+                throw new \Fireball\VpnManagerV2\Exceptions\ObsoleteOperationException('server_removed_locally');
             }
             $previousHash = trim((string)($current['lkg_snapshot_hash'] ?? ''));
             $changed = $previousHash === '' || !hash_equals($previousHash, $hash);
@@ -200,7 +203,7 @@ final class ConfigurationSyncRepository
                  sync_status = CASE WHEN sync_status = 'replacement_pending' THEN sync_status ELSE 'invalid_snapshot' END,
                  sync_error = ?, lkg_validity = CASE
                     WHEN lkg_snapshot_hash IS NULL THEN 'invalid' ELSE lkg_validity END,
-                 updated_at = ? WHERE id = ?",
+                 updated_at = ? WHERE id = ? AND status NOT IN ('deleted', 'deleting')",
             [mb_substr(trim($safeError), 0, 1000), date('Y-m-d H:i:s'), $nodeId]
         );
     }
@@ -264,7 +267,7 @@ final class ConfigurationSyncRepository
                  remote_client_id = CASE WHEN ? = 1 THEN NULL ELSE remote_client_id END,
                  sync_status = CASE WHEN ? = 1 OR sync_status = 'replacement_pending'
                                     THEN 'replacement_pending' ELSE 'missing_remote' END,
-                 sync_error = ?, last_operation_id = ?, last_sync_at = ?, updated_at = ? WHERE id = ?",
+                 sync_error = ?, last_operation_id = ?, last_sync_at = ?, updated_at = ? WHERE id = ? AND status NOT IN ('deleted', 'deleting')",
             [
                 (int)$replacement,
                 (int)$replacement,
@@ -391,7 +394,7 @@ final class ConfigurationSyncRepository
         $safeError = mb_substr(trim($safeError), 0, 1000);
         $now = date('Y-m-d H:i:s');
         db()->query(
-            "UPDATE vpn_v2_servers SET status = 'offline', last_check_at = ?, last_error = ?, updated_at = ? WHERE id = ?",
+            "UPDATE vpn_v2_servers SET status = 'offline', last_check_at = ?, last_error = ?, updated_at = ? WHERE id = ? AND status <> 'archived'",
             [$now, $safeError, $now, $serverId]
         );
         db()->query(
@@ -409,7 +412,7 @@ final class ConfigurationSyncRepository
         db()->query(
             "UPDATE vpn_v2_servers
              SET status = 'online', last_check_at = ?, last_success_at = ?, last_auth_at = ?,
-                 last_sync_at = ?, capabilities_json = ?, last_error = NULL, updated_at = ? WHERE id = ?",
+                 last_sync_at = ?, capabilities_json = ?, last_error = NULL, updated_at = ? WHERE id = ? AND status <> 'archived'",
             [
                 $now,
                 $now,
