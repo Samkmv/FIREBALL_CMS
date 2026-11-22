@@ -2,7 +2,7 @@
   "name": "Subscriptions",
   "slug": "subscriptions",
   "class": "FireballPluginSubscriptions",
-  "version": "1.5.6",
+  "version": "1.5.7",
   "description": "Complete paid subscription management with Robokassa checkout and recurring payments, subscriber profiles, plans, and server-side protection for posts, videos, and camera archives.",
   "name_i18n": {
     "ru": "Подписки",
@@ -19,6 +19,7 @@
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
+    "Added editing of names and descriptions for built-in plan capabilities and custom included items, displayed on plan cards, at checkout and in subscriber accounts.",
     "Russian phone masks and canonical +7 storage now match CMS account numbers; legacy records are displayed consistently without rewriting payment history.",
     "Locked posts remain searchable without exposing private snippets; video access follows the current visitor and any matching active plan.",
     "Batch-load post access rules for public lists and favorites without changing subscription restrictions.",
@@ -40,6 +41,7 @@
   },
   "release_notes_i18n": {
     "ru": [
+      "Добавлено редактирование названий и описаний встроенных возможностей тарифа и собственных пунктов состава подписки с отображением в карточках тарифов, при оформлении и в личном кабинете.",
       "Российская маска и сохранение телефона в формате +7 согласованы с аккаунтом CMS; старые номера отображаются единообразно без перезаписи истории платежей.",
       "Закрытые записи находятся в поиске без раскрытия закрытого текста; доступ к видео проверяется для текущего посетителя и всех подходящих действующих тарифов.",
       "Правила доступа к записям загружаются пакетом для публичных списков и избранного без изменения ограничений подписок.",
@@ -56,6 +58,7 @@
       "Таблицы данных подписок на мобильных устройствах отображаются карточками в стиле шаблонов CMS."
     ],
     "en": [
+      "Added editing of names and descriptions for built-in plan capabilities and custom included items, displayed on plan cards, at checkout and in subscriber accounts.",
       "Russian phone masks and canonical +7 storage now match CMS account numbers; legacy records are displayed consistently without rewriting payment history.",
       "Locked posts remain searchable without exposing private snippets; video access follows the current visitor and any matching active plan.",
       "Batch-load post access rules for public lists and favorites without changing subscription restrictions.",
@@ -72,6 +75,7 @@
       "Subscription data tables now use responsive mobile cards consistent with the CMS templates."
     ],
     "de": [
+      "Namen und Beschreibungen integrierter Tarifleistungen und eigener Einträge lassen sich bearbeiten und werden auf Tarifkarten, beim Kauf und im Abonnentenkonto angezeigt.",
       "Russische Telefonmasken und die Speicherung im +7-Format entsprechen jetzt den CMS-Kontonummern; alte Datensätze werden einheitlich angezeigt, ohne den Zahlungsverlauf zu ändern.",
       "Geschützte Beiträge bleiben ohne private Textauszüge auffindbar; der Videozugriff berücksichtigt den aktuellen Besucher und jedes passende aktive Abonnement.",
       "Zugriffsregeln für öffentliche Beitragslisten und Favoriten werden gebündelt geladen; Abo-Beschränkungen bleiben erhalten.",
@@ -88,6 +92,7 @@
       "Datentabellen für Abonnements werden auf Mobilgeräten als responsive Karten im Stil der CMS-Vorlagen dargestellt."
     ],
     "zh-cn": [
+      "支持编辑套餐内置功能和自定义条目的名称与说明，并在套餐卡片、结账页和订阅者账户中显示。",
       "俄罗斯电话号码掩码及 +7 标准存储格式现与 CMS 账号一致；旧号码统一显示，不改写付款历史。",
       "受限文章仍可被搜索，但不会泄露私密摘要；视频访问根据当前访客及所有匹配的有效订阅套餐进行判断。",
       "为公开文章列表和收藏批量加载访问规则，订阅限制保持不变。",

@@ -1,0 +1,54 @@
+Локальный FIREBALL CMS для этого Mac
+
+Сайт: http://127.0.0.1:8080
+Админ-панель: http://127.0.0.1:8080/admin
+Логин администратора: admin
+Пароли администратора и MySQL: .local/credentials.txt (закрытый локальный файл).
+Email admin@fireball.local — локальный адрес, почта не настроена.
+
+ЗАПУСК И ОСТАНОВКА
+
+Дважды нажмите start-local.command в Finder, чтобы запустить PHP, MySQL
+и открыть сайт. stop-local.command останавливает оба сервера.
+После перезагрузки Mac снова запустите start-local.command.
+
+Те же команды из корня проекта в Терминале:
+  python3 bin/local-server.py start
+  python3 bin/local-server.py stop
+  python3 bin/local-server.py restart
+  python3 bin/local-server.py status
+
+ОКРУЖЕНИЕ
+
+PHP 8.4.27 с PDO MySQL, cURL, ZIP, DOM, mbstring, GD и другими расширениями.
+MySQL Community 8.4.11 LTS, сборка для Intel macOS.
+PHP: 127.0.0.1:8080. MySQL: 127.0.0.1:3306.
+База: fireball_local. Пользователь БД: fireball.
+Корень веб-сервера: public/. Маршрутизация: bin/local-router.php.
+Серверы слушают только 127.0.0.1 и не запускаются автоматически при входе.
+
+Настройки PHP: .local/php.ini
+Настройки MySQL: .local/my.cnf
+Данные базы: .local/data/
+Журналы серверов: .local/logs/
+Журнал ошибок CMS: tmp/error.log
+Конфигурация CMS: config/config.local.php
+
+PHP в Терминале:
+  .local/php/php -c .local/php.ini bin/cms.php diagnose
+
+Подключение к MySQL от root без передачи пароля в аргументах:
+  .local/mysql/bin/mysql --defaults-extra-file="$PWD/.local/client.cnf"
+
+Папка .local/ и конфигурация CMS исключены из Git. Не удаляйте .local/:
+в ней находятся сама база данных и пароли. Остановка сервера их сохраняет.
+Запуск привязан к текущему пути проекта; после перемещения папки потребуется
+обновить абсолютные пути в .local/my.cnf, .local/php.ini и настройки URL CMS.
+
+Установка CMS новая, без демонстрационного наполнения. Используются файлы
+текущей рабочей копии. Для внешних платёжных и других интеграций отдельно
+задайте локальные тестовые настройки.
+
+Источники дистрибутивов:
+PHP: https://dl.static-php.dev/v3/php-bin/bulk/
+MySQL: https://downloads.mysql.com/archives/community/?version=8.4.11&os=33
