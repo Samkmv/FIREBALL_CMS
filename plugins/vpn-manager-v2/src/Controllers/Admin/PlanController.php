@@ -6,10 +6,10 @@ use Fireball\VpnManagerV2\DTO\PlanUpdateResult;
 use Fireball\VpnManagerV2\Exceptions\VpnManagerV2Exception;
 use Fireball\VpnManagerV2\Repositories\PlanReconciliationRepository;
 use Fireball\VpnManagerV2\Repositories\PlanRepository;
+use Fireball\VpnManagerV2\Repositories\ServerPresetRepository;
 use Fireball\VpnManagerV2\Services\PlanManagerService;
 use Fireball\VpnManagerV2\Services\ExternalVpnSourceService;
 use Fireball\VpnManagerV2\Services\VpnPlanSubscriptionReconciler;
-use Fireball\VpnManagerV2\Services\VpnFlowResolver;
 use Fireball\VpnManagerV2\Support\Permissions;
 
 final class PlanController
@@ -288,16 +288,6 @@ final class PlanController
     private function form(?array $plan, array $selectedNodes = []): string
     {
         $repository = new PlanRepository();
-        $resolver = new VpnFlowResolver();
-        $inbounds = $repository->inboundsForForm();
-        foreach ($inbounds as &$inbound) {
-            $inbound['allowed_flows'] = array_values(array_filter(
-                $resolver->allowedFlows($inbound),
-                static fn(?string $flow): bool => $flow !== null
-            ));
-        }
-        unset($inbound);
-
         $reconciliation = new PlanReconciliationRepository();
 
         return plugin_view(\FireballPluginVpnManagerV2::SLUG, 'admin/plan-form', \FireballPluginVpnManagerV2::viewData('plans', [
@@ -306,7 +296,8 @@ final class PlanController
             'plan' => $plan,
             'selectedNodes' => $selectedNodes,
             'servers' => $repository->serversForForm(),
-            'inbounds' => $inbounds,
+            'inbounds' => $repository->inboundsForForm(),
+            'presets' => (new ServerPresetRepository())->all(),
             'affectedSubscriptions' => $plan ? $reconciliation->eligibleSubscriptionCount((int)$plan['id']) : 0,
             'reconciliationPreview' => $plan ? $this->currentPreview((int)$plan['id']) : null,
             'missingConnectionCount' => $plan ? $reconciliation->missingNodeCountForPlan((int)$plan['id']) : 0,

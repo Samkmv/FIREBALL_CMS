@@ -9,6 +9,8 @@ final class OverviewRepository
         'vpn_v2_inbounds',
         'vpn_v2_plans',
         'vpn_v2_plan_nodes',
+        'vpn_v2_server_presets',
+        'vpn_v2_server_preset_nodes',
         'vpn_v2_subscriptions',
         'vpn_v2_subscription_nodes',
         'vpn_v2_subscription_items',
@@ -19,6 +21,7 @@ final class OverviewRepository
     ];
 
     private const REQUIRED_COLUMNS = [
+        'vpn_v2_plans.server_preset_id',
         'vpn_v2_servers.auth_type',
         'vpn_v2_subscriptions.revision',
         'vpn_v2_subscriptions.subscription_token_hash',

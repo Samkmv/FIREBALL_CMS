@@ -275,6 +275,16 @@ final class PlanReconciliationRepository
         $database = db();
         $database->beginTransaction();
         try {
+            // A saved preset can replace this target while a worker is preparing it.
+            $currentTarget = $database->query(
+                'SELECT id FROM vpn_v2_plan_nodes WHERE id = ? AND plan_id = ? AND is_enabled = 1 FOR UPDATE',
+                [(int)$planNode['plan_node_id'], (int)$subscription['plan_id']]
+            )->getColumn();
+            if (!$currentTarget) {
+                throw new \Fireball\VpnManagerV2\Exceptions\ProvisioningException(
+                    \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_reconcile_target')
+                );
+            }
             $database->query(
                 'SELECT id FROM vpn_v2_subscriptions WHERE id = ? FOR UPDATE',
                 [(int)$subscription['id']]

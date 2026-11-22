@@ -13,7 +13,6 @@ final class OnlineController
         return plugin_view(\FireballPluginVpnManagerV2::SLUG, 'admin/online',
             \FireballPluginVpnManagerV2::viewData('online', [
                 'title' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_tab_online'),
-                'subtitle' => \FireballPluginVpnManagerV2::t('vpn_manager_v2_online_subtitle'),
             ]));
     }
 

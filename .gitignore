@@ -72,6 +72,7 @@ __pycache__/
 !/tests/roscomvpn_lab.py
 !/tests/roscomvpn_preview.php
 !/tests/vpn_server_removal_unit.php
+!/tests/vpn_server_presets_unit.php
 !/tests/vpn_roscomvpn_unit.php
 !/tests/subscription_plan_features.php
 

@@ -91,6 +91,12 @@ foreach ($plans as $plan) {
     $editUrl = base_href('/admin/plugins/vpn-manager-v2/plans/edit/' . $id);
     $planName = htmlSC((string)$plan['name']);
     $planTitle = $canEdit ? '<a class="fw-semibold text-break" href="' . htmlSC($editUrl) . '">' . $planName . '</a>' : $planName;
+    if (!empty($plan['server_preset_id'])) {
+        $presetUrl = base_href('/admin/plugins/vpn-manager-v2/servers/presets/' . (int)$plan['server_preset_id']);
+        $presetName = htmlSC($plan['server_preset_name']);
+        $planTitle .= '<div class="small text-body-secondary">' . ($canEdit
+            ? '<a href="' . htmlSC($presetUrl) . '">' . $presetName . '</a>' : $presetName) . '</div>';
+    }
     $mismatchLabel = $mismatches > 0
         ? '<span class="badge rounded-pill bg-warning-subtle text-warning-emphasis">' . $mismatches . '</span>'
         : '—';

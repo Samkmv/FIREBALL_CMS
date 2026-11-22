@@ -45,7 +45,11 @@ try {
     assert.equal(requests, 1);
     assert.deepEqual(ids(), [101, 102, 103]);
     assert.equal(visible('article[data-vpn-online-row]').length, 3);
-    assert.equal(document.querySelectorAll('.fb-vpn-stat-card').length, 4);
+    const overview = document.querySelector('[data-vpn-online-overview]');
+    assert.equal(overview.querySelectorAll('[data-vpn-online-stat]').length, 4);
+    const servers = () => overview.querySelector('[data-vpn-online-servers]');
+    servers().open = true;
+    servers().querySelector('summary').focus();
     assert.equal(document.querySelector('[data-vpn-online-error]').hidden, true);
 
     const search = document.querySelector('[data-vpn-online-search]');
@@ -79,6 +83,10 @@ try {
     assert.equal(scope.value, 'all');
     assert.equal(sort.value, 'server');
     assert.deepEqual(ids(), [102]);
+    assert.equal(servers().open, true, 'Expanded server health remains open after polling.');
+    assert.equal(document.activeElement, servers().querySelector('summary'));
+    assert.equal(document.querySelector('[data-vpn-online-direction]').getAttribute('aria-label'), 'По возрастанию');
+    assert.equal(document.querySelectorAll('th[aria-sort]').length, 1);
 
     mode = 'failure';
     interval();

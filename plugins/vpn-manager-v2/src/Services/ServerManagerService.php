@@ -114,6 +114,9 @@ final class ServerManagerService
                 throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_server_not_found'));
             }
             $dependencies = $repository->dependencies($id);
+            if ($dependencies['presets'] > 0) {
+                throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_preset_server_in_use'));
+            }
             if ((int)$dependencies['plan_nodes'] > 0 || (int)$dependencies['subscription_nodes'] > 0) {
                 throw new ValidationException(sprintf(
                     \FireballPluginVpnManagerV2::t('vpn_manager_v2_error_server_delete_in_use'),

@@ -17,6 +17,17 @@
             return;
         }
 
+        var preset = container.form?.querySelector('[data-vpn-v2-preset-select]');
+        if (preset) {
+            var presetLink = container.form.querySelector('[data-vpn-v2-preset-link]');
+            var updateSource = function () {
+                container.hidden = container.disabled = preset.value !== '';
+                presetLink.href = presetLink.dataset.base + (preset.value ? '/' + preset.value : '');
+            };
+            preset.addEventListener('change', updateSource);
+            updateSource();
+        }
+
         var nextIndex = parseInt(container.getAttribute('data-next-index') || '0', 10);
         var autoLabel = container.getAttribute('data-flow-auto-label') || 'Automatic';
         var noneLabel = container.getAttribute('data-flow-none-label') || 'No Flow';
@@ -1045,6 +1056,7 @@
     }
 
     function setupOnline(panel) {
+        var overview = panel.querySelector('[data-vpn-online-overview]');
         var results = panel.querySelector('[data-vpn-online-results]');
         var search = panel.querySelector('[data-vpn-online-search]');
         var scope = panel.querySelector('[data-vpn-online-scope]');
@@ -1092,15 +1104,25 @@
             });
             results.querySelectorAll('[data-vpn-online-sort]').forEach(function (button) {
                 var selected = button.dataset.vpnOnlineSort === sortKey;
-                button.closest('th').setAttribute('aria-sort', selected ? (ascending ? 'ascending' : 'descending') : 'none');
-                button.querySelector('[data-vpn-online-sort-icon]').className = ascending && selected ? 'ci-chevron-up' : 'ci-chevron-down';
+                var heading = button.closest('th');
+                if (selected) heading.setAttribute('aria-sort', ascending ? 'ascending' : 'descending');
+                else heading.removeAttribute('aria-sort');
+                var icon = button.querySelector('[data-vpn-online-sort-icon]');
+                icon.className = ascending ? 'ci-chevron-up' : 'ci-chevron-down';
+                icon.hidden = !selected;
             });
             var table = results.querySelector('[data-vpn-online-table]');
             var empty = results.querySelector('[data-vpn-online-empty]');
             if (table) { table.hidden = matched.size === 0; table.classList.toggle('d-none', matched.size === 0); }
             if (empty) { empty.hidden = matched.size !== 0; empty.classList.toggle('d-none', matched.size !== 0); }
-            count.textContent = panel.dataset.countLabel.replace('%d', String(matched.size));
-            direction.querySelector('span').textContent = ascending ? direction.dataset.ascending : direction.dataset.descending;
+            if (table) {
+                var label = panel.dataset.countLabel.replace('%d', String(matched.size));
+                if (count.textContent !== label) count.textContent = label;
+                count.hidden = false;
+            }
+            var directionLabel = ascending ? direction.dataset.ascending : direction.dataset.descending;
+            direction.setAttribute('aria-label', directionLabel);
+            direction.title = directionLabel;
             direction.querySelector('i').className = ascending ? 'ci-arrow-up' : 'ci-arrow-down';
             sortSelect.value = sortKey;
         }
@@ -1110,6 +1132,8 @@
             busy = true;
             refreshButton.disabled = true;
             results.setAttribute('aria-busy', 'true');
+            var loading = results.querySelector('[data-vpn-online-loading]');
+            if (loading) loading.hidden = false;
             request = new AbortController();
             var timeout = window.setTimeout(function () { request.abort(); }, 30000);
             try {
@@ -1123,10 +1147,21 @@
                 var data = await response.json();
                 if (typeof data.html !== 'string') throw new Error('online_failed');
                 var page = new DOMParser().parseFromString(data.html, 'text/html');
-                if (!page.querySelector('[data-vpn-online-summary]')) throw new Error('online_failed');
+                var summary = page.querySelector('[data-vpn-online-summary]');
+                if (!summary || !page.querySelector('[data-vpn-online-table]')) throw new Error('online_failed');
+                var currentServers = overview.querySelector('[data-vpn-online-servers]');
+                var nextServers = summary.querySelector('[data-vpn-online-servers]');
+                var restoreServerFocus = currentServers && currentServers.contains(document.activeElement);
+                var focusedSort = results.contains(document.activeElement) ? document.activeElement.dataset.vpnOnlineSort : null;
+                if (currentServers && nextServers) nextServers.open = currentServers.open;
+                overview.replaceChildren(summary);
                 results.replaceChildren.apply(results, Array.from(page.body.childNodes));
                 errorMessage.hidden = true;
                 filterAndSort();
+                if (restoreServerFocus && nextServers) nextServers.querySelector('summary').focus({preventScroll: true});
+                if (focusedSort) {
+                    results.querySelector('[data-vpn-online-sort="' + focusedSort + '"]')?.focus({preventScroll: true});
+                }
             } catch (error) {
                 if (!stopped || !request.signal.aborted) {
                     errorMessage.textContent = panel.dataset.failed;
@@ -1134,6 +1169,7 @@
                 }
             } finally {
                 window.clearTimeout(timeout);
+                if (loading) loading.hidden = true;
                 refreshButton.disabled = false;
                 results.setAttribute('aria-busy', 'false');
                 busy = false;

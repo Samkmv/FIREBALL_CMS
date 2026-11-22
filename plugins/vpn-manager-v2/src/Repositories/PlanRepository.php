@@ -4,6 +4,8 @@ namespace Fireball\VpnManagerV2\Repositories;
 
 use Fireball\VpnManagerV2\DTO\PlanData;
 use Fireball\VpnManagerV2\DTO\PlanNodeData;
+use Fireball\VpnManagerV2\Exceptions\ValidationException;
+use Fireball\VpnManagerV2\Services\VpnSubscriptionRevisionService;
 
 final class PlanRepository
 {
@@ -12,12 +14,14 @@ final class PlanRepository
         $rows = db()->query(
             'SELECT p.id, p.name, p.description, p.duration_days, p.traffic_limit_bytes,
                     p.device_limit, p.ip_limit, p.is_active, p.created_at, p.updated_at,
+                    preset.name AS server_preset_name, p.server_preset_id,
                     COUNT(DISTINCT n.server_id) AS server_count, COUNT(n.id) AS node_count
              FROM vpn_v2_plans p
+             LEFT JOIN vpn_v2_server_presets preset ON preset.id = p.server_preset_id
              LEFT JOIN vpn_v2_plan_nodes n ON n.plan_id = p.id AND n.is_enabled = 1
              WHERE p.deleted_at IS NULL
              GROUP BY p.id, p.name, p.description, p.duration_days, p.traffic_limit_bytes,
-                      p.device_limit, p.ip_limit, p.is_active, p.created_at, p.updated_at
+                      p.device_limit, p.ip_limit, p.is_active, p.created_at, p.updated_at, preset.name, p.server_preset_id
              ORDER BY p.id ASC'
         )->get() ?: [];
         $reconciliation = new PlanReconciliationRepository();
@@ -38,7 +42,7 @@ final class PlanRepository
     {
         $row = db()->query(
             'SELECT id, name, description, duration_days, traffic_limit_bytes, device_limit, ip_limit,
-                    is_active, created_at, updated_at
+                    is_active, created_at, updated_at, server_preset_id
              FROM vpn_v2_plans WHERE id = ? AND deleted_at IS NULL LIMIT 1',
             [$id]
         )->getOne();
@@ -46,7 +50,7 @@ final class PlanRepository
         return is_array($row) ? $row : null;
     }
 
-    public function nodes(int $planId): array
+    public function nodes(int $planId, bool $forUpdate = false): array
     {
         return db()->query(
             'SELECT n.id, n.plan_id, n.server_id, n.inbound_id, n.flow_override, n.is_enabled,
@@ -57,7 +61,7 @@ final class PlanRepository
              INNER JOIN vpn_v2_servers s ON s.id = n.server_id
              INNER JOIN vpn_v2_inbounds i ON i.id = n.inbound_id
              WHERE n.plan_id = ?
-             ORDER BY n.sort_order ASC, n.id ASC',
+             ORDER BY n.sort_order ASC, n.id ASC' . ($forUpdate ? ' FOR UPDATE' : ''),
             [$planId]
         )->get() ?: [];
     }
@@ -93,7 +97,7 @@ final class PlanRepository
         )->get() ?: [];
     }
 
-    public function topologyForInboundIds(array $inboundIds): array
+    public function topologyForInboundIds(array $inboundIds, bool $forUpdate = false): array
     {
         $inboundIds = array_values(array_unique(array_filter(array_map('intval', $inboundIds), static fn(int $id): bool => $id > 0)));
         if ($inboundIds === []) {
@@ -106,7 +110,7 @@ final class PlanRepository
                     s.is_enabled AS server_is_enabled
              FROM vpn_v2_inbounds i
              INNER JOIN vpn_v2_servers s ON s.id = i.server_id
-             WHERE i.id IN ({$placeholders})",
+             WHERE i.id IN ({$placeholders})" . ($forUpdate ? ' FOR UPDATE' : ''),
             $inboundIds
         )->get() ?: [];
         $topology = [];
@@ -117,16 +121,17 @@ final class PlanRepository
         return $topology;
     }
 
-    public function create(PlanData $plan): int
+    public function create(PlanData $plan, ?int $presetId = null): int
     {
         $database = db();
         $database->beginTransaction();
         try {
+            $nodes = $this->assignmentNodes($plan, $presetId);
             $now = date('Y-m-d H:i:s');
             $database->query(
                 'INSERT INTO vpn_v2_plans
-                    (name, description, duration_days, traffic_limit_bytes, device_limit, ip_limit, is_active, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    (name, description, duration_days, traffic_limit_bytes, device_limit, ip_limit, is_active, created_at, updated_at, server_preset_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 [
                     $plan->name,
                     $plan->description,
@@ -137,11 +142,12 @@ final class PlanRepository
                     $plan->isActive ? 1 : 0,
                     $now,
                     $now,
+                    $presetId,
                 ]
             );
             $planId = (int)$database->getInsertId();
-            $this->insertNodes($planId, $plan->nodes, $now);
-            $this->logEvent('plan.created', $planId, count($plan->nodes));
+            $this->insertNodes($planId, $nodes, $now);
+            $this->logEvent('plan.created', $planId, count($nodes), ['server_preset_id' => $presetId]);
             $database->commit();
 
             return $planId;
@@ -153,16 +159,26 @@ final class PlanRepository
         }
     }
 
-    public function update(int $id, PlanData $plan): void
+    public function update(int $id, PlanData $plan, ?int $presetId = null): void
     {
         $database = db();
         $database->beginTransaction();
         try {
+            $nodes = $presetId === null ? $plan->nodes : (new ServerPresetRepository())->lockedNodesForPlan($presetId);
+            $current = $database->query(
+                'SELECT id, server_preset_id FROM vpn_v2_plans WHERE id = ? AND deleted_at IS NULL FOR UPDATE', [$id]
+            )->getOne();
+            if (!$current) {
+                throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_plan_not_found'));
+            }
+            if ($presetId !== null && $nodes === [] && (int)$current['server_preset_id'] !== $presetId) {
+                throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_preset_empty'));
+            }
             $now = date('Y-m-d H:i:s');
             $database->query(
                 'UPDATE vpn_v2_plans
                  SET name = ?, description = ?, duration_days = ?, traffic_limit_bytes = ?,
-                     device_limit = ?, ip_limit = ?, is_active = ?, updated_at = ?
+                     device_limit = ?, ip_limit = ?, is_active = ?, updated_at = ?, server_preset_id = ?
                  WHERE id = ?',
                 [
                     $plan->name,
@@ -173,24 +189,13 @@ final class PlanRepository
                     $plan->ipLimit,
                     $plan->isActive ? 1 : 0,
                     $now,
+                    $presetId,
                     $id,
                 ]
             );
-            $before = $this->nodes($id);
-            $database->query('DELETE FROM vpn_v2_plan_nodes WHERE plan_id = ?', [$id]);
-            $this->insertNodes($id, $plan->nodes, $now);
-            $targets = [];
-            foreach ($plan->nodes as $node) {
-                $targets[$node->serverId . ':' . $node->inboundId] = true;
-            }
-            $reconciliation = new PlanReconciliationRepository();
-            foreach ($before as $node) {
-                if (!isset($targets[$node['server_id'] . ':' . $node['inbound_id']])) {
-                    $reconciliation->markTargetObsolete($id, (int)$node['server_id'], (int)$node['inbound_id']);
-                }
-            }
-            (new \Fireball\VpnManagerV2\Services\VpnSubscriptionRevisionService())->touchByPlan($id);
-            $this->logEvent('plan.updated', $id, count($plan->nodes));
+            $this->replaceNodes($id, $nodes, $now);
+            (new VpnSubscriptionRevisionService())->touchByPlan($id);
+            $this->logEvent('plan.updated', $id, count($nodes), ['server_preset_id' => $presetId]);
             $database->commit();
         } catch (\Throwable $exception) {
             if ($database->inTransaction()) {
@@ -238,7 +243,7 @@ final class PlanRepository
             }
             $now = date('Y-m-d H:i:s');
             $database->query(
-                'UPDATE vpn_v2_plans SET is_active = 0, deleted_at = ?, updated_at = ? WHERE id = ?',
+                'UPDATE vpn_v2_plans SET is_active = 0, server_preset_id = NULL, deleted_at = ?, updated_at = ? WHERE id = ?',
                 [$now, $now, $id]
             );
             $this->logEvent('plan.deleted', $id, count($this->nodes($id)), [
@@ -255,6 +260,41 @@ final class PlanRepository
                 $database->rollBack();
             }
             throw $exception;
+        }
+    }
+
+    private function assignmentNodes(PlanData $plan, ?int $presetId): array
+    {
+        if ($presetId === null) {
+            return $plan->nodes;
+        }
+        $nodes = (new ServerPresetRepository())->lockedNodesForPlan($presetId);
+        if ($nodes === []) {
+            throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_preset_empty'));
+        }
+        return $nodes;
+    }
+
+    /** Update the effective topology within the caller's transaction. */
+    public function replaceNodes(int $planId, array $nodes, string $now): void
+    {
+        $before = $this->nodes($planId, forUpdate: true);
+        usort($nodes, static fn(PlanNodeData $left, PlanNodeData $right): int => $left->sortOrder <=> $right->sortOrder);
+        if ($nodes == array_map(PlanNodeData::fromRow(...), $before)
+            && count(array_filter($before, static fn(array $node): bool => !empty($node['is_enabled']))) === count($before)) {
+            return;
+        }
+        db()->query('DELETE FROM vpn_v2_plan_nodes WHERE plan_id = ?', [$planId]);
+        $this->insertNodes($planId, $nodes, $now);
+        $targets = [];
+        foreach ($nodes as $node) {
+            $targets[$node->serverId . ':' . $node->inboundId] = true;
+        }
+        $reconciliation = new PlanReconciliationRepository();
+        foreach ($before as $node) {
+            if (!isset($targets[$node['server_id'] . ':' . $node['inbound_id']])) {
+                $reconciliation->markTargetObsolete($planId, (int)$node['server_id'], (int)$node['inbound_id']);
+            }
         }
     }
 

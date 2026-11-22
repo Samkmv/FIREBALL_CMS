@@ -142,7 +142,7 @@ $page = (new Fireball\VpnManagerV2\Controllers\Admin\OnlineController())->index(
 $assert(str_contains($page, 'data-vpn-online-search') && str_contains($page, 'data-vpn-online-sort-select'), 'The management page exposes search and sorting.');
 $html = plugin_view('vpn-manager-v2', 'admin/partials/online-results', ['snapshot' => $snapshot], false);
 $assert(!str_contains($html, '<script>unsafe</script>') && str_contains($html, '&lt;script&gt;'), 'Customer names are escaped in table and mobile cards.');
-$assert(substr_count($html, 'fb-vpn-stat-card') === 4 && str_contains($html, 'admin-mobile-table-card'), 'CMS statistic cards and native mobile cards render.');
+$assert(substr_count($html, 'data-vpn-online-stat=') === 4 && str_contains($html, 'admin-mobile-table-card'), 'CMS statistic cards and native mobile cards render.');
 $assert(str_contains($html, '2025-01-01 12:00:00') && str_contains($html, 'Нет данных'), 'Offline history and server failure states remain visible in the All view.');
 $GLOBALS['test_role'] = 'user';
 try {
@@ -169,6 +169,6 @@ $fail = true;
 $failed = $service->snapshot();
 $assert($failed['summary']['checked'] === 0 && $failed['summary']['unavailable'] === 3, 'Total failures have no confirmed samples.');
 $failedHtml = plugin_view('vpn-manager-v2', 'admin/partials/online-results', ['snapshot' => $failed], false);
-$assert(substr_count($failedHtml, 'display-6 fw-semibold lh-1 mt-3">—') === 4, 'Unavailable statistics show unknown values instead of zero users.');
+$assert(preg_match_all('/data-vpn-online-stat="[a-z]+">—/', $failedHtml) === 4, 'Unavailable statistics show unknown values instead of zero users.');
 $assert($pdo->query('SELECT presence_last_online_at FROM vpn_v2_subscription_nodes WHERE id = 101')->fetchColumn() === $seen, 'Failed refreshes preserve stored presence history.');
 echo "PASS online identities, last-seen persistence, partial failures, cache, legacy filter, permissions, translations and CMS views.\n";

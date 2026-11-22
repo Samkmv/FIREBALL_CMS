@@ -61,6 +61,8 @@ $db->pdo->exec('CREATE TABLE vpn_v2_subscription_nodes (id INTEGER PRIMARY KEY,s
  inbound_id INTEGER,status TEXT,desired_enabled INTEGER,is_obsolete INTEGER,sync_status TEXT,sync_error TEXT,last_error TEXT,
  client_uuid TEXT,traffic_used_bytes INTEGER,upload_bytes INTEGER,download_bytes INTEGER,updated_at TEXT,
  FOREIGN KEY(server_id) REFERENCES vpn_v2_servers(id) ON DELETE RESTRICT)');
+$db->pdo->exec('CREATE TABLE vpn_v2_server_preset_nodes (id INTEGER PRIMARY KEY, preset_id INTEGER, server_id INTEGER)');
+$db->pdo->exec('INSERT INTO vpn_v2_server_preset_nodes VALUES (1,1,1),(2,1,2)');
 $db->pdo->exec('CREATE TABLE vpn_v2_plan_nodes (id INTEGER PRIMARY KEY,plan_id INTEGER,server_id INTEGER)');
 $db->pdo->exec('CREATE TABLE vpn_v2_inbounds (id INTEGER PRIMARY KEY,server_id INTEGER,status TEXT,is_enabled INTEGER,updated_at TEXT)');
 $db->pdo->exec('CREATE TABLE vpn_v2_subscription_items (id INTEGER PRIMARY KEY,parent_subscription_id INTEGER,item_type TEXT,
@@ -108,6 +110,7 @@ $db->pdo->exec('DROP TRIGGER reject_event');
 $before=$db->query('SELECT id,subscription_token,status FROM vpn_v2_subscriptions ORDER BY id')->get();
 $check((new SubscriptionConfigRepository())->trafficBreakdown(11)['traffic_used_bytes']===120,'Initial accounted traffic');
 $name=$service->remove(1,$fingerprint,1);
+$check((int)$db->pdo->query('SELECT COUNT(*) FROM vpn_v2_server_preset_nodes WHERE server_id = 1')->fetchColumn() === 0, 'Retired servers are removed from presets');
 $check($name==='<Lost>' && (new ServerRepository())->find(1)===null && (new ServerRepository())->findWithSecrets(1)===null,'Removed server inaccessible');
 $check(array_column((new ServerRepository())->all(),'id')===[2],'Removed server absent from listing');
 $check((int)$db->query('SELECT COUNT(*) FROM vpn_v2_plan_nodes WHERE server_id=1')->getColumn()===0,'Plan links removed');

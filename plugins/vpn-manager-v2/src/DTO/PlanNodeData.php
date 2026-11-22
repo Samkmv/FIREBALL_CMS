@@ -11,4 +11,9 @@ final readonly class PlanNodeData
         public int $sortOrder,
     ) {
     }
+
+    public static function fromRow(array $row): self
+    {
+        return new self((int)$row['server_id'], (int)$row['inbound_id'], $row['flow_override'], (int)$row['sort_order']);
+    }
 }

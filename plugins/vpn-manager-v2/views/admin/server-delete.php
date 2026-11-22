@@ -1,7 +1,7 @@
 <?php
 $serverId = (int)$server['id'];
 $disabled = empty($server['is_enabled']);
-$hasConnections = (int)$counts['connections'] > 0 || (int)$counts['plan_nodes'] > 0;
+$hasConnections = (int)$counts['connections'] > 0 || (int)$counts['plan_nodes'] > 0 || (int)($counts['presets'] ?? 0) > 0;
 $tr = static fn(string $key): string => htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_remove_server_' . $key));
 ?>
 <?= view()->renderPartial('admin/shell_open', ['title' => $title]) ?>
@@ -12,6 +12,9 @@ $tr = static fn(string $key): string => htmlSC(FireballPluginVpnManagerV2::t('vp
     <div class="d-flex flex-wrap gap-3 mb-3">
         <span><?= $tr('plans') ?>: <strong><?= (int)$counts['plan_nodes'] ?></strong></span>
         <span><?= $tr('connections') ?>: <strong><?= (int)$counts['connections'] ?></strong></span>
+        <?php if (!empty($counts['presets'])): ?>
+            <span><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_presets_title')) ?> <strong><?= (int)$counts['presets'] ?></strong></span>
+        <?php endif; ?>
         <span><?= $tr('subscriptions') ?>: <strong><?= (int)$counts['subscriptions'] ?></strong></span>
     </div>
     <?php if (!$disabled && $hasConnections): ?>

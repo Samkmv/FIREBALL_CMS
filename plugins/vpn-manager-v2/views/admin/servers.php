@@ -8,6 +8,9 @@ $addUrl = base_href('/admin/plugins/vpn-manager-v2/servers/create');
 $actions = '<a class="btn btn-primary d-inline-flex align-items-center gap-2" href="'
     . htmlSC($addUrl) . '"><i class="ci-plus" aria-hidden="true"></i><span>'
     . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_add_server')) . '</span></a>';
+$actions = '<a class="btn btn-outline-secondary d-inline-flex align-items-center gap-2" href="'
+    . htmlSC(base_href('/admin/plugins/vpn-manager-v2/servers/presets')) . '"><i class="ci-layers" aria-hidden="true"></i>'
+    . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_presets_title')) . '</a>' . $actions;
 
 $statusBadge = static function (array $server): string {
     $status = empty($server['is_enabled']) ? 'disabled' : (string)($server['status'] ?? 'unchecked');

@@ -48,6 +48,7 @@ final class InboundRepository
                 "UPDATE vpn_v2_inbounds SET status = 'archived', is_enabled = 0, updated_at = ? WHERE id = ?",
                 [$now, $id]
             );
+            $database->query('DELETE FROM vpn_v2_server_preset_nodes WHERE inbound_id = ?', [$id]);
             $database->query('DELETE FROM vpn_v2_plan_nodes WHERE inbound_id = ?', [$id]);
             $database->query(
                 "UPDATE vpn_v2_subscription_nodes

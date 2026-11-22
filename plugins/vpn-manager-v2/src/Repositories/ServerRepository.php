@@ -48,11 +48,13 @@ final class ServerRepository
         $row = db()->query(
             'SELECT
                 (SELECT COUNT(*) FROM vpn_v2_plan_nodes WHERE server_id = ?) AS plan_nodes,
+                (SELECT COUNT(DISTINCT preset_id) FROM vpn_v2_server_preset_nodes WHERE server_id = ?) AS presets,
                 (SELECT COUNT(*) FROM vpn_v2_subscription_nodes WHERE server_id = ?) AS subscription_nodes',
-            [$id, $id]
+            [$id, $id, $id]
         )->getOne();
 
         return [
+            'presets' => (int)($row['presets'] ?? 0),
             'plan_nodes' => (int)($row['plan_nodes'] ?? 0),
             'subscription_nodes' => (int)($row['subscription_nodes'] ?? 0),
         ];

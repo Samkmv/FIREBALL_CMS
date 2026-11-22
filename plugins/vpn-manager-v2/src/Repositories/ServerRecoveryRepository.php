@@ -163,6 +163,14 @@ final class ServerRecoveryRepository
                     'UPDATE vpn_v2_plan_nodes SET inbound_id = ?, updated_at = ? WHERE server_id = ? AND inbound_id = ?',
                     [$newId, date('Y-m-d H:i:s'), $serverId, $oldId]
                 );
+                $database->query(
+                    'UPDATE vpn_v2_server_preset_nodes node
+                     LEFT JOIN vpn_v2_server_preset_nodes replacement ON replacement.preset_id = node.preset_id
+                         AND replacement.server_id = node.server_id AND replacement.inbound_id = ?
+                     SET node.inbound_id = ?
+                     WHERE node.server_id = ? AND node.inbound_id = ? AND replacement.id IS NULL',
+                    [$newId, $newId, $serverId, $oldId]
+                );
                 // Preserve UUID/password, subId, URL, counters and the local node id.
                 $database->query(
                     'UPDATE vpn_v2_subscription_nodes SET inbound_id = ?, network = ?, security = ?,

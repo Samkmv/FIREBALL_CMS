@@ -11,6 +11,8 @@ final class MigrationStatusRepository
         'vpn_v2_inbounds',
         'vpn_v2_plans',
         'vpn_v2_plan_nodes',
+        'vpn_v2_server_presets',
+        'vpn_v2_server_preset_nodes',
         'vpn_v2_subscriptions',
         'vpn_v2_subscription_nodes',
         'vpn_v2_subscription_items',

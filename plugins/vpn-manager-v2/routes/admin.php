@@ -13,6 +13,7 @@ use Fireball\VpnManagerV2\Controllers\Admin\OnlineController;
 use Fireball\VpnManagerV2\Controllers\Admin\InboundController;
 use Fireball\VpnManagerV2\Controllers\Admin\PlanController;
 use Fireball\VpnManagerV2\Controllers\Admin\ServerController;
+use Fireball\VpnManagerV2\Controllers\Admin\ServerPresetController;
 use Fireball\VpnManagerV2\Controllers\Admin\ServerRecoveryController;
 use Fireball\VpnManagerV2\Controllers\Admin\SubscriptionController;
 use Fireball\VpnManagerV2\Controllers\Admin\SubscriptionDeviceController;
@@ -32,6 +33,18 @@ $router->get('/admin/plugins/vpn-manager-v2', static function (): string {
 })->middleware(['auth', 'admin']);
 
 $router->get('/admin/plugins/vpn-manager-v2/servers', [ServerController::class, 'index'])
+    ->middleware(['auth', 'admin']);
+$router->get('/admin/plugins/vpn-manager-v2/servers/presets', [ServerPresetController::class, 'index'])
+    ->middleware(['auth', 'admin']);
+$router->get('/admin/plugins/vpn-manager-v2/servers/presets/create', [ServerPresetController::class, 'form'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/servers/presets/create', [ServerPresetController::class, 'save'])
+    ->middleware(['auth', 'admin']);
+$router->get('/admin/plugins/vpn-manager-v2/servers/presets/(?P<id>\d+)', [ServerPresetController::class, 'form'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/servers/presets/(?P<id>\d+)', [ServerPresetController::class, 'save'])
+    ->middleware(['auth', 'admin']);
+$router->post('/admin/plugins/vpn-manager-v2/servers/presets/(?P<id>\d+)/delete', [ServerPresetController::class, 'delete'])
     ->middleware(['auth', 'admin']);
 $router->get('/admin/plugins/vpn-manager-v2/discrepancies', [ServerRecoveryController::class, 'discrepancies'])
     ->middleware(['auth', 'admin']);

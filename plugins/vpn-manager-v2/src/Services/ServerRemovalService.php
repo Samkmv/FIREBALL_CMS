@@ -24,9 +24,10 @@ final class ServerRemovalService
         }
         $counts = db()->query('SELECT
             (SELECT COUNT(*) FROM vpn_v2_plan_nodes WHERE server_id = ?) AS plan_nodes,
+            (SELECT COUNT(DISTINCT preset_id) FROM vpn_v2_server_preset_nodes WHERE server_id = ?) AS presets,
             (SELECT COUNT(*) FROM vpn_v2_subscription_nodes WHERE server_id = ?) AS connections,
             (SELECT COUNT(DISTINCT subscription_id) FROM vpn_v2_subscription_nodes WHERE server_id = ?) AS subscriptions',
-            [$id, $id, $id])->getOne();
+            [$id, $id, $id, $id])->getOne();
         return ['server' => $server, 'counts' => $counts, 'fingerprint' => self::fingerprint($server)];
     }
 
@@ -75,6 +76,7 @@ final class ServerRemovalService
                 inactive_reason = 'connection_deleted_remote', relation_key = NULL, deleted_at = ?, updated_at = ?
                 WHERE item_type = 'connection' AND deleted_at IS NULL
                   AND connection_id IN (SELECT id FROM vpn_v2_subscription_nodes WHERE server_id = ?)", [$now, $now, $id]);
+            $db->query('DELETE FROM vpn_v2_server_preset_nodes WHERE server_id = ?', [$id]);
             $db->query('DELETE FROM vpn_v2_plan_nodes WHERE server_id = ?', [$id]);
             $db->query("UPDATE vpn_v2_subscription_nodes SET status = 'deleted', desired_enabled = 0,
                 is_obsolete = 1, sync_status = 'server_removed', last_error = NULL, sync_error = NULL, updated_at = ?

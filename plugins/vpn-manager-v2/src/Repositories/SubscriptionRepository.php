@@ -2,6 +2,7 @@
 
 namespace Fireball\VpnManagerV2\Repositories;
 
+use Fireball\VpnManagerV2\Exceptions\ValidationException;
 use Fireball\VpnManagerV2\Services\RemoteClientCredentialService;
 use Fireball\VpnManagerV2\Support\ProvisioningStatus;
 use Fireball\VpnManagerV2\Support\SubscriptionListFilter;
@@ -101,7 +102,7 @@ final class SubscriptionRepository
         return is_array($row) ? $row : null;
     }
 
-    public function activePlanNodes(int $planId): array
+    public function activePlanNodes(int $planId, bool $forUpdate = false): array
     {
         return db()->query(
             "SELECT n.id AS plan_node_id, n.plan_id, n.server_id, n.inbound_id, n.flow_override,
@@ -116,7 +117,7 @@ final class SubscriptionRepository
              WHERE n.plan_id = ? AND n.is_enabled = 1
                AND s.is_enabled = 1 AND s.maintenance_mode = 0 AND s.allow_new_connections = 1
                AND i.is_enabled = 1 AND i.status = 'active'
-             ORDER BY n.sort_order ASC, n.id ASC",
+             ORDER BY n.sort_order ASC, n.id ASC" . ($forUpdate ? ' FOR UPDATE' : ''),
             [$planId]
         )->get() ?: [];
     }
@@ -134,6 +135,20 @@ final class SubscriptionRepository
         $database = db();
         $database->beginTransaction();
         try {
+            $planId = (int)$subscription['plan_id'];
+            // Serialize with plan and preset edits before publishing this subscription.
+            $activePlan = $database->query(
+                'SELECT id FROM vpn_v2_plans WHERE id = ? AND is_active = 1 AND deleted_at IS NULL FOR UPDATE',
+                [$planId]
+            )->getColumn();
+            if (!$activePlan) {
+                throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_subscription_plan_inactive'));
+            }
+            $current = $this->activePlanNodes($planId, forUpdate: true);
+            $currentIds = array_map('intval', array_column($current, 'plan_node_id'));
+            if ($currentIds !== array_column($nodes, 'plan_node_id')) {
+                throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_create_plan_changed'));
+            }
             $now = date('Y-m-d H:i:s');
             $database->query(
                 'INSERT INTO vpn_v2_subscriptions

@@ -23,12 +23,17 @@ final class PlanManagerService
     public function create(array $input): int
     {
         $repository = $this->repository ?? new PlanRepository();
+        $presetId = $this->presetId($input);
+        if ($presetId !== null) {
+            $input['nodes'] = [];
+        }
         $plan = ($this->validator ?? new PlanValidator())->validate(
             $input,
-            $repository->topologyForInboundIds($this->inboundIds($input))
+            $repository->topologyForInboundIds($this->inboundIds($input)),
+            allowEmpty: $presetId !== null
         );
 
-        return $repository->create($plan);
+        return $repository->create($plan, $presetId);
     }
 
     public function update(int $id, array $input): PlanUpdateResult
@@ -41,13 +46,18 @@ final class PlanManagerService
 
         $before = $repository->nodes($id);
         $input['ip_limit'] ??= $beforePlan['ip_limit'] ?? 0;
+        $input['server_preset_id'] ??= $beforePlan['server_preset_id'] ?? '';
+        $presetId = $this->presetId($input);
+        if ($presetId !== null) {
+            $input['nodes'] = [];
+        }
         $plan = ($this->validator ?? new PlanValidator())->validate(
             $input,
             $repository->topologyForInboundIds($this->inboundIds($input)),
             $before,
             allowEmpty: true
         );
-        $repository->update($id, $plan);
+        $repository->update($id, $plan, $presetId);
         $after = $repository->nodes($id);
         $diff = $this->diffPlanNodes($before, $after);
         $adminId = $this->adminId();
@@ -167,6 +177,19 @@ final class PlanManagerService
         return $repository->archive($id);
     }
 
+    private function presetId(array $input): ?int
+    {
+        $value = $input['server_preset_id'] ?? '';
+        if ($value === '') {
+            return null;
+        }
+        $id = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if ($id === false) {
+            throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_preset_missing'));
+        }
+        return $id;
+    }
+
     private function inboundIds(array $input): array
     {
         $ids = [];
@@ -199,7 +222,7 @@ final class PlanManagerService
             : '__auto__';
 
         return (int)($node['server_id'] ?? 0) . ':' . (int)($node['inbound_id'] ?? 0)
-            . ':' . $flow . ':' . (!empty($node['is_enabled']) ? '1' : '0');
+            . ':' . $flow . ':' . (!empty($node['is_enabled']) ? '1' : '0') . ':' . (int)($node['sort_order'] ?? 0);
     }
 
     private function adminId(): int
