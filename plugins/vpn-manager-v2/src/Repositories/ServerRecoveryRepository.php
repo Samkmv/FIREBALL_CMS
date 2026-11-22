@@ -48,6 +48,8 @@ final class ServerRecoveryRepository
             "SELECT sub.id, p.name AS plan_name,
                     COALESCE(u.name, sub.manual_customer_name) AS customer_name,
                     COUNT(*) AS expected_count,
+                    SUM(CASE WHEN i.status <> 'active' OR i.is_enabled <> 1 THEN 1 ELSE 0 END) AS unavailable_inbound_count,
+                    SUM(CASE WHEN i.status = 'active' AND i.is_enabled = 1 AND n.id IS NULL THEN 1 ELSE 0 END) AS missing_connection_count,
                     SUM(CASE WHEN n.sync_status = 'synced' AND n.is_obsolete = 0
                                   AND i.status = 'active' AND i.is_enabled = 1
                                   AND n.status = IF(sub.status = 'suspended', 'disabled', 'active')

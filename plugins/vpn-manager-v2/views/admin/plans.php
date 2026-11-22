@@ -7,7 +7,7 @@ use Fireball\VpnManagerV2\Support\AdminActionDropdown;
 $plans = is_array($plans ?? null) ? $plans : [];
 $addUrl = base_href('/admin/plugins/vpn-manager-v2/plans/create');
 $actions = Permissions::allows(Permissions::MANAGE_PLANS)
-    ? '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="'
+    ? '<a class="btn btn-primary d-inline-flex align-items-center gap-2" href="'
         . htmlSC($addUrl) . '"><i class="ci-plus" aria-hidden="true"></i><span>'
         . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_add_plan')) . '</span></a>'
     : '';
@@ -87,6 +87,17 @@ foreach ($plans as $plan) {
     $nodes = (int)($plan['node_count'] ?? 0);
     $subscriptions = (int)($plan['subscription_count'] ?? 0);
     $mismatches = (int)($plan['mismatch_subscription_count'] ?? 0);
+    $canEdit = Permissions::allows(Permissions::MANAGE_PLANS);
+    $editUrl = base_href('/admin/plugins/vpn-manager-v2/plans/edit/' . $id);
+    $planName = htmlSC((string)$plan['name']);
+    $planTitle = $canEdit ? '<a class="fw-semibold text-break" href="' . htmlSC($editUrl) . '">' . $planName . '</a>' : $planName;
+    $mismatchLabel = $mismatches > 0
+        ? '<span class="badge rounded-pill bg-warning-subtle text-warning-emphasis">' . $mismatches . '</span>'
+        : '—';
+    if ($mismatches > 0 && $canEdit) {
+        $mismatchLabel = '<a class="d-inline-flex flex-wrap align-items-center gap-1" href="' . htmlSC($editUrl . '#reconciliation') . '">'
+            . $mismatchLabel . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_view')) . '</a>';
+    }
     $lastReconcile = trim((string)($plan['last_reconcile_at'] ?? ''));
     $lastStatus = trim((string)($plan['last_reconcile_status'] ?? ''));
     $lastStatusLabel = $lastStatus !== ''
@@ -96,16 +107,14 @@ foreach ($plans as $plan) {
     $rows[] = [
         'cells' => [
             ['value' => '#' . $id],
-            ['html' => '<span class="fw-medium">' . htmlSC((string)$plan['name']) . '</span>'],
+            ['html' => $planTitle],
             ['value' => $duration],
             ['value' => $traffic],
             ['value' => (string)(int)$plan['device_limit']],
             ['html' => htmlSC((string)$servers) . '<div class="small text-body-secondary">'
                 . htmlSC(sprintf(FireballPluginVpnManagerV2::t('vpn_manager_v2_plan_nodes_count'), $nodes)) . '</div>'],
             ['value' => (string)$subscriptions],
-            ['html' => $mismatches > 0
-                ? '<span class="badge rounded-pill text-bg-warning">' . $mismatches . '</span>'
-                : '<span class="badge rounded-pill text-bg-success">0</span>'],
+            ['html' => $mismatchLabel],
             ['html' => htmlSC($lastReconcile !== '' ? $lastReconcile : '—')
                 . ($lastStatusLabel !== '' ? '<div class="small text-body-secondary">' . htmlSC($lastStatusLabel) . '</div>' : '')],
             ['html' => $status],
@@ -115,7 +124,7 @@ foreach ($plans as $plan) {
 
     $mobileCards[] = [
         'id' => (string)$id,
-        'title' => (string)$plan['name'],
+        'title' => ['html' => $planTitle],
         'icon' => 'ci-package',
         'status' => [['html' => $status]],
         'actions' => $planActions($plan),
@@ -126,7 +135,7 @@ foreach ($plans as $plan) {
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_servers'), 'value' => (string)$servers],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_nodes'), 'value' => (string)$nodes],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_subscriptions'), 'value' => (string)$subscriptions],
-            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_discrepancies'), 'value' => (string)$mismatches],
+            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_discrepancies'), 'html' => $mismatchLabel],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_last_reconciliation'), 'value' => $lastReconcile !== '' ? $lastReconcile : '—'],
         ],
     ];

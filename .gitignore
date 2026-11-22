@@ -73,3 +73,7 @@ __pycache__/
 !/tests/roscomvpn_preview.php
 !/tests/vpn_server_removal_unit.php
 !/tests/vpn_roscomvpn_unit.php
+!/tests/subscription_plan_features.php
+
+# Local PHP/MySQL binaries, database files and credentials.
+/.local/

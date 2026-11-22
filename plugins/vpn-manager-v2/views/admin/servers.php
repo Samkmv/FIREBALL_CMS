@@ -5,7 +5,7 @@ use Fireball\VpnManagerV2\Support\AdminActionDropdown;
 
 $servers = is_array($servers ?? null) ? $servers : [];
 $addUrl = base_href('/admin/plugins/vpn-manager-v2/servers/create');
-$actions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="'
+$actions = '<a class="btn btn-primary d-inline-flex align-items-center gap-2" href="'
     . htmlSC($addUrl) . '"><i class="ci-plus" aria-hidden="true"></i><span>'
     . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_add_server')) . '</span></a>';
 
@@ -33,11 +33,6 @@ $serverActions = static function (array $server): array {
 
     return [
         [
-            'label' => 'Xray-core · перенос',
-            'href' => base_href('/admin/plugins/vpn-manager-v2/servers/' . $id . '/xray'),
-            'icon' => 'ci-server',
-        ],
-        [
             'label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_recovery_action'),
             'href' => base_href('/admin/plugins/vpn-manager-v2/servers/' . $id . '/recovery'),
             'icon' => 'ci-refresh-cw',
@@ -62,6 +57,11 @@ $serverActions = static function (array $server): array {
             'action' => base_href('/admin/plugins/vpn-manager-v2/servers/toggle'),
             'hidden' => ['id' => $id],
             'icon' => 'ci-power',
+        ],
+        [
+            'label' => 'Xray-core · перенос',
+            'href' => base_href('/admin/plugins/vpn-manager-v2/servers/' . $id . '/xray'),
+            'icon' => 'ci-server',
         ],
         ['type' => 'divider'],
         [
@@ -96,37 +96,37 @@ foreach ($servers as $server) {
     }
     $badge = $statusBadge($server);
     $counts = (int)($server['inbound_count'] ?? 0) . ' / ' . (int)($server['client_count'] ?? 0);
+    $serverLink = '<a class="fw-semibold text-break" href="'
+        . htmlSC(base_href('/admin/plugins/vpn-manager-v2/servers/' . $id . '/recovery')) . '">'
+        . htmlSC((string)$server['name']) . '</a>';
     $lastSync = trim((string)($server['last_sync_at'] ?? '')) ?: FireballPluginVpnManagerV2::t('vpn_manager_v2_never');
+
+    $technical = '<details><summary class="small text-body-secondary">'
+        . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_technical_title')) . '</summary>'
+        . '<div class="small text-break">' . htmlSC($panel) . '</div>'
+        . '<div class="small text-body-secondary">' . htmlSC($authLabel) . '</div>'
+        . '<div class="small text-body-secondary">' . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_last_sync'))
+        . ' · ' . htmlSC($lastSync) . '</div></details>';
 
     $rows[] = [
         'cells' => [
-            ['value' => '#' . $id],
-            ['html' => '<span class="fw-medium">' . htmlSC((string)$server['name'])
-                . '</span><div class="small text-body-secondary">' . htmlSC((string)$server['code']) . '</div>'],
-            ['value' => $location],
-            ['html' => '<span class="text-break">' . htmlSC($panel) . '</span>'],
-            ['value' => $authLabel],
+            ['html' => $serverLink . '<div class="small text-body-secondary text-break">#' . $id . ' · ' . htmlSC($location) . '</div>'
+                . $technical],
             ['html' => $badge],
             ['value' => $counts],
-            ['value' => $lastSync],
             ['html' => $lastCheckHtml],
-            ['html' => AdminActionDropdown::render($serverActions($server))],
+            ['html' => '<div class="text-end">' . AdminActionDropdown::render($serverActions($server)) . '</div>'],
         ],
     ];
 
     $mobileCards[] = [
         'id' => (string)$id,
-        'title' => ['html' => htmlSC((string)$server['name']) . '<div class="small text-body-secondary">'
-            . htmlSC((string)$server['code']) . '</div>'],
-        'icon' => 'ci-server',
+        'title' => ['html' => $serverLink],
         'status' => [['html' => $badge]],
-        'actions' => AdminActionDropdown::render($serverActions($server)),
+        'actions' => $serverActions($server),
         'extra_fields' => [
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_location'), 'value' => $location],
-            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_panel'), 'value' => $panel],
-            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_auth'), 'value' => $authLabel],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_inbounds_clients'), 'value' => $counts],
-            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_last_sync'), 'value' => $lastSync],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_last_check'), 'html' => $lastCheckHtml],
         ],
     ];
@@ -135,7 +135,6 @@ foreach ($servers as $server) {
 
 <?= view()->renderPartial('admin/shell_open', [
     'title' => $title ?? FireballPluginVpnManagerV2::t('vpn_manager_v2_servers_title'),
-    'subtitle' => $subtitle ?? '',
     'actions' => $actions,
 ]) ?>
 
@@ -143,24 +142,17 @@ foreach ($servers as $server) {
 
 <?php require __DIR__ . '/partials/operation-alert.php'; ?>
 
-<div class="border rounded-5 p-3 p-md-4">
-    <?= view()->renderPartial('admin/partials/table', [
-        'columns' => [
-            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_id')],
-            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_name')],
-            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_location')],
-            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_panel')],
-            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_auth')],
-            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_status')],
-            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_inbounds_clients')],
-            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_last_sync')],
-            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_last_check')],
-            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_actions'), 'class' => 'text-end'],
-        ],
-        'rows' => $rows,
-        'mobile_cards' => $mobileCards,
-        'empty_text' => FireballPluginVpnManagerV2::t('vpn_manager_v2_empty_servers'),
-    ]) ?>
-</div>
+<?= view()->renderPartial('admin/partials/table', [
+    'columns' => [
+        ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_name')],
+        ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_status')],
+        ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_inbounds_clients')],
+        ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_last_check')],
+        ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_actions'), 'class' => 'text-end'],
+    ],
+    'rows' => $rows,
+    'mobile_cards' => $mobileCards,
+    'empty_text' => FireballPluginVpnManagerV2::t('vpn_manager_v2_empty_servers'),
+]) ?>
 
 <?= view()->renderPartial('admin/shell_close') ?>

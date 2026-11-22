@@ -1,6 +1,18 @@
 <?php
 
 return [
+    'vpn_manager_v2_overview_active_total' => '可用 / 总数',
+    'vpn_manager_v2_overview_panel_available' => '面板可访问',
+    'vpn_manager_v2_discrepancies_reason' => '原因',
+    'vpn_manager_v2_discrepancies_coverage' => '已确认 / 套餐要求',
+    'vpn_manager_v2_discrepancies_reason_inbound' => '不可用的入站',
+    'vpn_manager_v2_discrepancies_reason_missing' => '缺少连接记录',
+    'vpn_manager_v2_discrepancies_reason_unconfirmed' => '状态未确认',
+    'vpn_manager_v2_discrepancies_recovery_next' => '打开恢复页面并检查面板，然后恢复受影响的连接。',
+    'vpn_manager_v2_discrepancies_previous' => '上一页',
+    'vpn_manager_v2_discrepancies_next' => '下一页',
+    'vpn_manager_v2_discrepancies_obsolete_help' => '套餐变更后，请在套餐页面检查过时连接。',
+    'vpn_manager_v2_discrepancies_open_plans' => '打开套餐',
     'vpn_manager_v2_xray_manual_servers' => '在同一 JSON 订阅中显示自动选择和手动服务器',
     'vpn_manager_v2_xray_manual_servers_help' => '为套餐中的自有连接添加独立配置，包括自动选择列表之外的节点。支持 VLESS + REALITY TCP。外部来源沿用现有设置，普通订阅仍可使用。',
     'vpn_manager_v2_xray_manual_diagnostic' => '手动配置：%d；跳过不兼容连接：%d。',

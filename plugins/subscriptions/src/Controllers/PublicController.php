@@ -53,6 +53,7 @@ final class PublicController
         return plugin_view('subscriptions', 'public/account', \FireballPluginSubscriptions::viewData([
             'title' => \FireballPluginSubscriptions::t('subscriptions_account_title'),
             'subscription' => $subscription,
+            'plan' => $subscription ? (new PlanRepository())->find((int)$subscription['plan_id']) : null,
             'payments' => $payments,
             'payments_total' => $paymentsTotal,
             'payments_pagination' => $paymentsPagination,

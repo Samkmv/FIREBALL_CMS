@@ -1,7 +1,7 @@
 {
   "name": "Управление VPN",
   "slug": "vpn-manager-v2",
-  "version": "3.5.0",
+  "version": "3.6.0",
   "type": "system",
   "description": "Управление VPN на самостоятельном Xray-core через FIREBALL Agent, совместимые подписки и поэтапный переход с 3x-ui.",
   "description_i18n": {
@@ -19,6 +19,7 @@
   },
   "auto_migrate": true,
   "release_notes": [
+    "Compact overview, mobile subscription cards and clearer discrepancy guidance using FIREBALL Admin UI.",
     "Auto Select and manual server profiles in one JSON subscription, native RoscomVPN routing, and local removal of lost servers while preserving subscriptions and history.",
     "Shared Happ/Incy routing, subscription link rotation and configuration refresh for partially provisioned subscriptions.",
     "Online tab after Subscriptions with live statistics, user/server connections, search, sorting, last-seen history and 10-second refresh.",
@@ -51,6 +52,7 @@
   ],
   "release_notes_i18n": {
     "en": [
+      "Compact overview, mobile subscription cards and clearer discrepancy guidance using FIREBALL Admin UI.",
       "Auto Select and manual server profiles in one JSON subscription, native RoscomVPN routing, and local removal of lost servers while preserving subscriptions and history.",
       "Shared Happ/Incy routing, subscription link rotation and configuration refresh for partially provisioned subscriptions.",
       "Online tab after Subscriptions with live statistics, user/server connections, search, sorting, last-seen history and 10-second refresh.",
@@ -82,6 +84,7 @@
       "Added quick server replacement and Happ notices for expiry and maintenance."
     ],
     "ru": [
+      "Компактный обзор, мобильные карточки подписок и пояснения к расхождениям в стиле FIREBALL Admin UI.",
       "Автовыбор и ручные серверы в одной JSON-подписке, нативная маршрутизация RoscomVPN и удаление отсутствующих серверов из CMS с сохранением подписок, ключей, истории и трафика.",
       "Общий профиль маршрутизации Happ/Incy, смена ссылки подписки кнопкой и обновление конфигурации частично созданных подписок.",
       "Вкладка «Онлайн» после подписок. Карточки статистики, пользователи и серверы, поиск, сортировка, последнее подтверждение онлайн и автообновление каждые 10 секунд.",
@@ -113,6 +116,7 @@
       "Добавлены быстрая замена сервера и уведомления об истечении подписки и техработах в Happ."
     ],
     "de": [
+      "Kompakte Übersicht, mobile Abonnementkarten und verständliche Abweichungen im FIREBALL Admin UI.",
       "Automatische und manuelle Serverprofile in einem JSON-Abonnement, natives RoscomVPN-Routing und lokale Entfernung verlorener Server mit Erhalt von Abonnements und Verlauf.",
       "Gemeinsames Happ/Incy-Routing, Wechsel des Abonnementlinks und Konfigurationsaktualisierung teilweise angelegter Abonnements.",
       "Online-Registerkarte nach Abonnements mit Statistik, Benutzer- und Serververbindungen, Suche, Sortierung, Verlauf und Aktualisierung alle 10 Sekunden.",
@@ -144,6 +148,7 @@
       "Schneller Serverwechsel und Happ-Hinweise zu Ablauf und Wartung hinzugefügt."
     ],
     "zh-cn": [
+      "采用 FIREBALL Admin UI 的紧凑概览、移动订阅卡片及差异说明。",
       "同一 JSON 订阅中提供自动选择和手动服务器，集成原生 RoscomVPN 路由，并支持保留订阅与历史记录的旧服务器本地移除。",
       "共享 Happ/Incy 路由配置、订阅链接更换及部分创建订阅的配置刷新。",
       "订阅后新增在线页面，支持统计卡片、用户和服务器连接、搜索、排序、最后在线记录和每 10 秒刷新。",

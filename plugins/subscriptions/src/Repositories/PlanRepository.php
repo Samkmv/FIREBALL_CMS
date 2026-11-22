@@ -95,6 +95,19 @@ final class PlanRepository
 
             $this->savePermissions($id, $data);
             $this->saveResources($id, $data);
+            if (isset($data['features_present']) || array_key_exists('features', $data)) {
+                $features = $this->normalizeFeatures($data);
+                db()->query('UPDATE subscription_plans SET features_json = ? WHERE id = ?', [
+                    $features === null ? null : json_encode($features, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+                    $id,
+                ]);
+            }
+            if (isset($data['permission_details_present']) || array_key_exists('permission_details', $data)) {
+                db()->query('UPDATE subscription_plans SET permission_details_json = ? WHERE id = ?', [
+                    json_encode($this->normalizePermissionDetails($data['permission_details'] ?? []), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+                    $id,
+                ]);
+            }
             db()->commit();
         } catch (\Throwable $exception) {
             if (db()->inTransaction()) {
@@ -159,7 +172,7 @@ final class PlanRepository
         $keys = [
             'id', 'slug', 'name', 'description', 'price_minor', 'currency',
             'duration_unit', 'duration_value', 'grace_period_days', 'is_recurring', 'auto_renew_enabled',
-            'permissions', 'resources',
+            'permissions', 'resources', 'features', 'permission_details',
         ];
 
         return array_intersect_key($plan, array_flip($keys));
@@ -223,6 +236,10 @@ final class PlanRepository
 
     private function decorate(array $plan): array
     {
+        $features = json_decode((string)($plan['features_json'] ?? ''), true);
+        $plan['features'] = is_array($features) ? $features : null;
+        $permissionDetails = json_decode((string)($plan['permission_details_json'] ?? ''), true);
+        $plan['permission_details'] = is_array($permissionDetails) ? $permissionDetails : [];
         foreach (['id', 'price_minor', 'duration_value', 'grace_period_days', 'sort_order'] as $field) {
             $plan[$field] = (int)$plan[$field];
         }
@@ -241,6 +258,60 @@ final class PlanRepository
         $plan['price_display'] = Money::display($plan['price_minor'], (string)$plan['currency']);
 
         return $plan;
+    }
+
+    private function normalizeFeatures(array $data): ?array
+    {
+        if (($data['features_mode'] ?? '') === 'automatic'
+            || (!isset($data['features_present']) && ($data['features'] ?? null) === null)) {
+            return null;
+        }
+
+        $input = $data['features'] ?? [];
+        if (!is_array($input) || count($input) > 50) {
+            throw new \InvalidArgumentException(\FireballPluginSubscriptions::t('subscriptions_features_invalid'));
+        }
+        $features = [];
+        foreach ($input as $feature) {
+            if (!is_array($feature) || !is_string($feature['title'] ?? '') || !is_string($feature['description'] ?? '')) {
+                throw new \InvalidArgumentException(\FireballPluginSubscriptions::t('subscriptions_features_invalid'));
+            }
+            $title = trim($feature['title'] ?? '');
+            $description = trim($feature['description'] ?? '');
+            if ($title === '' && $description === '') {
+                continue;
+            }
+            if ($title === '' || mb_strlen($title) > 255 || mb_strlen($description) > 2000) {
+                throw new \InvalidArgumentException(\FireballPluginSubscriptions::t('subscriptions_features_invalid'));
+            }
+            $features[] = ['title' => $title, 'description' => $description];
+        }
+
+        return $features;
+    }
+
+    private function normalizePermissionDetails(mixed $input): array
+    {
+        if (!is_array($input)) {
+            throw new \InvalidArgumentException(\FireballPluginSubscriptions::t('subscriptions_permission_details_invalid'));
+        }
+        $details = [];
+        foreach (self::PERMISSIONS as $permission) {
+            $item = $input[$permission] ?? [];
+            if (!is_array($item) || !is_string($item['title'] ?? '') || !is_string($item['description'] ?? '')) {
+                throw new \InvalidArgumentException(\FireballPluginSubscriptions::t('subscriptions_permission_details_invalid'));
+            }
+            $title = trim($item['title'] ?? '');
+            $description = trim($item['description'] ?? '');
+            if (mb_strlen($title) > 255 || mb_strlen($description) > 2000) {
+                throw new \InvalidArgumentException(\FireballPluginSubscriptions::t('subscriptions_permission_details_invalid'));
+            }
+            if ($title !== '' || $description !== '') {
+                $details[$permission] = ['title' => $title, 'description' => $description];
+            }
+        }
+
+        return $details;
     }
 
     private function currency(string $currency): string

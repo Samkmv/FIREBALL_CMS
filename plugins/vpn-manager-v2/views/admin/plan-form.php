@@ -296,7 +296,7 @@ $renderNodeRow = static function (array $node, string|int $index) use ($servers,
 <?php endif; ?>
 
 <?php if ($editing): ?>
-    <section class="border rounded-5 p-3 p-md-4 mt-4">
+    <section id="reconciliation" class="fb-card p-3 p-md-4 mt-4">
         <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
             <div>
                 <h2 class="h6 mb-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_reconciliation_title')) ?></h2>

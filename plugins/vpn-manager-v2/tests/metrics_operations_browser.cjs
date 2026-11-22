@@ -53,34 +53,14 @@ const metrics = {
             await page.evaluate(theme => document.documentElement.dataset.bsTheme = theme, theme);
             for (const width of [1440, 1200, 992, 390, 320]) {
                 await page.setViewportSize({width, height: 1100});
-                const stats = page.locator('.fb-vpn-stat-card');
+                const stats = page.locator('section[aria-label="Главное состояние"] a.fb-card');
                 assert.equal(await stats.count(), 4);
-                const colors = await stats.evaluateAll(cards => cards.map(card => ({
-                    border: getComputedStyle(card).borderColor,
-                    background: getComputedStyle(card).backgroundImage,
-                    icon: getComputedStyle(card.querySelector('.fb-stat-icon')).color,
-                    href: card.getAttribute('href'),
-                })));
-                assert.equal(new Set(colors.map(card => card.border)).size, 4, 'Four native color accents');
-                assert(colors.every(card => card.background.includes('linear-gradient')), 'Cards have tinted backgrounds');
-                assert(colors.every(card => card.href.startsWith('/admin/plugins/vpn-manager-v2/')), 'Cards retain section links');
-                const layout = await stats.evaluateAll(cards => cards.map(card => {
-                    const rows = [...card.children].map(child => child.getBoundingClientRect());
-                    const bounds = card.getBoundingClientRect();
-                    return getComputedStyle(card).flexDirection === 'column'
-                        && rows.every(row => row.x >= bounds.x && row.right <= bounds.right + 1)
-                        && rows[1].y >= rows[0].bottom && rows[2].y >= rows[1].bottom;
-                }));
-                assert(layout.every(Boolean), 'Title, value and error count occupy separate rows within the card');
-                assert.equal(await stats.filter({has: page.locator('.text-warning')}).count(), 1, 'Actual error count keeps warning treatment');
+                const links = await stats.evaluateAll(cards => cards.map(card => card.getAttribute('href')));
+                assert(links.every(link => link.startsWith('/admin/plugins/vpn-manager-v2/')), 'Cards retain section links');
+                assert.equal(await stats.filter({has: page.locator('.text-warning-emphasis')}).count(), 1, 'Actual error count keeps warning treatment');
                 assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'No mobile overflow');
-                await page.locator('section[aria-labelledby="vpnV2MainStateTitle"]').screenshot({path: '/private/tmp/vpn-overview-' + theme + '-' + width + '.png'});
             }
         }
-        // Reproduce cached pre-fix admin CSS: its generic stat cards use a row.
-        const staleCss = await page.addStyleTag({content: '.fb-stat-card { display:flex; flex-direction:row; align-items:center; gap:16px; }'});
-        assert(await page.locator('.fb-vpn-stat-card').evaluateAll(cards => cards.every(card => getComputedStyle(card).flexDirection === 'column')), 'Layout remains vertical with cached generic stat CSS');
-        await staleCss.evaluate(element => element.remove());
         await page.setViewportSize({width: 1440, height: 1000});
         const cards = page.locator('[data-vpn-v2-server-metric-card]');
         const badge = index => cards.nth(index).locator('[data-vpn-v2-server-status]');
@@ -90,21 +70,22 @@ const metrics = {
         release(); pending = null;
         const waitForRefresh = () => page.waitForFunction(() => !document.querySelector('[data-vpn-v2-refresh-metrics]').disabled);
         await waitForRefresh();
-        assert.equal(await badge(0).innerText(), 'Онлайн');
+        assert.equal(await badge(0).innerText(), 'Панель доступна');
         assert.equal(await badge(1).innerText(), 'Недоступен');
         assert.equal(await badge(2).innerText(), 'Отключён');
+        await cards.nth(0).locator('summary').click();
         assert.equal(await cards.nth(0).locator('[data-vpn-v2-metric="swap-value"]').innerText(), '—', 'Null is not zero percent');
-        assert.equal(await cards.nth(1).locator('[data-vpn-v2-metric="cpu-value"]').innerText(), '—');
+        assert.equal(await cards.nth(1).locator('summary [data-vpn-v2-metric="cpu-value"]').innerText(), '—');
         assert(!requests.includes(3), 'Disabled servers must not be queried');
-        await page.locator('[data-vpn-v2-server-metrics]').screenshot({path: '/private/tmp/vpn-metrics-qa.png'});
+        assert(await page.locator('[data-vpn-v2-metrics-attention]').isVisible(), 'Panel failure is shown on the overview');
         for (const modes of [['offline', 'success'], ['success', 'network'], ['success', 'invalid'], ['success', 'forbidden']]) {
             responses = modes;
             await page.locator('[data-vpn-v2-refresh-metrics]').click();
             await waitForRefresh();
-            assert.equal(await badge(0).innerText(), modes[0] === 'success' ? 'Онлайн' : 'Недоступен');
-            assert.equal(await badge(1).innerText(), modes[1] === 'success' ? 'Онлайн' : ['invalid', 'forbidden'].includes(modes[1]) ? 'Ошибка' : 'Недоступен');
-            if (modes[0] === 'offline') assert.equal(await cards.nth(0).locator('[data-vpn-v2-metric="cpu-value"]').innerText(), '—', 'Old successful metrics cleared on failure');
-            if (modes[1] === 'network') assert.equal(await cards.nth(1).locator('[data-vpn-v2-metric-state]').innerText(), 'Показатели сейчас недоступны.', 'Network error is localized');
+            assert.equal(await badge(0).innerText(), modes[0] === 'success' ? 'Панель доступна' : 'Недоступен');
+            assert.equal(await badge(1).innerText(), modes[1] === 'success' ? 'Панель доступна' : ['invalid', 'forbidden'].includes(modes[1]) ? 'Ошибка' : 'Недоступен');
+            if (modes[0] === 'offline') assert.equal(await cards.nth(0).locator('summary [data-vpn-v2-metric="cpu-value"]').innerText(), '—', 'Old successful metrics cleared on failure');
+            if (modes[1] === 'network') assert.equal(await cards.nth(1).locator('[data-vpn-v2-metric-state]').textContent(), 'Показатели сейчас недоступны.', 'Network error is localized');
         }
         for (const width of [1440, 390]) {
             await page.setViewportSize({width, height: 900});
@@ -118,7 +99,6 @@ const metrics = {
                 assert(bounds.x >= 0 && bounds.x + bounds.width <= width + 1, 'Native footer fits screen');
                 assert(await page.locator('.admin-pagination-nav').isVisible());
             }
-            await page.locator('.admin-table-footer').screenshot({path: '/private/tmp/vpn-operations-' + width + '-qa.png'});
         }
         assert.deepEqual(errors, []);
         console.log('PASS real templates and JS: loading/live/failure/recovery/disabled/malformed/network; 20/20/1 operations and native pagination at 1440px/390px.');

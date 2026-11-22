@@ -1,6 +1,18 @@
 <?php
 
 return [
+    'vpn_manager_v2_overview_active_total' => 'Verfügbar / gesamt',
+    'vpn_manager_v2_overview_panel_available' => 'Panel erreichbar',
+    'vpn_manager_v2_discrepancies_reason' => 'Grund',
+    'vpn_manager_v2_discrepancies_coverage' => 'Bestätigt / erwartet',
+    'vpn_manager_v2_discrepancies_reason_inbound' => 'Nicht verfügbare Inbounds',
+    'vpn_manager_v2_discrepancies_reason_missing' => 'Verbindungseintrag fehlt',
+    'vpn_manager_v2_discrepancies_reason_unconfirmed' => 'Status unbestätigt',
+    'vpn_manager_v2_discrepancies_recovery_next' => 'Öffnen Sie die Wiederherstellung und prüfen Sie das Panel. Stellen Sie danach die betroffenen Verbindungen wieder her.',
+    'vpn_manager_v2_discrepancies_previous' => 'Zurück',
+    'vpn_manager_v2_discrepancies_next' => 'Weiter',
+    'vpn_manager_v2_discrepancies_obsolete_help' => 'Veraltete Verbindungen nach Tarifänderungen prüfen Sie auf der Tarifseite.',
+    'vpn_manager_v2_discrepancies_open_plans' => 'Tarife öffnen',
     'vpn_manager_v2_xray_manual_servers' => 'Automatische und manuelle Serverauswahl in einem JSON-Abonnement',
     'vpn_manager_v2_xray_manual_servers_help' => 'Eigene Tarifverbindungen als separate Profile hinzufuegen, auch ausserhalb der automatischen Auswahl. Unterstuetzt VLESS + REALITY TCP. Externe Quellen behalten ihre Einstellung. Das normale Abonnement bleibt verfuegbar.',
     'vpn_manager_v2_xray_manual_diagnostic' => 'Manuelle Profile: %d. Nicht unterstuetzte Verbindungen uebersprungen: %d.',

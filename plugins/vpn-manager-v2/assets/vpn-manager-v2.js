@@ -359,6 +359,10 @@
                     results.replaceChildren.apply(results, Array.from(next.childNodes));
                     count.textContent = nextCount.textContent.trim();
                     clear.hidden = !url.search;
+                    document.querySelectorAll('[data-vpn-subscription-status]').forEach(function (link) {
+                        if (link.dataset.vpnSubscriptionStatus === status.value) link.setAttribute('aria-current', 'page');
+                        else link.removeAttribute('aria-current');
+                    });
                     window.history.replaceState(window.history.state, '', url);
                 } catch (error) {
                     if (!controller.signal.aborted) count.textContent = form.dataset.searchFailed;
@@ -573,6 +577,7 @@
     function setupServerMetrics(container) {
         var cards = Array.prototype.slice.call(container.querySelectorAll('[data-vpn-v2-server-metric-card]'));
         var refresh = container.querySelector('[data-vpn-v2-refresh-metrics]');
+        var attention = document.querySelector('[data-vpn-v2-metrics-attention]');
         var loadingLabel = container.getAttribute('data-loading-label') || 'Loading…';
         var errorLabel = container.getAttribute('data-error-label') || 'Metrics unavailable';
         var disabledLabel = container.getAttribute('data-disabled-label') || 'Server disabled';
@@ -582,6 +587,15 @@
             minutes: container.getAttribute('data-minutes-label') || 'm'
         };
         var coresLabel = container.getAttribute('data-cores-label') || 'cores';
+
+        function showIssue(card, message) {
+            if (!attention) return;
+            var item = document.getElementById(card.dataset.issueId);
+            if (!item || !attention.contains(item)) return;
+            item.querySelector('[data-vpn-v2-panel-issue-message]').textContent = message;
+            item.hidden = !message;
+            attention.hidden = !attention.querySelector('li:not([hidden])');
+        }
 
         function status(card, value) {
             var badge = card.querySelector('[data-vpn-v2-server-status]');
@@ -609,10 +623,9 @@
         }
 
         function text(card, name, value) {
-            var target = node(card, name);
-            if (target) {
+            card.querySelectorAll('[data-vpn-v2-metric="' + name + '"]').forEach(function (target) {
                 target.textContent = value;
-            }
+            });
         }
 
         function usage(card, key, data) {
@@ -666,7 +679,7 @@
 
             var state = card.querySelector('[data-vpn-v2-metric-state]');
             if (state) {
-                state.className = 'small text-success mb-3';
+                state.className = 'small text-success';
                 state.textContent = data.checked_at || '';
             }
         }
@@ -676,6 +689,7 @@
             clear(card);
             if (card.getAttribute('data-enabled') !== '1') {
                 status(card, 'disabled');
+                showIssue(card, '');
                 if (state) {
                     state.textContent = disabledLabel;
                 }
@@ -683,7 +697,7 @@
             }
             status(card, 'unchecked');
             if (state) {
-                state.className = 'small text-body-secondary mb-3';
+                state.className = 'small text-body-secondary';
                 state.textContent = loadingLabel;
             }
 
@@ -716,12 +730,15 @@
                 }
                 render(card, data);
                 status(card, 'online');
+                showIssue(card, '');
             }).catch(function (error) {
                 clear(card);
                 status(card, error.serverStatus || 'offline');
+                var message = error.serverStatus ? error.message || errorLabel : errorLabel;
+                showIssue(card, message);
                 if (state) {
-                    state.className = 'small text-danger mb-3';
-                    state.textContent = error.serverStatus ? error.message || errorLabel : errorLabel;
+                    state.className = 'small text-danger';
+                    state.textContent = message;
                 }
             }).finally(function () { window.clearTimeout(timeout); });
         }

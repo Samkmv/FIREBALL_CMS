@@ -7,6 +7,8 @@ $autoRenew = false;
 $payments = is_array($payments ?? null) ? $payments : [];
 $permissions = is_array($permissions ?? null) ? $permissions : [];
 $includedPermissions = array_filter($permissions);
+$hasCustomFeatures = is_array($plan['features'] ?? null);
+$hasFeatures = $hasCustomFeatures ? $plan['features'] !== [] : $includedPermissions !== [];
 $permissionIcons = [
     'posts.view_paid' => 'ci-file-text',
     'videos.view_paid' => 'ci-play-circle',
@@ -115,7 +117,7 @@ foreach ($payments as $payment) {
                 <p class="subscriptions-account-card__intro mb-0"><?= htmlSC(FireballPluginSubscriptions::t($isUtilityManaged ? 'subscriptions_address_included_in_utilities' : 'subscriptions_account_access_ready')) ?></p>
             </header>
 
-            <div class="subscriptions-account-card__layout <?= $includedPermissions === [] ? 'subscriptions-account-card__layout--single' : '' ?>">
+            <div class="subscriptions-account-card__layout <?= !$hasFeatures ? 'subscriptions-account-card__layout--single' : '' ?>">
                 <div class="subscriptions-account-card__summary">
                     <dl class="subscriptions-account-card__facts mb-0">
                         <div class="subscriptions-account-card__meta">
@@ -137,18 +139,29 @@ foreach ($payments as $payment) {
                     <?php endif; ?>
                 </div>
 
-                <?php if ($includedPermissions !== []): ?>
+                <?php if ($hasFeatures): ?>
                     <section class="subscriptions-account-card__features" aria-labelledby="subscription-features-title">
                         <h3 class="h6 mb-3" id="subscription-features-title"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_access_included')) ?></h3>
-                        <ul class="subscriptions-account-card__permissions list-unstyled mb-0">
-                            <?php foreach ($includedPermissions as $key => $enabled): ?>
-                            <li>
-                                <span class="subscriptions-account-card__feature-icon"><i class="<?= htmlSC($permissionIcons[$key] ?? 'ci-check-circle') ?>" aria-hidden="true"></i></span>
-                                <span class="subscriptions-account-card__feature-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_permission_' . str_replace('.', '_', $key))) ?><?= is_int($enabled) ? ': ' . (int)$enabled : '' ?></span>
-                                <i class="ci-check subscriptions-account-card__feature-check" aria-hidden="true"></i>
-                            </li>
-                            <?php endforeach; ?>
-                        </ul>
+                        <?php if ($hasCustomFeatures): ?>
+                            <?php require __DIR__ . '/plan-feature-list.php'; ?>
+                        <?php else: ?>
+                            <ul class="subscriptions-account-card__permissions list-unstyled mb-0">
+                                <?php foreach ($includedPermissions as $key => $enabled): ?>
+                                <li>
+                                    <span class="subscriptions-account-card__feature-icon"><i class="<?= htmlSC($permissionIcons[$key] ?? 'ci-check-circle') ?>" aria-hidden="true"></i></span>
+                                    <span class="subscriptions-account-card__feature-label">
+                                        <?php
+                                        $permission = $key;
+                                        $label = 'subscriptions_permission_' . str_replace('.', '_', $key);
+                                        $featureSuffix = is_int($enabled) ? ': ' . (int)$enabled : '';
+                                        require __DIR__ . '/permission-feature-text.php';
+                                        ?>
+                                    </span>
+                                    <i class="ci-check subscriptions-account-card__feature-check" aria-hidden="true"></i>
+                                </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php endif; ?>
                     </section>
                 <?php endif; ?>
             </div>

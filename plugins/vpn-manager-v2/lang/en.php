@@ -1,6 +1,18 @@
 <?php
 
 return [
+    'vpn_manager_v2_overview_active_total' => 'Available / total',
+    'vpn_manager_v2_overview_panel_available' => 'Panel reachable',
+    'vpn_manager_v2_discrepancies_reason' => 'Reason',
+    'vpn_manager_v2_discrepancies_coverage' => 'Confirmed / expected',
+    'vpn_manager_v2_discrepancies_reason_inbound' => 'Unavailable inbounds',
+    'vpn_manager_v2_discrepancies_reason_missing' => 'Missing connection record',
+    'vpn_manager_v2_discrepancies_reason_unconfirmed' => 'State unconfirmed',
+    'vpn_manager_v2_discrepancies_recovery_next' => 'Open recovery and check the panel. Then restore the affected connections.',
+    'vpn_manager_v2_discrepancies_previous' => 'Previous',
+    'vpn_manager_v2_discrepancies_next' => 'Next',
+    'vpn_manager_v2_discrepancies_obsolete_help' => 'Review obsolete connections after plan changes on the plan page.',
+    'vpn_manager_v2_discrepancies_open_plans' => 'Open plans',
     'vpn_manager_v2_xray_manual_servers' => 'Auto Select and manual servers in one JSON subscription',
     'vpn_manager_v2_xray_manual_servers_help' => 'Add separate profiles for managed plan connections, including nodes outside the Auto Select list. Supports VLESS + REALITY TCP. External Auto Select sources follow their existing setting. The standard subscription remains available.',
     'vpn_manager_v2_xray_manual_diagnostic' => 'Manual profiles: %d. Unsupported connections skipped: %d.',

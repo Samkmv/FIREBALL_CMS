@@ -5,6 +5,9 @@ $features = [
     ['music.listen_paid', 'subscriptions_feature_music'],
     ['music.download_paid', 'subscriptions_feature_music_download'],
     ['camera_archive.view', 'subscriptions_feature_archive'],
+    ['camera_archive.download', 'subscriptions_permission_camera_archive_download'],
+    ['camera_archive.max_days', 'subscriptions_permission_camera_archive_max_days'],
+    ['camera_archive.max_fragment_minutes', 'subscriptions_permission_camera_archive_max_fragment_minutes'],
 ];
 $fullName = trim((string)$profile['first_name'] . ' ' . (string)$profile['last_name']);
 $address = implode(', ', array_filter([
@@ -62,13 +65,23 @@ if ($autoRenewEnabled) {
                     <?php endif; ?>
                     <div class="border-top pt-4">
                         <div class="small fw-semibold text-uppercase text-body-secondary mb-3"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_plan_features')) ?></div>
-                        <ul class="list-unstyled vstack gap-3 mb-0">
-                            <?php foreach ($features as [$permission, $label]): ?>
-                                <?php if (!empty($plan['permissions'][$permission])): ?>
-                                    <li class="d-flex align-items-start gap-2"><i class="ci-check-circle text-success mt-1 flex-shrink-0"></i><span><?= htmlSC(FireballPluginSubscriptions::t($label)) ?><?php if ($permission === 'camera_archive.view' && !empty($plan['permissions']['camera_archive.max_days'])): ?> — <?= (int)$plan['permissions']['camera_archive.max_days'] ?> <?= htmlSC(FireballPluginSubscriptions::t('subscriptions_duration_days')) ?><?php endif; ?></span></li>
-                                <?php endif; ?>
-                            <?php endforeach; ?>
-                        </ul>
+                        <?php if (is_array($plan['features'] ?? null)): ?>
+                            <?php require __DIR__ . '/plan-feature-list.php'; ?>
+                        <?php else: ?>
+                            <ul class="list-unstyled vstack gap-3 mb-0">
+                                <?php foreach ($features as [$permission, $label]): ?>
+                                    <?php if (!empty($plan['permissions'][$permission])): ?>
+                                        <li class="d-flex align-items-start gap-2">
+                                            <i class="ci-check-circle text-success mt-1 flex-shrink-0"></i>
+                                            <span class="min-w-0">
+                                                <?php $featureSuffix = is_int($plan['permissions'][$permission]) ? ' — ' . (int)$plan['permissions'][$permission] : ''; ?>
+                                                <?php require __DIR__ . '/permission-feature-text.php'; ?>
+                                            </span>
+                                        </li>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php endif; ?>
                     </div>
                 </div>
             </article>

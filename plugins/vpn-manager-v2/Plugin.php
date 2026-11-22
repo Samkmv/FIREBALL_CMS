@@ -408,7 +408,8 @@ final class FireballPluginVpnManagerV2 implements PluginInterface, \FBL\Plugins\
 
         return array_merge([
             'tabs' => self::tabs($active),
-            'styles' => [],
+            'styles' => [base_href('/plugins/vpn-manager-v2/assets/admin-vpn.css') . '?v='
+                . filemtime(__DIR__ . '/assets/admin-vpn.css')],
             'footer_scripts' => [$assetUrl . '?v=' . $assetVersion],
         ], $data);
     }

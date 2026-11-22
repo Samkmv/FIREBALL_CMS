@@ -20,95 +20,72 @@ $pendingMigrations = is_array($overviewMigrations['pending'] ?? null) ? $overvie
 $diagnosticsAvailable = !empty($overview['available']);
 $isReady = !empty($migrationStatus['is_ready']) && !empty($overview['is_ready']);
 $metric = static fn(mixed $value): string => $value === null ? '—' : (string)(int)$value;
-$summaryCards = [
-    'servers' => ['vpn_manager_v2_overview_servers', 'ci-server', '/admin/plugins/vpn-manager-v2/servers', 'blue'],
-    'subscriptions' => ['vpn_manager_v2_overview_subscriptions', 'ci-link', '/admin/plugins/vpn-manager-v2/subscriptions', 'purple'],
-    'connections' => ['vpn_manager_v2_overview_connections', 'ci-share-2', '/admin/plugins/vpn-manager-v2/connections', 'green'],
-    'plans' => ['vpn_manager_v2_overview_plans', 'ci-package', '/admin/plugins/vpn-manager-v2/plans', 'primary'],
+$t = static fn(string $key): string => htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_' . $key));
+$summary = [
+    'servers' => 'ci-server',
+    'subscriptions' => 'ci-link',
+    'connections' => 'ci-share-2',
+    'plans' => 'ci-package',
 ];
+$actions = '<a class="btn btn-primary d-inline-flex align-items-center gap-2" href="'
+    . htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions/create')) . '"><i class="ci-plus" aria-hidden="true"></i>'
+    . $t('add_subscription') . '</a>';
 ?>
 
 <?= view()->renderPartial('admin/shell_open', [
     'title' => $title ?? FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_title'),
-    'subtitle' => $subtitle ?? '',
+    'actions' => $actions,
 ]) ?>
 
 <?php require __DIR__ . '/partials/tabs.php'; ?>
 
-<div class="alert <?= $isReady ? 'alert-success' : 'alert-warning' ?> rounded-4 mb-4" role="alert">
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-        <div class="d-flex align-items-start gap-3">
-            <i class="<?= $isReady ? 'ci-check-circle' : 'ci-alert-triangle' ?> fs-4" aria-hidden="true"></i>
-            <div>
-                <div class="fw-semibold"><?= htmlSC(FireballPluginVpnManagerV2::t($isReady ? 'vpn_manager_v2_recovery_schema_ready' : 'vpn_manager_v2_overview_attention')) ?></div>
-                <div class="small mt-1"><?= htmlSC(FireballPluginVpnManagerV2::t($isReady ? 'vpn_manager_v2_recovery_schema_help' : 'vpn_manager_v2_schema_incomplete')) ?></div>
-            </div>
-        </div>
-        <a class="btn btn-sm <?= $isReady ? 'btn-success' : 'btn-warning' ?> rounded-pill" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/sync-logs')) ?>">
-            <i class="ci-list me-1" aria-hidden="true"></i><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_tab_sync_logs')) ?>
-        </a>
+<?php if (!$isReady): ?>
+    <div class="alert alert-warning d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3" role="alert">
+        <span><strong><?= $t('overview_attention') ?></strong> · <?= $t('schema_incomplete') ?></span>
+        <a class="alert-link" href="#vpnV2Technical"><?= $t('overview_technical_title') ?></a>
     </div>
-</div>
+<?php endif; ?>
 
-<section class="border rounded-5 p-3 p-md-4 mb-4" aria-labelledby="vpnV2QuickActionsTitle">
-    <h2 class="h5 mb-3" id="vpnV2QuickActionsTitle"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_quick_actions')) ?></h2>
-    <div class="d-flex flex-wrap gap-2">
-        <a class="btn btn-dark rounded-pill" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions/create')) ?>"><i class="ci-plus me-1" aria-hidden="true"></i><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_add_subscription')) ?></a>
-        <a class="btn btn-outline-secondary rounded-pill" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/servers/create')) ?>"><i class="ci-server me-1" aria-hidden="true"></i><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_add_server')) ?></a>
-        <a class="btn btn-outline-secondary rounded-pill" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/plans/create')) ?>"><i class="ci-package me-1" aria-hidden="true"></i><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_add_plan')) ?></a>
-        <a class="btn btn-outline-secondary rounded-pill" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/operations')) ?>"><i class="ci-refresh-cw me-1" aria-hidden="true"></i><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_tab_operations')) ?></a>
-    </div>
-</section>
-
-<section class="mb-4" aria-labelledby="vpnV2MainStateTitle">
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-        <h2 class="h5 mb-0" id="vpnV2MainStateTitle"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_primary_title')) ?></h2>
-        <span class="small text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_primary_help')) ?></span>
-    </div>
-    <div class="row g-3">
-        <?php foreach ($summaryCards as $key => [$labelKey, $icon, $href, $tone]): ?>
-            <?php
-            $item = is_array($overviewData[$key] ?? null) ? $overviewData[$key] : [];
-            $errors = $item['errors'] ?? null;
-            $hasErrors = $errors !== null && (int)$errors > 0;
-            ?>
-            <div class="col-12 col-sm-6 col-xl-3">
-                <a class="fb-card fb-stat-card fb-vpn-stat-card is-<?= htmlSC($tone) ?><?= $hasErrors ? ' has-errors' : '' ?> rounded-5 p-3 p-md-4 h-100 d-flex flex-column align-items-stretch gap-0 text-reset text-decoration-none"
-                   href="<?= htmlSC(base_href($href)) ?>">
-                    <div class="d-flex align-items-center justify-content-between gap-2 w-100">
-                        <div class="small text-body-secondary text-break min-w-0"><?= htmlSC(FireballPluginVpnManagerV2::t($labelKey)) ?></div>
-                        <span class="fb-stat-icon rounded-circle flex-shrink-0">
-                            <i class="<?= htmlSC($icon) ?>" aria-hidden="true"></i>
-                        </span>
-                    </div>
-                    <div class="d-flex flex-wrap align-items-end gap-2 mt-2 w-100">
-                        <span class="display-6 fw-semibold lh-1"><?= htmlSC($metric($item['active'] ?? null)) ?></span>
-                        <span class="text-body-secondary text-nowrap mb-1">/ <?= htmlSC($metric($item['total'] ?? null)) ?></span>
-                    </div>
-                    <?php if (in_array($key, ['subscriptions', 'connections'], true)): ?>
-                        <div class="small text-body-secondary mt-2">
-                            <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_available_current')) ?>
-                        </div>
-                    <?php endif; ?>
-                    <div class="small mt-2 <?= $hasErrors ? 'text-warning' : 'text-body-secondary' ?>">
-                        <?php if ($errors !== null): ?>
-                            <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_errors')) ?>: <?= htmlSC($metric($errors)) ?>
-                        <?php else: ?>
-                            <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_active')) ?>
-                        <?php endif; ?>
-                    </div>
-                </a>
-            </div>
+<section class="alert alert-warning mb-3" data-vpn-v2-metrics-attention hidden aria-labelledby="vpnV2AttentionTitle">
+    <h2 class="h6 mb-1" id="vpnV2AttentionTitle"><?= $t('overview_attention') ?></h2>
+    <ul class="list-unstyled mb-0">
+        <?php foreach ($servers as $server): ?>
+            <?php $serverId = (int)$server['id']; ?>
+            <li id="vpnV2PanelIssue<?= $serverId ?>" class="py-1" hidden>
+                <strong><?= htmlSC((string)$server['name']) ?></strong>
+                <span class="small" data-vpn-v2-panel-issue-message></span>
+                <a class="alert-link ms-1" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/servers/' . $serverId . '/recovery')) ?>"><?= $t('recovery_action') ?></a>
+            </li>
         <?php endforeach; ?>
-    </div>
+    </ul>
 </section>
 
-<section class="border rounded-5 p-3 p-md-4 mb-4" aria-labelledby="vpnV2ServerLoadTitle"
+<section class="row g-2 mb-3" aria-label="<?= $t('overview_primary_title') ?>">
+    <?php foreach ($summary as $key => $icon): ?>
+        <?php $item = $overviewData[$key] ?? []; ?>
+        <div class="col-6 col-xl-3">
+            <a class="fb-card d-flex flex-column gap-1 h-100 px-3 py-2 text-reset text-decoration-none"
+               href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/' . $key)) ?>">
+                <span class="small text-body-secondary"><i class="<?= htmlSC($icon) ?> me-1" aria-hidden="true"></i><?= $t('overview_' . $key) ?></span>
+                <span>
+                    <strong class="fs-5"><?= htmlSC($metric($item['active'] ?? null)) ?></strong>
+                    <span class="small text-body-secondary">/ <?= htmlSC($metric($item['total'] ?? null)) ?></span>
+                    <span class="visually-hidden"><?= $t(in_array($key, ['subscriptions', 'connections'], true) ? 'overview_available_current' : 'overview_active_total') ?></span>
+                </span>
+                <?php if ((int)($item['errors'] ?? 0) > 0): ?>
+                    <span class="small text-warning-emphasis"><?= $t('overview_errors') ?> <?= (int)$item['errors'] ?></span>
+                <?php endif; ?>
+            </a>
+        </div>
+    <?php endforeach; ?>
+</section>
+
+<section class="mb-3" aria-labelledby="vpnV2ServerLoadTitle"
          data-vpn-v2-server-metrics
          data-loading-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_loading_metrics')) ?>"
          data-error-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_metrics_unavailable')) ?>"
          data-disabled-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_server_disabled_metrics')) ?>"
-         data-online-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_status_online')) ?>"
+         data-online-label="<?= $t('overview_panel_available') ?>"
          data-offline-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_status_offline')) ?>"
          data-unchecked-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_status_unchecked')) ?>"
          data-error-status-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_status_error')) ?>"
@@ -117,14 +94,13 @@ $summaryCards = [
          data-hours-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_hours_short')) ?>"
          data-minutes-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_minutes_short')) ?>"
          data-cores-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_cores')) ?>">
-    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
         <div>
             <h2 class="h5 mb-1" id="vpnV2ServerLoadTitle"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_servers_load_title')) ?></h2>
-            <div class="small text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_servers_load_help')) ?></div>
         </div>
         <?php if ($servers !== []): ?>
-            <button class="btn btn-sm btn-outline-secondary rounded-pill" type="button" data-vpn-v2-refresh-metrics>
-                <i class="ci-refresh-cw me-1" aria-hidden="true"></i><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_refresh_metrics')) ?>
+            <button class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1" type="button" data-vpn-v2-refresh-metrics>
+                <i class="ci-refresh-cw" aria-hidden="true"></i><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_refresh_metrics')) ?>
             </button>
         <?php endif; ?>
     </div>
@@ -135,39 +111,37 @@ $summaryCards = [
             <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_no_servers')) ?>
         </div>
     <?php else: ?>
-        <div class="row g-3">
-            <?php foreach ($servers as $server): ?>
+        <div class="fb-card px-3">
+            <?php foreach (array_values($servers) as $index => $server): ?>
                 <?php
                 $serverId = (int)($server['id'] ?? 0);
                 $enabled = !empty($server['is_enabled']);
                 // A saved status is not evidence that the current metrics request succeeded.
                 $serverStatus = $enabled ? 'unchecked' : 'disabled';
-                $badgeClass = match ($serverStatus) {
-                    'online' => 'text-bg-success',
-                    'offline' => 'text-bg-danger',
-                    'error' => 'text-bg-warning',
-                    'disabled' => 'text-bg-secondary',
-                    default => 'text-bg-light border text-body-secondary',
-                };
+                $badgeClass = $enabled ? 'text-bg-light border text-body-secondary' : 'text-bg-secondary';
                 ?>
-                <div class="col-12 col-xl-6">
-                    <article class="border rounded-4 p-3 h-100"
-                             data-vpn-v2-server-metric-card
-                             data-enabled="<?= $enabled ? '1' : '0' ?>"
-                             data-url="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/servers/' . $serverId . '/metrics')) ?>">
-                        <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
-                            <div>
-                                <a class="fw-semibold text-reset text-decoration-none" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/servers/edit/' . $serverId)) ?>">
-                                    <?= htmlSC((string)($server['name'] ?? '')) ?><i class="ci-edit-2 ms-1 small text-body-secondary" aria-hidden="true"></i>
-                                    <span class="visually-hidden"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_action_edit')) ?></span>
-                                </a>
-                                <div class="small text-body-secondary"><?= htmlSC(trim(implode(' · ', array_filter([(string)($server['country_name'] ?? ''), (string)($server['city'] ?? '')])))) ?></div>
-                            </div>
-                            <span class="badge rounded-pill <?= $badgeClass ?>" data-vpn-v2-server-status aria-live="polite"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_status_' . $serverStatus)) ?></span>
-                        </div>
-
-                        <div class="small text-body-secondary mb-3" data-vpn-v2-metric-state aria-live="polite">
-                            <?= htmlSC(FireballPluginVpnManagerV2::t($enabled ? 'vpn_manager_v2_overview_loading_metrics' : 'vpn_manager_v2_overview_server_disabled_metrics')) ?>
+                <details class="<?= $index > 0 ? 'border-top' : '' ?>"
+                         data-vpn-v2-server-metric-card
+                         data-enabled="<?= $enabled ? '1' : '0' ?>"
+                         data-issue-id="vpnV2PanelIssue<?= $serverId ?>"
+                         data-url="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/servers/' . $serverId . '/metrics')) ?>">
+                    <summary class="fb-vpn-metrics-summary py-2">
+                        <span class="d-inline-flex flex-wrap align-items-center column-gap-3 row-gap-1 ms-1">
+                            <strong class="fb-vpn-metrics-name"><?= htmlSC((string)$server['name']) ?></strong>
+                            <span class="badge rounded-pill <?= $badgeClass ?>" data-vpn-v2-server-status aria-live="polite"><?= $t('status_' . $serverStatus) ?></span>
+                            <?php if ($enabled && !empty($server['maintenance_mode'])): ?>
+                                <span class="badge rounded-pill text-bg-warning"><?= $t('subscription_notice_maintenance') ?></span>
+                            <?php endif; ?>
+                            <span class="small text-body-secondary"><?= $t('overview_cpu') ?> <strong data-vpn-v2-metric="cpu-value">—</strong></span>
+                            <span class="small text-body-secondary"><?= $t('overview_memory') ?> <strong data-vpn-v2-metric="memory-value">—</strong></span>
+                        </span>
+                    </summary>
+                    <div class="pb-3 pt-1">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
+                            <span class="small text-body-secondary" data-vpn-v2-metric-state aria-live="polite"><?= $t($enabled ? 'overview_loading_metrics' : 'overview_server_disabled_metrics') ?></span>
+                            <a class="btn btn-sm btn-outline-secondary" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/servers/edit/' . $serverId)) ?>">
+                                <?= $t('action_edit') ?>
+                            </a>
                         </div>
 
                         <div class="row g-3">
@@ -192,20 +166,22 @@ $summaryCards = [
                             <div class="col-6"><span class="text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_tcp_udp')) ?>:</span> <span data-vpn-v2-metric="connections">—</span></div>
                             <div class="col-12"><span class="text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_xray')) ?>:</span> <span data-vpn-v2-metric="xray">—</span></div>
                         </div>
-                    </article>
-                </div>
+                    </div>
+                </details>
             <?php endforeach; ?>
         </div>
     <?php endif; ?>
 </section>
 
-<details class="border rounded-5 p-3 p-md-4" <?= !$isReady ? 'open' : '' ?>>
-    <summary class="d-flex align-items-center justify-content-between gap-3 list-unstyled" style="cursor:pointer">
-        <span><span class="h5 d-block mb-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_technical_title')) ?></span><span class="small text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_technical_help')) ?></span></span>
+<details id="vpnV2Technical" class="fb-card p-3" <?= !$isReady ? 'open' : '' ?>>
+    <summary class="fb-vpn-metrics-summary d-flex align-items-center gap-2">
+        <i class="ci-chevron-down" aria-hidden="true"></i>
+        <span class="flex-grow-1"><span class="h5 d-block mb-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_technical_title')) ?></span><span class="small text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_technical_help')) ?></span></span>
         <span class="badge rounded-pill <?= $isReady ? 'text-bg-success' : 'text-bg-warning' ?>"><?= htmlSC(FireballPluginVpnManagerV2::t($isReady ? 'vpn_manager_v2_overview_ready' : 'vpn_manager_v2_overview_attention')) ?></span>
     </summary>
 
-    <div class="pt-4">
+    <div class="pt-3">
+        <a class="btn btn-sm btn-outline-secondary mb-3" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/sync-logs')) ?>"><?= $t('tab_sync_logs') ?></a>
         <div class="row g-3 mb-4">
             <div class="col-6 col-xl-3"><div class="bg-body-tertiary rounded-4 p-3 h-100"><div class="small text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_version')) ?></div><div class="h4 mb-0 mt-2"><?= htmlSC((string)($overview['version'] ?? '—')) ?></div></div></div>
             <div class="col-6 col-xl-3"><div class="bg-body-tertiary rounded-4 p-3 h-100"><div class="small text-body-secondary"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_overview_migrations')) ?></div><div class="h4 mb-0 mt-2"><?= (int)($overviewMigrations['applied_count'] ?? 0) ?> / <?= (int)($overviewMigrations['files_count'] ?? 0) ?></div></div></div>

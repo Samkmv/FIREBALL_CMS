@@ -1,6 +1,18 @@
 <?php
 
 return [
+    'vpn_manager_v2_overview_active_total' => 'Доступно / всего',
+    'vpn_manager_v2_overview_panel_available' => 'Панель доступна',
+    'vpn_manager_v2_discrepancies_reason' => 'Причина',
+    'vpn_manager_v2_discrepancies_coverage' => 'Подтверждено / по тарифу',
+    'vpn_manager_v2_discrepancies_reason_inbound' => 'Недоступные входящие подключения',
+    'vpn_manager_v2_discrepancies_reason_missing' => 'Нет записи о подключении',
+    'vpn_manager_v2_discrepancies_reason_unconfirmed' => 'Состояние не подтверждено',
+    'vpn_manager_v2_discrepancies_recovery_next' => 'Откройте восстановление и проверьте панель. Затем обработайте подключения, для которых нужно восстановление.',
+    'vpn_manager_v2_discrepancies_previous' => 'Предыдущая',
+    'vpn_manager_v2_discrepancies_next' => 'Следующая',
+    'vpn_manager_v2_discrepancies_obsolete_help' => 'Лишние подключения после изменений в тарифе проверяются на странице тарифа.',
+    'vpn_manager_v2_discrepancies_open_plans' => 'Открыть тарифы',
     'vpn_manager_v2_xray_manual_servers' => 'Автовыбор и ручной выбор серверов в одной JSON-подписке',
     'vpn_manager_v2_xray_manual_servers_help' => 'Добавить отдельные профили собственных подключений по тарифу, включая серверы вне списка автовыбора. Поддерживаются VLESS + REALITY TCP. Внешние источники участвуют в автовыборе по прежней настройке. Обычная подписка сохраняется.',
     'vpn_manager_v2_xray_manual_diagnostic' => 'Профилей для ручного выбора: %d. Несовместимых подключений пропущено: %d.',

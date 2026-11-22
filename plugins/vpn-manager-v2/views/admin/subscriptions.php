@@ -1,7 +1,6 @@
 <?php
 
 use Fireball\VpnManagerV2\Support\ProvisioningStatus;
-use Fireball\VpnManagerV2\Support\TrafficFormatter;
 use Fireball\VpnManagerV2\Support\AdminTableState;
 use Fireball\VpnManagerV2\Support\AdminActionDropdown;
 use Fireball\VpnManagerV2\Support\SubscriptionListFilter;
@@ -17,8 +16,9 @@ $attentionCounts = ['expired' => (int)($statusCounts['expired'] ?? 0),
     'inactive' => SubscriptionListFilter::inactiveCount($statusCounts)];
 $pagination = $pagination ?? null;
 $returnQuery = AdminTableState::sanitize($returnQuery ?? '');
+$listUrl = base_href('/admin/plugins/vpn-manager-v2/subscriptions');
 $addUrl = base_href('/admin/plugins/vpn-manager-v2/subscriptions/create');
-$actions = '<a class="btn btn-dark rounded-pill d-inline-flex align-items-center gap-2" href="'
+$actions = '<a class="btn btn-primary d-inline-flex align-items-center gap-2" href="'
     . htmlSC($addUrl) . '"><i class="ci-plus" aria-hidden="true"></i><span>'
     . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_add_subscription')) . '</span></a>';
 
@@ -59,7 +59,6 @@ foreach ($subscriptions as $subscription) {
     $nodeCount = (int)($subscription['node_count'] ?? 0);
     $activeCount = (int)($subscription['active_node_count'] ?? 0);
     $nodeText = $activeCount . ' / ' . $nodeCount;
-    $traffic = TrafficFormatter::limit(isset($subscription['traffic_limit_bytes']) ? (int)$subscription['traffic_limit_bytes'] : null);
     $showAction = [[
         'label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_action_view'),
         'href' => $showUrl,
@@ -99,38 +98,27 @@ foreach ($subscriptions as $subscription) {
     }
     $desktopAction = AdminActionDropdown::render($showAction);
 
+    $clientLink = '<a class="fw-semibold text-break" href="' . htmlSC($showUrl) . '">' . htmlSC($clientName) . '</a>';
     $rows[] = ['cells' => [
-        ['value' => '#' . $id],
-        ['html' => '<span class="fw-medium">' . htmlSC($clientName)
-            . '</span>' . (!empty($subscription['client_display_name']) ? '<div class="small text-body-secondary">' . htmlSC((string)$subscription['user_name']) . '</div>' : '')
-            . '<div class="small text-body-secondary">' . htmlSC($userMeta) . '</div>'],
-        ['html' => '<span class="fw-medium">' . htmlSC((string)$subscription['plan_name'])
-            . '</span> <span class="small text-body-secondary">#' . (int)$subscription['plan_id'] . '</span>'
-            . ($externalBadge === '' ? '' : '<span class="d-block">' . $externalBadge . '</span>')],
-        ['html' => $badge],
-        ['value' => (string)$subscription['starts_at']],
+        ['html' => $clientLink . '<div class="small text-body-secondary text-break">#' . $id . ' · ' . htmlSC($userMeta) . '</div>'],
+        ['html' => '<span class="fw-medium text-break">' . htmlSC((string)$subscription['plan_name']) . '</span>'
+            . ($externalBadge === '' ? '' : '<div class="mt-1">' . $externalBadge . '</div>')],
+        ['html' => '<span class="d-inline-flex flex-wrap gap-1">' . $badge . '</span>'],
         ['value' => $expiresDisplay],
-        ['html' => htmlSC($nodeText) . '<div class="small text-body-secondary">'
-            . htmlSC($traffic) . ' · '
-            . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_device_limit')) . ': ' . (int)$subscription['device_limit'] . ' · '
-            . htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_field_ip_limit')) . ': ' . (int)($subscription['ip_limit'] ?? 0)
-            . '</div>'],
+        ['value' => $nodeText],
         ['html' => '<div class="text-end">' . $desktopAction . '</div>'],
     ]];
 
     $mobileCards[] = [
         'id' => (string)$id,
-        'title' => (string)$subscription['plan_name'],
-        'icon' => 'ci-link',
-        'status' => [['html' => $externalBadge], ['html' => $badge]],
+        'title' => ['html' => $clientLink],
         'actions' => $showAction,
+        'status' => [['html' => '<span class="fb-vpn-mobile-status d-flex flex-wrap align-items-center justify-content-between gap-1 w-100">'
+            . '<span>' . $externalBadge . '</span><span class="d-inline-flex flex-wrap gap-1 ms-auto">' . $badge . '</span></span>']],
         'extra_fields' => [
-            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_client_name_title'), 'value' => $clientName],
-            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_user'), 'value' => (string)$subscription['user_name']],
-            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_starts_at'), 'value' => (string)$subscription['starts_at']],
+            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_plan'), 'value' => (string)$subscription['plan_name']],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_expires_at'), 'value' => $expiresDisplay],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_nodes'), 'value' => $nodeText],
-            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_traffic_limit'), 'value' => $traffic],
         ],
     ];
 }
@@ -138,46 +126,86 @@ foreach ($subscriptions as $subscription) {
 
 <?= view()->renderPartial('admin/shell_open', [
     'title' => $title ?? FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_title'),
-    'subtitle' => $subtitle ?? '',
     'actions' => $actions,
 ]) ?>
 
 <?php require __DIR__ . '/partials/tabs.php'; ?>
 
+<section class="mb-3" aria-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_search_button')) ?>">
+    <form method="get" action="<?= htmlSC($listUrl) ?>" class="row g-2 align-items-center"
+          data-vpn-v2-live-search data-search-failed="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_live_search_failed')) ?>">
+        <div class="col-12 col-lg">
+            <label class="visually-hidden" for="vpnV2SubscriptionQuery"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_search_placeholder')) ?></label>
+            <div class="input-group">
+                <span class="input-group-text bg-transparent"><i class="ci-search" aria-hidden="true"></i></span>
+                <input
+                    class="form-control"
+                    type="search"
+                    name="q"
+                    id="vpnV2SubscriptionQuery"
+                    maxlength="120"
+                    value="<?= htmlSC($searchQuery) ?>"
+                    placeholder="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_search_placeholder')) ?>"
+                    autocomplete="off"
+                >
+            </div>
+        </div>
+        <div class="col col-lg-3">
+            <label class="visually-hidden" for="vpnV2SubscriptionStatusFilter"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_status')) ?></label>
+            <select class="form-select" id="vpnV2SubscriptionStatusFilter" name="status">
+                <option value=""><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_filter_all')) ?></option>
+                <option value="online" <?= $statusFilter === 'online' ? 'selected' : '' ?>>
+                    <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_presence_online')) ?>
+                </option>
+                <?php foreach (SubscriptionListFilter::STATUSES as $filterStatus): ?>
+                    <option value="<?= htmlSC($filterStatus) ?>" <?= $statusFilter === $filterStatus ? 'selected' : '' ?>>
+                        <?= htmlSC($filterStatus === 'inactive'
+                            ? FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_filter_inactive')
+                            : ProvisioningStatus::label($filterStatus)) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-outline-secondary" type="submit">
+                <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_search_button')) ?>
+            </button>
+        </div>
+        <div class="col-auto" data-vpn-v2-search-clear <?= $searchQuery === '' && $statusFilter === '' ? 'hidden' : '' ?>>
+            <a class="btn btn-outline-secondary" href="<?= htmlSC($listUrl) ?>">
+                <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_search_clear')) ?>
+            </a>
+        </div>
+        <div class="col-12 col-lg-auto ms-lg-auto">
+            <span class="small text-body-secondary" data-vpn-v2-search-count role="status">
+                <?= htmlSC(sprintf(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_search_result'), $subscriptionsTotal)) ?>
+            </span>
+        </div>
+    </form>
+</section>
+
 <?php if (array_sum($attentionCounts) > 0): ?>
-    <div class="row g-3 mb-4" data-vpn-subscription-notices>
+    <div class="d-flex flex-wrap gap-2 mb-3" data-vpn-subscription-notices>
         <?php foreach ($attentionCounts as $noticeStatus => $noticeCount): ?>
             <?php if ($noticeCount <= 0) { continue; } ?>
-            <div class="col-12 col-md-6">
-                <a class="border rounded-5 p-3 p-md-4 h-100 d-flex align-items-center gap-3 text-decoration-none text-body bg-body-tertiary"
-                   href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions?status=' . $noticeStatus)) ?>"
-                   data-vpn-subscription-status="<?= htmlSC($noticeStatus) ?>"
-                   <?= $statusFilter === $noticeStatus ? 'aria-current="page"' : '' ?>>
-                    <span class="rounded-circle bg-warning-subtle text-warning-emphasis p-3 d-inline-flex flex-shrink-0" aria-hidden="true">
-                        <i class="<?= $noticeStatus === 'expired' ? 'ci-clock' : 'ci-pause-circle' ?> fs-4"></i>
-                    </span>
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_notice_' . $noticeStatus)) ?></div>
-                        <div class="small text-body-secondary mt-1"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_notice_' . $noticeStatus . '_help')) ?></div>
-                        <div class="small text-primary mt-2"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_notice_view')) ?> <i class="ci-arrow-right" aria-hidden="true"></i></div>
-                    </div>
-                    <span class="h3 mb-0 flex-shrink-0"><?= $noticeCount ?></span>
-                </a>
-            </div>
+            <a class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-2"
+               href="<?= htmlSC($listUrl . '?status=' . $noticeStatus) ?>"
+               data-vpn-subscription-status="<?= htmlSC($noticeStatus) ?>"
+               <?= $statusFilter === $noticeStatus ? 'aria-current="page"' : '' ?>>
+                <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_notice_' . $noticeStatus)) ?>
+                <span class="badge rounded-pill bg-warning-subtle text-warning-emphasis"><?= $noticeCount ?></span>
+            </a>
         <?php endforeach; ?>
     </div>
 <?php endif; ?>
 
 <?php if ($accessRequests !== []): ?>
-    <section class="border rounded-5 p-3 p-md-4 mb-4" aria-labelledby="vpnV2AccessRequestsTitle">
-        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-            <div>
-                <h2 class="h5 mb-1" id="vpnV2AccessRequestsTitle"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_access_requests_title')) ?></h2>
-                <p class="small text-body-secondary mb-0"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_access_requests_help')) ?></p>
-            </div>
-            <span class="badge rounded-pill text-bg-warning"><?= count($accessRequests) ?></span>
-        </div>
-        <div class="vstack gap-2">
+    <details class="fb-card p-3 mb-3">
+        <summary class="fw-semibold">
+            <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_access_requests_title')) ?>
+            <span class="badge rounded-pill bg-warning-subtle text-warning-emphasis"><?= count($accessRequests) ?></span>
+        </summary>
+        <div class="vstack gap-2 mt-3">
             <?php foreach ($accessRequests as $accessRequest): ?>
                 <div class="bg-body-tertiary rounded-4 p-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
                     <div>
@@ -203,59 +231,8 @@ foreach ($subscriptions as $subscription) {
                 </div>
             <?php endforeach; ?>
         </div>
-    </section>
+    </details>
 <?php endif; ?>
-
-<section class="border rounded-5 p-3 p-md-4 mb-4" aria-label="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_search_button')) ?>">
-    <form method="get" action="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions')) ?>" class="row g-2 align-items-center"
-          data-vpn-v2-live-search data-search-failed="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_live_search_failed')) ?>">
-        <div class="col-12 col-lg">
-            <div class="input-group">
-                <span class="input-group-text bg-transparent"><i class="ci-search" aria-hidden="true"></i></span>
-                <input
-                    class="form-control"
-                    type="search"
-                    name="q"
-                    maxlength="120"
-                    value="<?= htmlSC($searchQuery) ?>"
-                    placeholder="<?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_search_placeholder')) ?>"
-                    autocomplete="off"
-                >
-            </div>
-        </div>
-        <div class="col-12 col-lg-3">
-            <label class="visually-hidden" for="vpnV2SubscriptionStatusFilter"><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_col_status')) ?></label>
-            <select class="form-select" id="vpnV2SubscriptionStatusFilter" name="status">
-                <option value=""><?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_filter_all')) ?></option>
-                <option value="online" <?= $statusFilter === 'online' ? 'selected' : '' ?>>
-                    <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_presence_online')) ?>
-                </option>
-                <?php foreach (SubscriptionListFilter::STATUSES as $filterStatus): ?>
-                    <option value="<?= htmlSC($filterStatus) ?>" <?= $statusFilter === $filterStatus ? 'selected' : '' ?>>
-                        <?= htmlSC($filterStatus === 'inactive'
-                            ? FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_filter_inactive')
-                            : ProvisioningStatus::label($filterStatus)) ?>
-                    </option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <div class="col-auto">
-            <button class="btn btn-dark rounded-pill" type="submit">
-                <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_search_button')) ?>
-            </button>
-        </div>
-        <div class="col-auto" data-vpn-v2-search-clear <?= $searchQuery === '' && $statusFilter === '' ? 'hidden' : '' ?>>
-            <a class="btn btn-outline-secondary rounded-pill" href="<?= htmlSC(base_href('/admin/plugins/vpn-manager-v2/subscriptions')) ?>">
-                <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_search_clear')) ?>
-            </a>
-        </div>
-        <div class="col-12 col-lg-auto ms-lg-auto">
-            <span class="small text-body-secondary" data-vpn-v2-search-count role="status">
-                <?= htmlSC(sprintf(FireballPluginVpnManagerV2::t('vpn_manager_v2_subscriptions_search_result'), $subscriptionsTotal)) ?>
-            </span>
-        </div>
-    </form>
-</section>
 
 <div data-vpn-v2-search-results>
 <?php if ($unavailablePresencePanels > 0): ?>
@@ -264,19 +241,18 @@ foreach ($subscriptions as $subscription) {
     )) ?></p>
 <?php endif; ?>
 
-<div class="border rounded-5 p-3 p-md-4">
+<div class="fb-vpn-subscriptions-list">
     <?= view()->renderPartial('admin/partials/table', [
         'columns' => [
-            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_id')],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_user')],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_plan')],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_status')],
-            ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_starts_at')],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_expires_at')],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_nodes')],
             ['label' => FireballPluginVpnManagerV2::t('vpn_manager_v2_col_actions'), 'class' => 'text-end'],
         ],
         'rows' => $rows,
+        'table_class' => 'table-sm',
         'mobile_cards' => $mobileCards,
         'empty_text' => FireballPluginVpnManagerV2::t('vpn_manager_v2_empty_subscriptions'),
     ]) ?>

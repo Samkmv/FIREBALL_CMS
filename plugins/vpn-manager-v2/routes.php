@@ -5,6 +5,7 @@
 $router->get('/plugins/vpn-manager-v2/assets/(?P<file>[a-z0-9._-]+)', static function (): never {
     $file = (string)get_route_param('file');
     $contentTypes = [
+        'admin-vpn.css' => 'text/css',
         'vpn-manager-v2.js' => 'application/javascript',
         'profile-vpn.css' => 'text/css',
     ];

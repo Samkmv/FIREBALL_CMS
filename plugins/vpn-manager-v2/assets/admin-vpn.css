@@ -1,0 +1,25 @@
+.fb-vpn-subscriptions-list .list-group-item:has(.fb-vpn-mobile-status) > div > :first-child {
+    display: none;
+}
+
+.fb-vpn-subscriptions-list .list-group-item:has(.fb-vpn-mobile-status) > div > :last-child {
+    width: 100%;
+}
+
+.fb-vpn-subscriptions-list .fb-vpn-mobile-status .badge {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.fb-vpn-nav .nav-link {
+    min-height: 44px;
+}
+
+.fb-vpn-metrics-summary {
+    min-height: 44px;
+    cursor: pointer;
+}
+
+.fb-vpn-metrics-name {
+    overflow-wrap: anywhere;
+}
