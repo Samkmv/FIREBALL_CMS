@@ -10,6 +10,7 @@ use App\Models\SiteSetting;
 use App\Models\Support;
 use App\Services\NotificationService;
 use App\Services\FireCaptchaService;
+use App\Support\HomepageModes;
 use FBL\Language;
 use FBL\Theme;
 use FBL\RateLimiter;
@@ -61,11 +62,15 @@ class HomeController extends BaseController
 
     private function renderHomepage(array $renderData = []): string
     {
+        $homepageType = $this->siteSettings->get('homepage_type', 'default');
+        $custom = HomepageModes::extensions()[$homepageType]['render'] ?? null;
+        if ($custom !== null) {
+            return $custom($renderData);
+        }
+
         if (theme()->getActiveTheme()['homepage'] === 'home') {
             return Theme::render('home', $renderData + ['title' => theme()->getActiveTheme()['name']]);
         }
-
-        $homepageType = $this->siteSettings->get('homepage_type', 'default');
 
         if ($homepageType === 'page') {
             $page = $this->pages->findPublishedById((int)$this->siteSettings->get('homepage_page_id', '0'));

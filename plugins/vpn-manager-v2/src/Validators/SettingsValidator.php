@@ -169,7 +169,35 @@ final class SettingsValidator
             $incyLink,
             XrayAutoSettings::normalize($data['xray_auto'] ?? XrayAutoSettings::defaults(), $strict),
             $incyEnabled || $incyLink !== '' || $this->boolean($data['incy_routing_managed'] ?? false),
+            expirationAdminRecipientIds: $this->recipientIds($data['expiration_admin_recipient_ids'] ?? [], $strict),
         );
+    }
+
+    private function recipientIds(mixed $values, bool $strict): array
+    {
+        $error = 'vpn_manager_v2_error_expiration_recipients';
+        if (!is_array($values)) {
+            return $this->invalid($strict, $error, []);
+        }
+        $ids = [];
+        foreach ($values as $value) {
+            if ($value === '') {
+                continue;
+            }
+            $id = (is_int($value) || is_string($value))
+                ? filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1, 'max_range' => 4294967295]])
+                : false;
+            if ($id === false) {
+                if ($strict) {
+                    return $this->invalid(true, $error, []);
+                }
+                continue;
+            }
+            $ids[$id] = $id;
+        }
+        sort($ids, SORT_NUMERIC);
+
+        return $ids;
     }
 
     private function template(string $value, bool $strict): string

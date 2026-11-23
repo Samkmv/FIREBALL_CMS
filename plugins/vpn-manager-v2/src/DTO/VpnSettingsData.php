@@ -41,6 +41,7 @@ final readonly class VpnSettingsData
         public string $incyRoutingLink = '',
         public array $xrayAuto = [],
         public bool $incyRoutingManaged = false,
+        public array $expirationAdminRecipientIds = [],
     ) {
     }
 
@@ -66,6 +67,7 @@ final readonly class VpnSettingsData
             'notifications_profile_enabled' => $this->notificationsProfileEnabled,
             'notifications_email_enabled' => $this->notificationsEmailEnabled,
             'notify_expiration_3_days' => $this->notifyExpiration3Days,
+            'expiration_admin_recipient_ids' => $this->expirationAdminRecipientIds,
             'notify_expiration_day' => $this->notifyExpirationDay,
             'notify_traffic_80' => $this->notifyTraffic80,
             'notify_traffic_100' => $this->notifyTraffic100,

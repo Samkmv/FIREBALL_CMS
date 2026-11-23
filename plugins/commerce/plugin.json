@@ -1,0 +1,12 @@
+{
+  "name": "Commerce",
+  "slug": "commerce",
+  "class": "FireballPluginCommerce",
+  "version": "1.4.1",
+  "type": "system",
+  "description": "Storefront, products, inventory, cart and order management.",
+  "name_i18n": {"ru": "Коммерция", "en": "Commerce", "de": "Shop", "zh-cn": "商城"},
+  "description_i18n": {"ru": "Витрина, товары, остатки, корзина и управление заказами."},
+  "author": "FIREBALL CMS",
+  "auto_migrate": true
+}

@@ -11,6 +11,8 @@ final class VpnNotificationService
 {
     public const EXPIRES_3_DAYS = 'expires_3_days';
     public const EXPIRES_TODAY = 'expires_today';
+    public const ADMIN_EXPIRES_3_DAYS = 'admin_expires_3_days';
+    public const ADMIN_EXPIRES_1_DAY = 'admin_expires_1_day';
     public const TRAFFIC_80 = 'traffic_80';
     public const TRAFFIC_100 = 'traffic_100';
     public const PROVISIONED = 'provisioned';
@@ -31,6 +33,8 @@ final class VpnNotificationService
     {
         $settings = $this->settings();
         $queued = 0;
+        $today = new \DateTimeImmutable('today');
+        $administrators = $this->expirationRecipients($settings);
         $candidates = $this->expirationCandidates !== null
             ? ($this->expirationCandidates)()
             : $this->automation()->expirationNotificationCandidates();
@@ -52,9 +56,58 @@ final class VpnNotificationService
             if ($days === 0 && !empty($settings['notify_expiration_day'])) {
                 $queued += $this->queue($subscription, self::EXPIRES_TODAY, 'expiry:' . $date);
             }
+            if ($administrators !== []) {
+                $type = $this->administratorExpirationType($expiresAt, $subscription['status'], $today);
+                if ($type !== null) {
+                    foreach ($administrators as $administratorId) {
+                        $queued += $this->repository()->enqueue(
+                            (int)$subscription['id'],
+                            $administratorId,
+                            $type,
+                            $this->administratorOccurrence($date, $administratorId),
+                            'profile',
+                            date('Y-m-d H:i:s')
+                        ) ? 1 : 0;
+                    }
+                }
+            }
         }
 
         return ['queued' => $queued];
+    }
+
+    private function expirationRecipients(array $settings): array
+    {
+        $selected = $settings['expiration_admin_recipient_ids'];
+        if ($selected === []) {
+            return [];
+        }
+
+        return array_intersect($selected, array_column($this->repository()->expirationAdministrators(), 'id'));
+    }
+
+    private function administratorExpirationType(string $expiresAt, string $status, \DateTimeImmutable $today): ?string
+    {
+        if (!in_array($status, ['active', 'partial_sync', 'sync_error'], true)) {
+            return null;
+        }
+
+        $date = substr($expiresAt, 0, 10);
+        $expiry = \DateTimeImmutable::createFromFormat('!Y-m-d', $date, $today->getTimezone());
+        if ($expiry === false || $expiry->format('Y-m-d') !== $date) {
+            return null;
+        }
+
+        return match ((int)$today->diff($expiry)->format('%r%a')) {
+            3 => self::ADMIN_EXPIRES_3_DAYS,
+            1 => self::ADMIN_EXPIRES_1_DAY,
+            default => null,
+        };
+    }
+
+    private function administratorOccurrence(string $date, int $administratorId): string
+    {
+        return 'expiry:' . $date . ':recipient:' . $administratorId;
     }
 
     public function queueTrafficNotifications(): array
@@ -125,34 +178,56 @@ final class VpnNotificationService
     {
         $sent = 0;
         $failed = 0;
+        $administrators = null;
+        $today = new \DateTimeImmutable('today');
         foreach ($this->repository()->pending($types) as $row) {
             $id = (int)$row['id'];
             if (!$this->repository()->claim($id)) {
                 continue;
             }
             try {
+                $type = (string)$row['notification_type'];
+                $subscriptionId = (int)$row['subscription_id'];
+                $recipientId = (int)$row['user_id'];
+                $isAdminExpiration = in_array($type, [self::ADMIN_EXPIRES_3_DAYS, self::ADMIN_EXPIRES_1_DAY], true);
+                $message = $this->message($type);
+                $actionUrl = '/profile/vpn-v2/' . $subscriptionId;
+                if ($isAdminExpiration) {
+                    $administrators ??= $this->expirationRecipients($this->settings());
+                    $expiresAt = (string)$row['expires_at'];
+                    $date = substr($expiresAt, 0, 10);
+                    if (!in_array($recipientId, $administrators, true)
+                        || $this->administratorExpirationType($expiresAt, $row['subscription_status'], $today) !== $type
+                        || $row['occurrence_key'] !== $this->administratorOccurrence($date, $recipientId)
+                        || $row['channel'] !== 'profile') {
+                        $this->repository()->markSkipped($id);
+                        continue;
+                    }
+                    $message = sprintf($message, $subscriptionId, $date);
+                    $actionUrl = '/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId;
+                }
                 if ((string)$row['channel'] === 'email') {
                     $email = trim((string)($row['user_email'] ?? ''));
                     if ($email === '' || !($this->mail ?? new MailService())->send(
                         [$email],
-                        $this->title((string)$row['notification_type']),
-                        '<p>' . htmlSC($this->message((string)$row['notification_type'])) . '</p>',
-                        $this->message((string)$row['notification_type'])
+                        $this->title($type),
+                        '<p>' . htmlSC($message) . '</p>',
+                        $message
                     )) {
                         throw new \RuntimeException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_notification_email'));
                     }
                 } else {
                     ($this->notifications ?? new NotificationService())->createNotification([
-                        'user_id' => (int)$row['user_id'],
-                        'title' => $this->title((string)$row['notification_type']),
-                        'message' => $this->message((string)$row['notification_type']),
-                        'type' => 'vpn_v2_' . (string)$row['notification_type'],
-                        'action_url' => '/profile/vpn-v2/' . (int)$row['subscription_id'],
+                        'user_id' => $recipientId,
+                        'title' => $this->title($type),
+                        'message' => $message,
+                        'type' => 'vpn_v2_' . $type,
+                        'action_url' => $actionUrl,
                         'source' => 'vpn-manager-v2',
-                        'priority' => (string)$row['notification_type'] === self::CRITICAL_ERROR ? 'high' : 'normal',
+                        'priority' => $type === self::CRITICAL_ERROR ? 'high' : 'normal',
                         'store_unread' => true,
                         'metadata' => [
-                            'subscription_id' => (int)$row['subscription_id'],
+                            'subscription_id' => $subscriptionId,
                             'occurrence_key' => (string)$row['occurrence_key'],
                         ],
                     ]);
@@ -192,7 +267,7 @@ final class VpnNotificationService
 
     private function queue(array $subscription, string $type, string $occurrence): int
     {
-        // Manual subscriptions have no CMS notification recipient.
+        // Owner notifications require a CMS account.
         if ((int)($subscription['user_id'] ?? 0) <= 0) {
             return 0;
         }

@@ -4,6 +4,7 @@ namespace Fireball\VpnManagerV2\Controllers\Admin;
 
 use App\Services\MailService;
 use Fireball\VpnManagerV2\Exceptions\ValidationException;
+use Fireball\VpnManagerV2\Repositories\NotificationRepository;
 use Fireball\VpnManagerV2\Services\SettingsService;
 use Fireball\VpnManagerV2\Support\Permissions;
 use Fireball\VpnManagerV2\Validators\SettingsValidator;
@@ -38,6 +39,7 @@ final class SettingsController
                 'serverHealth' => $health,
                 'healthReady' => $healthReady,
                 'mailEnabled' => $mailEnabled,
+                'reminderAdministrators' => (new NotificationRepository())->expirationAdministrators(),
                 'templateVariables' => SettingsValidator::TEMPLATE_VARIABLES,
             ])
         );

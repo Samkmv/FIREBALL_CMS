@@ -1,3 +1,28 @@
+<?php
+$publicSearch = (array)apply_filters('public_navigation_search', [
+    'action' => base_href('/search'),
+    'suggest_url' => base_href('/search/suggest'),
+    'label' => return_translation('tpl_menu_search'),
+    'max_length' => 0,
+]);
+$publicSearchQuery = request()->get('q', '');
+$publicSearchQuery = is_string($publicSearchQuery) ? $publicSearchQuery : '';
+$publicCart = apply_filters('public_navigation_cart', null);
+?>
+<?php if ($publicCart !== null): ?>
+<div class="offcanvas offcanvas-end pb-sm-2 px-sm-2" id="shoppingCart" tabindex="-1" aria-labelledby="shoppingCartLabel"
+     style="--cz-offcanvas-width: 500px; max-width:100%" data-cart-error="<?= htmlSC($publicCart['error']) ?>">
+    <div class="offcanvas-header pb-2">
+        <h2 class="offcanvas-title h4" id="shoppingCartLabel"><?= htmlSC($publicCart['label']) ?></h2>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="<?= htmlSC($publicCart['close']) ?>"></button>
+    </div>
+    <div class="px-4 fs-sm" role="status" aria-live="polite" data-commerce-cart-message></div>
+    <div class="offcanvas-body d-flex flex-column overflow-hidden pt-2" data-commerce-cart-body>
+        <?= $publicCart['panel'] ?>
+    </div>
+</div>
+<script src="<?= htmlSC($publicCart['script']) ?>" defer></script>
+<?php else: ?>
 <!-- Shopping cart offcanvas -->
 <div class="offcanvas offcanvas-end pb-sm-2 px-sm-2" id="shoppingCart" tabindex="-1" aria-labelledby="shoppingCartLabel" style="width: 500px">
 
@@ -17,8 +42,9 @@
     </div>
 
 </div>
+<?php endif; ?>
 
-<header class="navbar public-navbar navbar-expand navbar-sticky sticky-top d-block bg-body z-fixed py-1 py-lg-0 py-xl-1 px-0" data-sticky-element="">
+<header class="navbar public-navbar navbar-expand navbar-sticky sticky-top d-block bg-body z-fixed py-1 py-lg-0 py-xl-1 px-0<?= $publicCart !== null ? ' public-navbar-with-cart' : '' ?>" data-sticky-element="">
     <div class="container justify-content-start py-2 py-lg-3">
 
         <!-- Offcanvas menu toggler (Hamburger) -->
@@ -56,18 +82,19 @@
         </div>
 
         <!-- Search bar visible on screens > 768px wide (md breakpoint) -->
-        <form action="<?= base_href('/search') ?>" method="get" class="public-navbar-search position-relative w-100 d-none d-md-block me-3 me-xl-4" data-search-suggest data-suggest-url="<?= base_href('/search/suggest') ?>">
+        <form action="<?= htmlSC($publicSearch['action']) ?>" method="get" class="public-navbar-search position-relative w-100 d-none d-md-block me-3 me-xl-4" data-search-suggest data-suggest-url="<?= htmlSC($publicSearch['suggest_url']) ?>">
             <input
                 type="search"
                 name="q"
-                value="<?= htmlSC((string)request()->get('q', '')) ?>"
+                value="<?= htmlSC($publicSearchQuery) ?>"
                 class="form-control form-control-lg rounded-pill"
-                placeholder="<?= print_translation('tpl_menu_search') ?>"
-                aria-label="<?= htmlSC(return_translation('tpl_menu_search')) ?>"
+                placeholder="<?= htmlSC($publicSearch['label']) ?>"
+                aria-label="<?= htmlSC($publicSearch['label']) ?>"
+                <?= $publicSearch['max_length'] > 0 ? 'maxlength="' . (int)$publicSearch['max_length'] . '"' : '' ?>
                 autocomplete="off"
                 data-search-suggest-input
             >
-            <button type="submit" class="btn btn-icon btn-ghost fs-lg btn-secondary text-bo border-0 position-absolute top-0 end-0 rounded-circle mt-1 me-1" aria-label="<?= htmlSC(return_translation('tpl_menu_search')) ?>">
+            <button type="submit" class="btn btn-icon btn-ghost fs-lg btn-secondary text-bo border-0 position-absolute top-0 end-0 rounded-circle mt-1 me-1" aria-label="<?= htmlSC($publicSearch['label']) ?>">
                 <i class="ci-search"></i>
             </button>
             <div class="position-absolute top-100 start-0 end-0 mt-2 d-none z-3" data-search-suggest-results></div>
@@ -114,7 +141,7 @@
             </div>
 
             <!-- Search toggle button visible on screens < 768px wide (md breakpoint) -->
-            <button type="button" class="btn btn-icon fs-xl btn-outline-secondary border-0 rounded-circle animate-shake d-md-none" data-bs-toggle="collapse" data-bs-target="#searchBar" aria-controls="searchBar" aria-label="Toggle search bar">
+            <button type="button" class="btn btn-icon fs-xl btn-outline-secondary border-0 rounded-circle animate-shake d-md-none" data-bs-toggle="collapse" data-bs-target="#searchBar" aria-controls="searchBar" aria-label="<?= htmlSC($publicSearch['label']) ?>">
                 <i class="ci-search animate-target"></i>
             </button>
 
@@ -203,8 +230,17 @@
                 </div>
             <?php endif; ?>
 
-            <!-- Account button visible on screens > 768px wide (md breakpoint) -->
-            <div class="dropdown d-none d-md-block">
+            <?php if ($publicCart !== null): ?>
+                <a href="<?= htmlSC($publicCart['href']) ?>" class="btn btn-icon fs-xl btn-outline-secondary position-relative border-0 rounded-circle animate-scale"
+                    data-bs-toggle="offcanvas" data-bs-target="#shoppingCart" aria-controls="shoppingCart" data-commerce-cart-toggle
+                    data-label="<?= htmlSC($publicCart['label']) ?>" aria-label="<?= htmlSC($publicCart['label']) ?> (<?= (int)$publicCart['count'] ?>)">
+                    <span class="position-absolute top-0 start-100 badge fs-xs text-bg-primary rounded-pill ms-n3 z-2" style="--cz-badge-padding-y: .25em; --cz-badge-padding-x: .42em"
+                          data-commerce-cart-count <?= $publicCart['count'] === 0 ? 'hidden' : '' ?>><?= $publicCart['count'] > 99 ? '99+' : (int)$publicCart['count'] ?></span>
+                    <i class="ci-shopping-cart animate-target" aria-hidden="true"></i>
+                </a>
+            <?php endif; ?>
+
+            <div class="dropdown<?= $publicCart === null ? ' d-none d-md-block' : '' ?>" data-public-account>
                 <button type="button" class="btn btn-icon fs-lg btn-outline-secondary border-0 rounded-circle animate-shake position-relative" data-bs-toggle="dropdown" aria-expanded="false">
                     <?php if (check_auth()): ?>
                         <span class="d-block w-100 h-100 rounded-circle overflow-hidden<?= !empty($currentUserHasActiveSubscription) ? ' nav-account-avatar--subscribed' : '' ?>">
@@ -232,12 +268,30 @@
                                 <div><?= htmlSC($currentUser['name'] ?? '') ?><?= render_public_verified_badge($currentUser['role'] ?? null) ?></div>
                             </div>
                         </li>
+                    <?php endif; ?>
+                    <?php if ($publicCart !== null): ?>
+                        <li>
+                            <a class="dropdown-item d-flex align-items-center gap-2" href="<?= htmlSC($publicCart['favoritesHref']) ?>">
+                                <i class="ci-heart fs-base" aria-hidden="true"></i>
+                                <span><?= htmlSC($publicCart['favoritesLabel']) ?></span>
+                            </a>
+                        </li>
+                    <?php endif; ?>
+                    <?php if (check_auth()): ?>
                         <li>
                             <a class="dropdown-item d-flex align-items-center gap-2" href="<?= base_href('/profile') ?>">
                                 <i class="ci-user fs-base"></i>
                                 <span><?= print_translation('tpl_auth_profile') ?></span>
                             </a>
                         </li>
+                        <?php if ($publicCart !== null): ?>
+                            <li>
+                                <a class="dropdown-item d-flex align-items-center gap-2" href="<?= htmlSC($publicCart['ordersHref']) ?>">
+                                    <i class="ci-shopping-bag fs-base" aria-hidden="true"></i>
+                                    <span><?= htmlSC($publicCart['ordersLabel']) ?></span>
+                                </a>
+                            </li>
+                        <?php endif; ?>
                         <li>
                             <a class="dropdown-item d-flex align-items-center gap-2" href="<?= base_href('/chat') ?>">
                                 <i class="ci-chat fs-base"></i>
@@ -277,32 +331,24 @@
                     <?php endif; ?>
                 </ul>
             </div>
-
-            <!-- Cart button -->
-<!--            <button type="button" class="btn btn-icon fs-xl btn-outline-secondary position-relative border-0 rounded-circle animate-scale" data-bs-toggle="offcanvas" data-bs-target="#shoppingCart" aria-controls="shoppingCart" aria-label="Shopping cart">-->
-<!--                <span id="countCart" class="position-absolute top-0 start-100 badge fs-xs text-bg-primary rounded-pill ms-n3 z-2" style="--cz-badge-padding-y: .25em; --cz-badge-padding-x: .42em">-->
-<!--                    --><?php //= \App\Helpers\Cart\Cart::getCartQuantityTotal() ?>
-<!--                </span>-->
-<!--                <i class="ci-shopping-cart animate-target"></i>-->
-<!--            </button>-->
-
         </div>
     </div>
 
     <!-- Search collapse available on screens < 768px wide (md breakpoint) -->
     <div class="collapse d-md-none" id="searchBar">
         <div class="container pt-2 pb-3">
-            <form action="<?= base_href('/search') ?>" method="get" class="position-relative" data-search-suggest data-suggest-url="<?= base_href('/search/suggest') ?>">
-                <button type="submit" class="search-submit btn btn-icon btn-ghost fs-lg border-0 position-absolute top-50 start-0 translate-middle-y rounded-circle ms-1" aria-label="<?= print_translation('tpl_menu_search') ?>">
+            <form action="<?= htmlSC($publicSearch['action']) ?>" method="get" class="position-relative" data-search-suggest data-suggest-url="<?= htmlSC($publicSearch['suggest_url']) ?>">
+                <button type="submit" class="search-submit btn btn-icon btn-ghost fs-lg border-0 position-absolute top-50 start-0 translate-middle-y rounded-circle ms-1" aria-label="<?= htmlSC($publicSearch['label']) ?>">
                     <i class="ci-search" aria-hidden="true"></i>
                 </button>
                 <input
                     type="search"
                     name="q"
-                    value="<?= htmlSC((string)request()->get('q', '')) ?>"
+                    value="<?= htmlSC($publicSearchQuery) ?>"
                     class="form-control form-icon-start rounded-pill"
-                    placeholder="<?= print_translation('tpl_menu_search') ?>"
-                    aria-label="<?= htmlSC(return_translation('tpl_menu_search')) ?>"
+                    placeholder="<?= htmlSC($publicSearch['label']) ?>"
+                    aria-label="<?= htmlSC($publicSearch['label']) ?>"
+                    <?= $publicSearch['max_length'] > 0 ? 'maxlength="' . (int)$publicSearch['max_length'] . '"' : '' ?>
                     autocomplete="off"
                     data-search-suggest-input
                 >

@@ -3,6 +3,8 @@
 $settings = is_array($settings ?? null) ? $settings : [];
 $templateVariables = is_array($templateVariables ?? null) ? $templateVariables : [];
 $mailEnabled = !empty($mailEnabled);
+$reminderAdministrators = $reminderAdministrators ?? [];
+$reminderRecipientIds = $settings['expiration_admin_recipient_ids'] ?? [];
 $checked = static fn(string $key): string => !empty($settings[$key]) ? ' checked' : '';
 $switch = static function (string $key, string $label, string $help = '') use ($checked): string {
     return '<div class="form-check form-switch">'
@@ -95,6 +97,30 @@ $switch = static function (string $key, string $label, string $help = '') use ($
             <div class="col-12 col-md-6"><?= $switch('notify_provisioned', FireballPluginVpnManagerV2::t('vpn_manager_v2_setting_notify_provisioned')) ?></div>
             <div class="col-12 col-md-6"><?= $switch('notify_critical_errors', FireballPluginVpnManagerV2::t('vpn_manager_v2_setting_notify_critical_errors')) ?></div>
             <div class="col-12"><?= $switch('retry_failed_operations', FireballPluginVpnManagerV2::t('vpn_manager_v2_setting_retry_failed_operations')) ?></div>
+        </div>
+        <div class="border-top mt-4 pt-3">
+            <label for="vpnV2ExpirationAdministrators" class="form-label fw-semibold">
+                <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_setting_expiration_recipients')) ?>
+            </label>
+            <input type="hidden" name="expiration_admin_recipient_ids[]" value="">
+            <select id="vpnV2ExpirationAdministrators" name="expiration_admin_recipient_ids[]" class="form-select" multiple
+                    data-select='{"removeItemButton":true,"searchEnabled":true}' data-select-floating
+                    aria-describedby="vpnV2ExpirationAdministratorsHelp">
+                <?php foreach ($reminderAdministrators as $administrator): ?>
+                    <?php
+                    $id = (int)$administrator['id'];
+                    $name = trim((string)$administrator['name']);
+                    $login = (string)$administrator['login'];
+                    $label = $name !== '' && $name !== $login ? $name . ' · ' . $login : $login;
+                    ?>
+                    <option value="<?= $id ?>" <?= in_array($id, $reminderRecipientIds, true) ? 'selected' : '' ?>>
+                        <?= htmlSC($label) ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <div class="form-text" id="vpnV2ExpirationAdministratorsHelp">
+                <?= htmlSC(FireballPluginVpnManagerV2::t('vpn_manager_v2_expiration_recipients_help')) ?>
+            </div>
         </div>
     </section>
 

@@ -14,6 +14,7 @@ use App\Services\NotificationService;
 use Fireball\VpnManagerV2\Clients\ThreeXuiClientInterface;
 use Fireball\VpnManagerV2\DTO\ConnectionTestResult;
 use Fireball\VpnManagerV2\Exceptions\ThreeXuiTransportException;
+use Fireball\VpnManagerV2\Exceptions\ValidationException;
 use Fireball\VpnManagerV2\Repositories\AutomationRepository;
 use Fireball\VpnManagerV2\Repositories\NotificationRepository;
 use Fireball\VpnManagerV2\Repositories\SettingsRepository;
@@ -74,6 +75,7 @@ final class Stage12NotificationService extends NotificationService
 {
     public int $created = 0;
     public bool $failNext = false;
+    public array $payloads = [];
 
     public function createNotification(array $payload): array
     {
@@ -82,6 +84,7 @@ final class Stage12NotificationService extends NotificationService
             throw new RuntimeException('fixture delivery failure');
         }
         $this->created++;
+        $this->payloads[] = $payload;
 
         return [
             'notification' => ['id' => $this->created] + $payload,
@@ -119,6 +122,7 @@ $settingKeys = [
     'notifications_email_enabled',
     'notify_expiration_3_days',
     'notify_expiration_day',
+    'expiration_admin_recipient_ids',
     'notify_traffic_80',
     'notify_traffic_100',
     'notify_provisioned',
@@ -135,6 +139,7 @@ try {
         'notifications_email_enabled' => false,
         'notify_expiration_3_days' => true,
         'notify_expiration_day' => true,
+        'expiration_admin_recipient_ids' => [],
         'notify_traffic_80' => true,
         'notify_traffic_100' => true,
         'notify_provisioned' => true,
@@ -372,6 +377,58 @@ try {
         && $fakeNotifications->created === $failedDeliveryBefore + 1,
         'Failed notification was not retried exactly once.');
     $results['notification_retry'] = true;
+
+    $settingsService = new SettingsService();
+    $saveRecipients = static function (array $ids) use ($settingsService): array {
+        return $settingsService->save(array_replace($settingsService->current(), [
+            'expiration_admin_recipient_ids' => $ids,
+        ]), manageSmartConnect: false)['settings']['expiration_admin_recipient_ids'];
+    };
+    $adminId = (int)$admin['id'];
+    $userId = (int)$user['id'];
+    $assert($saveRecipients(['', (string)$adminId, $adminId]) === [$adminId], 'Administrator selection was not saved.');
+    if ($userId !== $adminId) {
+        $rejected = false;
+        try {
+            $saveRecipients([$userId]);
+        } catch (ValidationException) {
+            $rejected = true;
+        }
+        $assert($rejected, 'An ordinary subscriber was accepted as an administrator recipient.');
+    }
+    $adminTypes = [VpnNotificationService::ADMIN_EXPIRES_3_DAYS, VpnNotificationService::ADMIN_EXPIRES_1_DAY];
+    $tomorrow = date('Y-m-d 12:00:00', strtotime('+1 day'));
+    $manual = $createSubscription('active', $tomorrow, 0, 0)['subscription_id'];
+    $renewed = $createSubscription('active', $tomorrow, 0, 0)['subscription_id'];
+    $createSubscription('active', date('Y-m-d 12:00:00', strtotime('+2 days')), 0, 0);
+    db()->query("UPDATE vpn_v2_subscriptions SET user_id = NULL, manual_customer_name = 'Manual test' WHERE id = ?", [$manual]);
+    $notificationService->queueExpirationNotifications();
+    db()->query('UPDATE vpn_v2_subscriptions SET expires_at = ? WHERE id = ?', [date('Y-m-d H:i:s', strtotime('+30 days')), $renewed]);
+    $offset = count($fakeNotifications->payloads);
+    $assert($notificationService->dispatch($adminTypes) === ['sent' => 2, 'failed' => 0], 'Incorrect administrator reminder count.');
+    $deliveries = array_column(array_slice($fakeNotifications->payloads, $offset), null, 'type');
+    $expected = [
+        VpnNotificationService::ADMIN_EXPIRES_3_DAYS => $futureFixture['subscription_id'],
+        VpnNotificationService::ADMIN_EXPIRES_1_DAY => $manual,
+    ];
+    foreach ($expected as $type => $subscriptionId) {
+        $payload = $deliveries['vpn_v2_' . $type] ?? [];
+        $assert(($payload['user_id'] ?? 0) === $adminId
+            && ($payload['action_url'] ?? '') === '/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId
+            && str_contains($payload['message'], '#' . $subscriptionId)
+            && ($payload['push_notification'] ?? true),
+            'Reminder must open the subscription in the admin panel and be eligible for push.');
+    }
+    $notificationService->queueExpirationNotifications();
+    $assert($notificationService->dispatch($adminTypes)['sent'] === 0, 'Administrator reminders were duplicated.');
+    db()->query('UPDATE vpn_v2_subscriptions SET expires_at = ? WHERE id = ?', [$tomorrow, $renewed]);
+    $notificationService->queueExpirationNotifications();
+    $assert($saveRecipients(['']) === [], 'The administrator selection could not be cleared.');
+    $assert($notificationService->dispatch($adminTypes)['sent'] === 0, 'An unselected administrator still received a queued reminder.');
+    $saveRecipients([$adminId]);
+    $notificationService->queueExpirationNotifications();
+    $assert($notificationService->dispatch($adminTypes)['sent'] === 1, 'A reselected administrator did not receive the reminder.');
+    $results['administrator_expiration_reminders'] = true;
 } finally {
     foreach (array_reverse($subscriptionIds) as $subscriptionId) {
         db()->query('DELETE FROM vpn_v2_notifications WHERE subscription_id = ?', [$subscriptionId]);
@@ -391,6 +448,9 @@ try {
     }
     if ($restoreSettings !== []) {
         $settingsRepository->write($restoreSettings);
+    }
+    if (!array_key_exists('expiration_admin_recipient_ids', $settingsBefore)) {
+        db()->query("DELETE FROM plugin_settings WHERE plugin_slug = 'vpn-manager-v2' AND setting_key = 'expiration_admin_recipient_ids'");
     }
     $settingsRepository->invalidateCache();
 }

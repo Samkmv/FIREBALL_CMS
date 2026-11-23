@@ -3,6 +3,8 @@
 namespace Fireball\VpnManagerV2\Services;
 
 use Fireball\VpnManagerV2\Exceptions\VpnManagerV2Exception;
+use Fireball\VpnManagerV2\Exceptions\ValidationException;
+use Fireball\VpnManagerV2\Repositories\NotificationRepository;
 use Fireball\VpnManagerV2\Repositories\SettingsRepository;
 use Fireball\VpnManagerV2\Repositories\SubscriptionConfigRepository;
 use Fireball\VpnManagerV2\Validators\SettingsValidator;
@@ -62,6 +64,7 @@ final class SettingsService
             'notifications_email_enabled' => false,
             'notify_expiration_3_days' => true,
             'notify_expiration_day' => true,
+            'expiration_admin_recipient_ids' => [],
             'notify_traffic_80' => true,
             'notify_traffic_100' => true,
             'notify_provisioned' => true,
@@ -159,6 +162,12 @@ final class SettingsService
         try {
             $before = $this->normalize(array_replace(self::defaults(), $repository->stored(true)));
             $expected = ($this->validator ?? new SettingsValidator())->validate($input, $before, $manageSmartConnect)->toArray();
+            if (isset($input['expiration_admin_recipient_ids']) && $expected['expiration_admin_recipient_ids'] !== []) {
+                $administratorIds = array_column((new NotificationRepository())->expirationAdministrators(), 'id');
+                if (array_diff($expected['expiration_admin_recipient_ids'], $administratorIds) !== []) {
+                    throw new ValidationException(\FireballPluginVpnManagerV2::t('vpn_manager_v2_error_expiration_recipients'));
+                }
+            }
             $routing = new \Fireball\VpnManagerV2\Support\HappRoutingProfile();
             foreach (['happ_routing_link', 'incy_routing_link'] as $key) {
                 $expected[$key] = $routing->markUpdated($expected[$key], $before[$key], $key === 'incy_routing_link');

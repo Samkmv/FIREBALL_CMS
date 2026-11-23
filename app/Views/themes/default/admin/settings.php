@@ -50,7 +50,8 @@ $yandexMetrikaEnabled = (string)($formData['yandex_metrika_enabled'] ?? ($settin
 $yandexMetrikaId = $formData['yandex_metrika_id'] ?? ($settings['yandex_metrika_id'] ?? '');
 $yandexMetrikaCode = $formData['yandex_metrika_code'] ?? ($settings['yandex_metrika_code'] ?? '');
 $homepageType = $formData['homepage_type'] ?? ($settings['homepage_type'] ?? 'default');
-if (!in_array($homepageType, ['default', 'page', 'posts'], true)) {
+$homepageExtensions = \App\Support\HomepageModes::extensions();
+if (!in_array($homepageType, ['default', 'page', 'posts'], true) && !isset($homepageExtensions[$homepageType])) {
     $homepageType = 'default';
 }
 $homepagePageId = (int)($formData['homepage_page_id'] ?? ($settings['homepage_page_id'] ?? 0));
@@ -156,6 +157,9 @@ $publishedPages = (array)($published_pages ?? []);
                                 <option value="default" <?= $homepageType === 'default' ? 'selected' : '' ?>><?= print_translation('admin_settings_homepage_type_default') ?></option>
                                 <option value="page" <?= $homepageType === 'page' ? 'selected' : '' ?>><?= print_translation('admin_settings_homepage_type_page') ?></option>
                                 <option value="posts" <?= $homepageType === 'posts' ? 'selected' : '' ?>><?= print_translation('admin_settings_homepage_type_posts') ?></option>
+                                <?php foreach ($homepageExtensions as $modeId => $mode): ?>
+                                    <option value="<?= htmlSC($modeId) ?>" <?= $homepageType === $modeId ? 'selected' : '' ?>><?= htmlSC($mode['label']) ?></option>
+                                <?php endforeach; ?>
                             </select>
                         </div>
                         <div class="col-md-6 <?= $homepageType === 'page' ? '' : 'd-none' ?>" data-homepage-page-field>

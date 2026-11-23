@@ -2249,7 +2249,9 @@ class AdminController extends BaseController
 
     protected function normalizeHomepageType(string $type): string
     {
-        return in_array($type, ['default', 'page', 'posts'], true) ? $type : 'default';
+        $supported = in_array($type, ['default', 'page', 'posts'], true)
+            || isset(\App\Support\HomepageModes::extensions()[$type]);
+        return $supported ? $type : 'default';
     }
 
     protected function normalizePrivacySettingsData(array $data): array

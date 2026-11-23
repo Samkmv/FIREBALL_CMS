@@ -50,3 +50,9 @@ It also refreshes a bounded batch of enabled external subscription URLs. Failed
 refreshes record `sync_error` without erasing the previous confirmed snapshot.
 
 Smart Connect infrastructure diagnostics can also run through `cron.php --health-only`. The normal CLI cron includes this job when monitoring is enabled. No health checks are attached to web requests. See [Smart Connect](smart-connect.md) for client-side selection, limits and administrator setup.
+
+## Administrator expiration reminders
+
+In **VPN Management → Settings → Notifications and retries**, select the CMS administrators who should receive VPN expiration reminders. An empty list disables administrator reminders. The job checks the site's calendar and sends reminders three days and one day before expiration, including for subscriptions entered manually. Subscription owners continue to receive their existing notifications.
+
+Administrator reminders appear in the CMS notification center and link to the subscription in the admin panel. The CMS sends a push copy to the recipient's eligible devices. The worker checks the current expiration date, recipient selection and administrator role before delivering queued reminders.

@@ -12,6 +12,8 @@ final class VpnV2SendExpirationNotificationsJob
         $queued = $service->queueExpirationNotifications();
         $sent = $service->dispatch([
             VpnNotificationService::EXPIRES_3_DAYS,
+            VpnNotificationService::ADMIN_EXPIRES_3_DAYS,
+            VpnNotificationService::ADMIN_EXPIRES_1_DAY,
             VpnNotificationService::EXPIRES_TODAY,
         ]);
 

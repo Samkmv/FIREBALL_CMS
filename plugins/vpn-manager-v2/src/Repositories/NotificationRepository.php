@@ -2,8 +2,18 @@
 
 namespace Fireball\VpnManagerV2\Repositories;
 
+use App\Models\User;
+
 final class NotificationRepository
 {
+    public function expirationAdministrators(): array
+    {
+        return db()->query(
+            'SELECT id, name, login FROM users WHERE role IN (?, ?) ORDER BY name, login, id',
+            [User::ROLE_CREATOR, User::ROLE_ADMIN]
+        )->get() ?: [];
+    }
+
     public function enqueue(
         int $subscriptionId,
         int $userId,
@@ -14,29 +24,35 @@ final class NotificationRepository
     ): bool {
         $now = date('Y-m-d H:i:s');
         db()->query(
-            "INSERT IGNORE INTO vpn_v2_notifications
+            "INSERT INTO vpn_v2_notifications
                 (subscription_id, user_id, notification_type, occurrence_key, channel, status,
                  attempts, scheduled_for, sent_at, last_error, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, 'pending', 0, ?, NULL, NULL, ?, ?)",
+             SELECT s.id, u.id, ?, ?, ?, 'pending', 0, ?, NULL, NULL, ?, ?
+             FROM users u INNER JOIN vpn_v2_subscriptions s ON s.id = ? WHERE u.id = ?
+             ON DUPLICATE KEY UPDATE
+                last_error = IF(vpn_v2_notifications.status = 'skipped', NULL, vpn_v2_notifications.last_error),
+                attempts = IF(vpn_v2_notifications.status = 'skipped', 0, vpn_v2_notifications.attempts),
+                updated_at = IF(vpn_v2_notifications.status = 'skipped', VALUES(updated_at), vpn_v2_notifications.updated_at),
+                status = IF(vpn_v2_notifications.status = 'skipped', 'pending', vpn_v2_notifications.status)",
             [
-                $subscriptionId,
-                $userId,
                 $this->token($type, 80),
                 $this->token($occurrenceKey, 120),
                 $this->channel($channel),
                 $scheduledFor,
                 $now,
                 $now,
+                $subscriptionId,
+                $userId,
             ]
         );
 
-        return db()->rowCount() === 1;
+        return db()->rowCount() > 0;
     }
 
     public function pending(?array $types = null, int $limit = 100): array
     {
         $limit = max(1, min(500, $limit));
-        $params = [];
+        $params = [date('Y-m-d H:i:s')];
         $typeSql = '';
         if ($types !== null) {
             $types = array_values(array_unique(array_filter(array_map(
@@ -45,18 +61,18 @@ final class NotificationRepository
             ))));
             if ($types !== []) {
                 $typeSql = ' AND n.notification_type IN (' . implode(',', array_fill(0, count($types), '?')) . ')';
-                $params = $types;
+                $params = array_merge($params, $types);
             }
         }
 
         return db()->query(
             "SELECT n.id, n.subscription_id, n.user_id, n.notification_type,
                     n.occurrence_key, n.channel, n.status, n.attempts, n.scheduled_for,
-                    u.email AS user_email
+                    u.email AS user_email, s.status AS subscription_status, s.expires_at
              FROM vpn_v2_notifications n
              INNER JOIN vpn_v2_subscriptions s ON s.id = n.subscription_id
              INNER JOIN users u ON u.id = n.user_id
-             WHERE n.status = 'pending' AND n.scheduled_for <= NOW(){$typeSql}
+             WHERE n.status = 'pending' AND n.scheduled_for <= ?{$typeSql}
              ORDER BY n.id ASC LIMIT {$limit}",
             $params
         )->get() ?: [];
@@ -92,6 +108,15 @@ final class NotificationRepository
              SET status = 'failed', last_error = ?, updated_at = ?
              WHERE id = ? AND status = 'sending'",
             [mb_substr(trim($safeError), 0, 1000), date('Y-m-d H:i:s'), $id]
+        );
+    }
+
+    public function markSkipped(int $id): void
+    {
+        db()->query(
+            "UPDATE vpn_v2_notifications SET status = 'skipped', last_error = NULL, updated_at = ?
+             WHERE id = ? AND status = 'sending'",
+            [date('Y-m-d H:i:s'), $id]
         );
     }
 
