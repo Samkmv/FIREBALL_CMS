@@ -5,37 +5,47 @@ $system = $manager->instances->isSystem($instance);
 $slot = $manager->areas->slot((string)($instance['system_key'] ?? ''));
 $available = $type !== null && empty($area['unavailable']);
 $label = $type !== null ? return_translation($type['label']) : $instance['type'];
-$icon = ['posts.categories' => 'ci-folder', 'posts.trending' => 'ci-trending-up', 'posts.social' => 'ci-share-2', 'posts.latest' => 'ci-file-text', 'weather' => 'ci-cloud', 'html' => 'ci-code'][$instance['type']] ?? 'ci-box';
+$icon = $type['icon'] ?? 'ci-box';
 $fields = [];
 try { if ($available) $fields = $type['widget']->fields($widget_context); } catch (\Throwable $exception) { $available = false; log_error_details('Widget settings form failed', ['Type' => $instance['type']], $exception); }
 $settings = $instance['settings'] + ($type !== null ? $type['widget']->defaults() : []);
+$instanceTitle = is_string($settings['title'] ?? null) && trim($settings['title']) !== '' ? $settings['title'] : $label;
 $allowed = [];
 foreach ($manager->areas->all() as $candidate) {
     if ($manager->types->allows($instance['type'], $candidate) && (!$system || ($slot['area'] ?? '') === $candidate['id'])) $allowed[] = $candidate['id'];
 }
 ?>
-<article class="widget-instance" data-widget-id="<?= (int)$instance['id'] ?>" data-allowed-areas="<?= htmlSC(json_encode($allowed)) ?>">
+<article class="widget-instance <?= $available ? 'widget-instance-configurable' : '' ?>" data-widget-id="<?= (int)$instance['id'] ?>" data-allowed-areas="<?= htmlSC(json_encode($allowed)) ?>" data-widget-category-id="<?= htmlSC($type['category'] ?? 'custom') ?>" data-widget-search-text="<?= htmlSC($label . ' ' . $instance['type'] . ' ' . (is_scalar($settings['title'] ?? '') ? ($settings['title'] ?? '') : '')) ?>">
+    <?php if ($available): ?>
+    <details class="widget-settings-panel" data-widget-details>
+    <summary class="widget-instance-header">
+    <?php else: ?>
     <div class="widget-instance-header">
+    <?php endif; ?>
         <button class="btn btn-sm btn-outline-secondary widget-drag-handle widget-icon-button" type="button" draggable="true" data-widget-handle aria-label="<?= htmlSC(return_translation('widgets_move')) ?>"><i class="ci-move" aria-hidden="true"></i></button>
-        <span class="widget-type-icon"><i class="<?= $icon ?>" aria-hidden="true"></i></span>
-        <div class="widget-instance-title"><span class="fw-semibold"><?= htmlSC($label) ?></span>
+        <span class="widget-type-icon"><i class="<?= htmlSC($icon) ?>" aria-hidden="true"></i></span>
+        <div class="widget-instance-title"><span class="fw-semibold"><?= htmlSC($instanceTitle) ?></span>
             <?php if ($system): ?><span class="widget-badge"><i class="ci-lock" aria-hidden="true"></i><?= htmlSC(return_translation('widgets_required')) ?></span><?php elseif (!$instance['enabled']): ?><span class="widget-badge"><?= htmlSC(return_translation('widgets_disabled')) ?></span><?php endif; ?>
+            <?php if ($instanceTitle !== $label): ?><small class="widget-instance-type"><?= htmlSC($label) ?></small><?php endif; ?>
         </div>
         <div class="widget-order-buttons">
             <button type="button" class="btn btn-sm btn-outline-secondary widget-icon-button" data-widget-up aria-label="<?= htmlSC(return_translation('widgets_up')) ?>"><i class="ci-chevron-up" aria-hidden="true"></i></button>
             <button type="button" class="btn btn-sm btn-outline-secondary widget-icon-button" data-widget-down aria-label="<?= htmlSC(return_translation('widgets_down')) ?>"><i class="ci-chevron-down" aria-hidden="true"></i></button>
         </div>
-    </div>
-    <?php if (count($allowed) > 1): ?>
-        <label class="form-label small"><?= htmlSC(return_translation('widgets_area')) ?></label>
-        <select class="form-select form-select-sm mb-3" data-widget-move data-widget-select>
-            <?php foreach ($allowed as $id): ?><option value="<?= htmlSC($id) ?>" <?= $instance['area'] === $id ? 'selected' : '' ?>><?= htmlSC(return_translation($manager->areas->get($id)['label'])) ?></option><?php endforeach; ?>
-        </select>
+    <?php if ($available): ?>
+        <span class="widget-settings-trigger"><i class="ci-sliders" aria-hidden="true"></i><span><?= htmlSC(return_translation('widgets_settings')) ?></span><i class="ci-chevron-down widget-settings-chevron" aria-hidden="true"></i></span>
+    </summary>
+    <?php else: ?>
+    </div><p class="small text-body-secondary px-3"><?= htmlSC(return_translation('widgets_type_unavailable')) ?></p>
     <?php endif; ?>
-    <?php if (!$available): ?><p class="small text-body-secondary"><?= htmlSC(return_translation('widgets_type_unavailable')) ?></p><?php else: ?>
-    <details class="widget-settings-panel" data-widget-details>
-        <summary><i class="ci-sliders" aria-hidden="true"></i><span><?= htmlSC(return_translation('widgets_settings')) ?></span><i class="ci-chevron-down widget-settings-chevron" aria-hidden="true"></i></summary>
+    <?php if ($available): ?>
         <form data-widget-settings>
+            <?php if (count($allowed) > 1): ?>
+                <label class="form-label small" for="widget-area-<?= (int)$instance['id'] ?>"><?= htmlSC(return_translation('widgets_area')) ?></label>
+                <select id="widget-area-<?= (int)$instance['id'] ?>" class="form-select form-select-sm mb-3" data-widget-move data-widget-select>
+                    <?php foreach ($allowed as $id): ?><option value="<?= htmlSC($id) ?>" <?= $instance['area'] === $id ? 'selected' : '' ?>><?= htmlSC(return_translation($manager->areas->get($id)['label'])) ?></option><?php endforeach; ?>
+                </select>
+            <?php endif; ?>
             <div class="widget-fields-grid">
             <?php foreach ($fields as $key => $field): ?>
                 <?php $value = $settings[$key] ?? ''; $inputId = 'widget-' . $instance['id'] . '-' . $key; $wide = !empty($field['wide']) || in_array($field['type'], ['text', 'textarea', 'html', 'categories'], true); ?>

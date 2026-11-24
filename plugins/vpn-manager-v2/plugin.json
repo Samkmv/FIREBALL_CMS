@@ -1,7 +1,7 @@
 {
   "name": "Управление VPN",
   "slug": "vpn-manager-v2",
-  "version": "3.8.0",
+  "version": "3.8.1",
   "type": "system",
   "description": "Управление VPN на самостоятельном Xray-core через FIREBALL Agent, совместимые подписки и поэтапный переход с 3x-ui.",
   "description_i18n": {
@@ -19,6 +19,7 @@
   },
   "auto_migrate": true,
   "release_notes": [
+    "Added searchable admin quick actions grouped by plugin.",
     "Selected administrators receive website and push notifications three days and one day before VPN expiration, including for manual subscriptions.",
     "Server presets share connection selection and order across linked plans.",
     "Online overview with compact counters, server check details and mobile connection cards in FIREBALL Admin UI.",
@@ -55,6 +56,7 @@
   ],
   "release_notes_i18n": {
     "en": [
+      "Added searchable admin quick actions grouped by plugin.",
       "Selected administrators receive website and push notifications three days and one day before VPN expiration, including for manual subscriptions.",
       "Server presets share connection selection and order across linked plans.",
       "Online overview with compact counters, server check details and mobile connection cards in FIREBALL Admin UI.",
@@ -90,6 +92,7 @@
       "Added quick server replacement and Happ notices for expiry and maintenance."
     ],
     "ru": [
+      "Добавлены быстрые действия админки с поиском и группировкой по плагинам.",
       "Выбранные администраторы получают уведомления на сайте и push за 3 дня и за 1 день до окончания VPN-подписки, включая ручные.",
       "Пресеты серверов с единым составом и порядком подключений для нескольких тарифов.",
       "Компактная вкладка «Онлайн» с результатами проверки серверов и мобильными карточками подключений в стиле FIREBALL Admin UI.",
@@ -125,6 +128,7 @@
       "Добавлены быстрая замена сервера и уведомления об истечении подписки и техработах в Happ."
     ],
     "de": [
+      "Durchsuchbare Admin-Schnellaktionen nach Plugin gruppiert hinzugefügt.",
       "Ausgewählte Administratoren erhalten drei Tage und einen Tag vor Ablauf Website- und Push-Hinweise, auch für manuelle VPN-Abonnements.",
       "Servervorgaben mit gemeinsamer Verbindungsauswahl und Reihenfolge für zugeordnete Tarife.",
       "Kompakte Online-Übersicht mit Serverstatus und mobilen Verbindungskarten im FIREBALL Admin UI.",
@@ -160,6 +164,7 @@
       "Schneller Serverwechsel und Happ-Hinweise zu Ablauf und Wartung hinzugefügt."
     ],
     "zh-cn": [
+      "新增按插件分组并可搜索的后台快捷操作。",
       "选定的管理员在 VPN 订阅到期前三天和一天收到站内通知及推送，包括手动添加的订阅。",
       "服务器预设让多个套餐共享连接及顺序。",
       "FIREBALL Admin UI 在线概览改用紧凑计数、服务器检查详情和移动连接卡片。",
@@ -210,5 +215,91 @@
   },
   "requires": {
     "cms": ">=1.7.0"
-  }
+  },
+  "quick_actions": [
+    {
+      "route": "/admin/plugins/vpn-manager-v2/servers/create",
+      "label": "Add server",
+      "label_i18n": {
+        "ru": "Добавить сервер",
+        "en": "Add server",
+        "de": "Server hinzufügen",
+        "zh-cn": "添加服务器"
+      },
+      "icon": "ci-server",
+      "keywords": "vpn впн xray 3x-ui сервер"
+    },
+    {
+      "route": "/admin/plugins/vpn-manager-v2/subscriptions/create",
+      "label": "Add VPN subscriber",
+      "label_i18n": {
+        "ru": "Добавить подписчика VPN",
+        "en": "Add VPN subscriber",
+        "de": "VPN-Abonnenten hinzufügen",
+        "zh-cn": "添加 VPN 订阅者"
+      },
+      "icon": "ci-user-plus",
+      "keywords": "vpn впн подписка клиент subscription client"
+    },
+    {
+      "route": "/admin/plugins/vpn-manager-v2/plans/create",
+      "label": "Add VPN plan",
+      "label_i18n": {
+        "ru": "Добавить тариф VPN",
+        "en": "Add VPN plan",
+        "de": "VPN-Tarif hinzufügen",
+        "zh-cn": "添加 VPN 套餐"
+      },
+      "icon": "ci-plus",
+      "keywords": "vpn тариф plan"
+    },
+    {
+      "route": "/admin/plugins/vpn-manager-v2/servers",
+      "label": "VPN servers",
+      "label_i18n": {
+        "ru": "Серверы VPN",
+        "en": "VPN servers",
+        "de": "VPN-Server",
+        "zh-cn": "VPN 服务器"
+      },
+      "icon": "ci-server",
+      "keywords": ""
+    },
+    {
+      "route": "/admin/plugins/vpn-manager-v2/subscriptions",
+      "label": "VPN subscriptions",
+      "label_i18n": {
+        "ru": "Подписки VPN",
+        "en": "VPN subscriptions",
+        "de": "VPN-Abonnements",
+        "zh-cn": "VPN 订阅"
+      },
+      "icon": "ci-user",
+      "keywords": ""
+    },
+    {
+      "route": "/admin/plugins/vpn-manager-v2/plans",
+      "label": "VPN plans",
+      "label_i18n": {
+        "ru": "Тарифы VPN",
+        "en": "VPN plans",
+        "de": "VPN-Tarife",
+        "zh-cn": "VPN 套餐"
+      },
+      "icon": "ci-grid",
+      "keywords": ""
+    },
+    {
+      "route": "/admin/plugins/vpn-manager-v2/connections",
+      "label": "VPN connections",
+      "label_i18n": {
+        "ru": "Подключения VPN",
+        "en": "VPN connections",
+        "de": "VPN-Verbindungen",
+        "zh-cn": "VPN 连接"
+      },
+      "icon": "ci-link",
+      "keywords": ""
+    }
+  ]
 }

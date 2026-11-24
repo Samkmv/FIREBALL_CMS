@@ -2,7 +2,7 @@
   "name": "Calendar",
   "slug": "calendar",
   "class": "FireballPluginCalendar",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "type": "system",
   "description": "Personal and shared events with recurring schedules, in-site reminders, and PWA Push delivery.",
   "name_i18n": {
@@ -34,19 +34,38 @@
   },
   "release_notes_i18n": {
     "ru": [
+      "Добавлены быстрые действия админки с поиском и группировкой по плагинам.",
       "Личные и общие события с повторениями, напоминаниями на сайте и через PWA Push."
     ],
     "en": [
+      "Added searchable admin quick actions grouped by plugin.",
       "Personal and shared events with recurring schedules, in-site reminders, and PWA Push delivery."
     ],
     "de": [
+      "Durchsuchbare Admin-Schnellaktionen nach Plugin gruppiert hinzugefügt.",
       "Persönliche und gemeinsame Termine mit Wiederholungen, Website-Erinnerungen und PWA-Push."
     ],
     "zh-cn": [
+      "新增按插件分组并可搜索的后台快捷操作。",
       "支持重复、站内提醒和 PWA Push 的个人与共享日程。"
     ]
   },
   "release_notes": [
+    "Added searchable admin quick actions grouped by plugin.",
     "Personal and shared events with recurring schedules, in-site reminders, and PWA Push delivery."
+  ],
+  "quick_actions": [
+    {
+      "route": "/admin/calendar?create=1",
+      "label": "Create event",
+      "label_i18n": {
+        "ru": "Создать событие",
+        "en": "Create event",
+        "de": "Termin erstellen",
+        "zh-cn": "创建日程"
+      },
+      "icon": "ci-calendar",
+      "keywords": "событие встреча event reminder напоминание"
+    }
   ]
 }

@@ -99,6 +99,7 @@ $menuGroups = [
                 'badge_title' => $pluginUpdateBadgeTitle,
                 'order' => 20,
             ],
+            ['href' => base_href('/admin/plugins/catalog'), 'label' => return_translation('admin_plugin_marketplace_title'), 'icon' => 'ci-package', 'order' => 25],
         ],
     ],
     'applications' => [
@@ -227,9 +228,9 @@ $renderLink = static function (array $item, string $groupLabel, bool $nested = f
         <?= $active ? 'aria-current="page"' : '' ?>
         data-fb-command
         data-fb-command-label="<?= htmlSC($itemLabel) ?>"
-        data-fb-command-category="<?= htmlSC($groupLabel) ?>"
+        data-fb-command-category="<?= htmlSC(!empty($item['plugin_menu']) && !$nested ? $itemLabel : $groupLabel) ?>"
         data-fb-command-icon="<?= htmlSC($icon) ?>"
-        data-fb-command-kind="navigation"
+        data-fb-command-kind="<?= !empty($item['plugin_menu']) ? 'action' : 'navigation' ?>"
     >
         <span class="fb-nav-icon"><i class="<?= htmlSC($icon) ?>" aria-hidden="true"></i></span>
         <span class="fb-nav-label"><?= htmlSC($itemLabel) ?></span>
@@ -287,7 +288,10 @@ $renderLink = static function (array $item, string $groupLabel, bool $nested = f
                         </button>
                         <div class="fb-nav-submenu" id="<?= htmlSC($submenuId) ?>">
                             <?php foreach ($childItems as $childItem): ?>
-                                <?php $renderLink($childItem, $groupLabel, true); ?>
+                                <?php
+                                $childItem['plugin_menu'] = $childItem['plugin_menu'] ?? !empty($item['plugin_menu']);
+                                $renderLink($childItem, !empty($item['plugin_menu']) ? (string)$item['label'] : $groupLabel, true);
+                                ?>
                             <?php endforeach; ?>
                         </div>
                     </div>

@@ -153,6 +153,8 @@ $quickActions = apply_filters('admin_quick_actions', $quickActions, $currentUser
 if (!is_array($quickActions)) {
     $quickActions = [];
 }
+$quickActions = array_values(array_filter($quickActions, 'is_array'));
+usort($quickActions, static fn(array $left, array $right): int => strcmp((string)($left['category'] ?? ''), (string)($right['category'] ?? '')));
 
 $activityItems = apply_filters('admin_dashboard_activity', (array)($recent_activity ?? []), $currentUser);
 if (!is_array($activityItems)) {
@@ -491,6 +493,7 @@ echo view()->renderPartial('admin/shell_open', [
             <h2 class="fb-card-title"><?= print_translation('admin_dashboard_quick_actions') ?></h2>
         </header>
         <div class="fb-card-body">
+            <?php $quickActionCategory = null; ?>
             <div class="fb-quick-actions">
                 <?php foreach ($quickActions as $action): ?>
                     <?php
@@ -500,14 +503,20 @@ echo view()->renderPartial('admin/shell_open', [
                     if (!empty($action['creator_only']) && !check_creator()) {
                         continue;
                     }
+                    $actionCategory = (string)($action['category'] ?? return_translation('admin_ui_command_actions'));
                     ?>
+                    <?php if ($quickActionCategory !== $actionCategory): ?>
+                        <h3 class="small text-body-secondary mb-0 mt-2" style="grid-column: 1 / -1"><?= htmlSC($actionCategory) ?></h3>
+                        <?php $quickActionCategory = $actionCategory; ?>
+                    <?php endif; ?>
                     <a
                         class="fb-quick-action"
                         href="<?= htmlSC((string)$action['href']) ?>"
                         style="--fb-action-color: <?= htmlSC((string)($action['color'] ?? 'var(--fb-color-info)')) ?>; --fb-action-soft: <?= htmlSC((string)($action['soft'] ?? 'var(--fb-color-info-soft)')) ?>;"
                         data-fb-quick-action
                         data-fb-quick-action-label="<?= htmlSC((string)$action['label']) ?>"
-                        data-fb-quick-action-category="<?= htmlSC(return_translation('admin_dashboard_quick_actions')) ?>"
+                        data-fb-quick-action-category="<?= htmlSC($actionCategory) ?>"
+                        data-fb-command-keywords="<?= htmlSC((string)($action['keywords'] ?? '')) ?>"
                         data-fb-quick-action-icon="<?= htmlSC((string)($action['icon'] ?? 'ci-arrow-right')) ?>"
                         data-fb-command-kind="action"
                     >

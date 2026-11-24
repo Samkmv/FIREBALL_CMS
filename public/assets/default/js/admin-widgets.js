@@ -5,6 +5,38 @@
     const content = root.querySelector('[data-widget-content]');
     const status = root.querySelector('[data-widget-status]');
     const deleteForm = root.querySelector('[data-widget-delete-form]');
+    const search = root.querySelector('[data-widget-search]');
+    const categoryFilter = root.querySelector('[data-widget-category]');
+    let activeView = 'installed';
+    const hasFilters = () => Boolean(search.value.trim() || categoryFilter.value);
+    const applyFilters = () => {
+        const terms = search.value.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+        let count = 0;
+        content.querySelectorAll('[data-widget-panel]').forEach(panel => {
+            panel.hidden = panel.dataset.widgetPanel !== activeView;
+            panel.querySelectorAll('[data-widget-search-text]').forEach(item => {
+                const text = item.dataset.widgetSearchText.toLocaleLowerCase();
+                item.hidden = Boolean(categoryFilter.value && item.dataset.widgetCategoryId !== categoryFilter.value)
+                    || !terms.every(term => text.includes(term));
+                if (!panel.hidden && !item.hidden) count++;
+            });
+        });
+        root.querySelectorAll('.widget-view-switch [data-widget-view]').forEach(button => {
+            button.setAttribute('aria-pressed', String(button.dataset.widgetView === activeView));
+        });
+        content.querySelector('[data-widget-no-results]').hidden = count > 0 || !hasFilters();
+        const resultCount = content.querySelector('[data-widget-result-count]');
+        resultCount.textContent = `${resultCount.dataset.label} ${count}`;
+        content.querySelectorAll('[data-widget-area-section]').forEach(section => {
+            section.hidden = hasFilters() && !section.querySelector('[data-widget-id]:not([hidden])');
+        });
+        content.querySelectorAll('[data-widget-handle], [data-widget-up], [data-widget-down], [data-widget-move]').forEach(control => {
+            control.disabled = hasFilters();
+            const choices = selects.get(control);
+            if (choices) { if (hasFilters()) choices.disable(); else choices.enable(); }
+        });
+    };
+    const showView = view => { activeView = view; applyFilters(); };
     let busy = false;
     let dragging = null;
     let dragOrigin = null;
@@ -75,7 +107,7 @@
         content.querySelectorAll('[data-widget-id]').forEach(card => {
             const old = previous.find(item => item.id === card.dataset.widgetId);
             const details = card.querySelector('details');
-            if (details) details.open = old?.open ?? true;
+            if (details) details.open = old?.open ?? false;
             if (!old?.value || String(savedId) === card.dataset.widgetId) return;
             const form = card.querySelector('form');
             if (!form) return;
@@ -100,6 +132,7 @@
             });
         });
         enhanceSelects();
+        applyFilters();
     };
     const request = async payload => {
         if (busy) return false;
@@ -116,6 +149,19 @@
             if (!response.ok || result.status !== 'ok') throw new Error(result.message || root.dataset.error);
             root.dataset.revision = String(result.revision);
             if (payload.action !== 'reorder') replaceContent(result.html, payload.action === 'update' ? payload.id : null);
+            if (payload.action === 'add') {
+                search.value = '';
+                categoryFilter.value = '';
+                showView('installed');
+                const card = [...content.querySelectorAll('[data-widget-id]')].find(item => Number(item.dataset.widgetId) === result.instance_id);
+                const details = card?.querySelector('details');
+                if (details) {
+                    content.querySelectorAll('details[open]').forEach(item => { item.open = false; });
+                    details.open = true;
+                    details.querySelector('summary')?.focus();
+                }
+                card?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
             notice(result.message);
             return true;
         } catch (error) {
@@ -138,6 +184,9 @@
     const layout = () => [...content.querySelectorAll('[data-widget-area]')].flatMap(zone => [...zone.children].map(card => ({ id: Number(card.dataset.widgetId), area: zone.dataset.widgetArea })));
     const saveOrder = async previous => {
         if (!await request({ action: 'reorder', layout: layout() })) rollback(previous);
+        content.querySelectorAll('[data-widget-area-section]').forEach(section => {
+            section.querySelector('[data-widget-area-empty]').hidden = Boolean(section.querySelector('[data-widget-id]'));
+        });
     };
     const canDrop = (card, zone) => {
         const allowed = JSON.parse(card.dataset.allowedAreas);
@@ -205,6 +254,10 @@
         if (busy) return;
         const button = event.target.closest('button');
         if (!button) return;
+        if (button.hasAttribute('data-widget-view')) { showView(button.dataset.widgetView); return; }
+        if (button.hasAttribute('data-widget-reset')) {
+            search.value = ''; categoryFilter.value = ''; applyFilters(); search.focus(); return;
+        }
         const category = button.closest('[data-category-slug]');
         if (category) {
             if (button.hasAttribute('data-category-up') && category.previousElementSibling) category.parentElement.insertBefore(category, category.previousElementSibling);
@@ -239,7 +292,7 @@
         saveOrder(previous);
     });
     root.addEventListener('dragstart', event => {
-        if (busy || !event.target.closest('[data-widget-handle]')) { event.preventDefault(); return; }
+        if (busy || hasFilters() || !event.target.closest('[data-widget-handle]')) { event.preventDefault(); return; }
         dragging = event.target.closest('[data-widget-id]');
         dragOrigin = origin();
         dragging.classList.add('widget-dragging');
@@ -261,7 +314,7 @@
     root.addEventListener('dragend', () => finishDrag(false));
     root.addEventListener('pointerdown', event => {
         const handle = event.target.closest('[data-widget-handle]');
-        if (!handle || busy || event.pointerType !== 'touch') return;
+        if (!handle || busy || hasFilters() || event.pointerType !== 'touch') return;
         event.preventDefault();
         dragging = handle.closest('[data-widget-id]');
         dragOrigin = origin();
@@ -278,6 +331,15 @@
     root.addEventListener('pointerup', event => { if (event.pointerId === touchPointer) finishDrag(!dropIndicator.hidden); });
     root.addEventListener('pointercancel', event => { if (event.pointerId === touchPointer) finishDrag(false); });
     root.addEventListener('lostpointercapture', event => { if (event.pointerId === touchPointer) finishDrag(false); });
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', enhanceSelects, { once: true });
-    else enhanceSelects();
+    search.addEventListener('input', applyFilters);
+    categoryFilter.addEventListener('change', applyFilters);
+    root.addEventListener('toggle', event => {
+        if (!event.target.matches('[data-widget-details]') || !event.target.open) return;
+        content.querySelectorAll('[data-widget-details][open]').forEach(details => {
+            if (details !== event.target) details.open = false;
+        });
+    }, true);
+    const initialize = () => { enhanceSelects(); applyFilters(); };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initialize, { once: true });
+    else initialize();
 })();

@@ -19,15 +19,32 @@ final class WidgetRegistry
         foreach ($areas as $area) {
             if ($area !== '*') WidgetAreaRegistry::assertId($area);
         }
+        $category = (string)($options['category'] ?? 'custom');
+        WidgetAreaRegistry::assertId($category);
+        $icon = (string)($options['icon'] ?? 'ci-box');
+        if (!preg_match('/^ci-[a-z0-9-]+$/D', $icon)) $icon = 'ci-box';
         $this->types[$id] = [
             'id' => $id, 'widget' => $widget,
             'label' => (string)($options['label'] ?? $id),
             'areas' => array_values($areas), 'system' => (bool)($options['system'] ?? false),
+            'description' => (string)($options['description'] ?? ''),
+            'category' => $category,
+            'category_label' => (string)($options['category_label'] ?? (in_array($category, ['content', 'navigation', 'social', 'tools', 'custom'], true) ? 'widgets_category_' . $category : $category)),
+            'icon' => $icon,
         ];
     }
 
     public function all(): array { return $this->types; }
     public function get(string $id): ?array { return $this->types[$id] ?? null; }
+
+    public function categories(): array
+    {
+        $categories = [];
+        foreach ($this->types as $type) {
+            $categories[$type['category']] ??= $type['category_label'];
+        }
+        return $categories;
+    }
 
     public function allows(string $id, array $area): bool
     {

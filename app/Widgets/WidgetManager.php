@@ -15,14 +15,17 @@ final class WidgetManager
         $this->areas = new WidgetAreaRegistry();
         $this->areas->register('posts.sidebar', 'widgets_posts_sidebar', ['posts.index' => 'widgets_page_index', 'posts.show' => 'widgets_page_show']);
         foreach ([
-            'posts.categories' => [new Types\CategoriesWidget(), 'widgets_categories', true],
-            'posts.trending' => [new Types\TrendingWidget(), 'widgets_trending', true],
-            'posts.social' => [new Types\SocialWidget(), 'widgets_social', true],
-            'posts.latest' => [new Types\LatestPostsWidget(), 'widgets_latest', false],
-            'weather' => [new Types\WeatherWidget(), 'widgets_weather', false],
-            'html' => [new Types\HtmlWidget(), 'widgets_html', false],
-        ] as $id => [$widget, $label, $system]) {
-            $this->types->register($id, $widget, ['label' => $label, 'system' => $system, 'areas' => $system || $id === 'posts.latest' ? ['posts.sidebar'] : ['*']]);
+            'posts.categories' => [new Types\CategoriesWidget(), 'widgets_categories', true, 'navigation', 'ci-folder'],
+            'posts.trending' => [new Types\TrendingWidget(), 'widgets_trending', true, 'content', 'ci-trending-up'],
+            'posts.social' => [new Types\SocialWidget(), 'widgets_social', true, 'social', 'ci-share-2'],
+            'posts.latest' => [new Types\LatestPostsWidget(), 'widgets_latest', false, 'content', 'ci-file-text'],
+            'weather' => [new Types\WeatherWidget(), 'widgets_weather', false, 'tools', 'ci-cloud'],
+            'html' => [new Types\HtmlWidget(), 'widgets_html', false, 'content', 'ci-code'],
+        ] as $id => [$widget, $label, $system, $category, $icon]) {
+            $this->types->register($id, $widget, [
+                'label' => $label, 'system' => $system, 'areas' => $system || $id === 'posts.latest' ? ['posts.sidebar'] : ['*'],
+                'category' => $category, 'icon' => $icon, 'description' => $label . '_description',
+            ]);
         }
         $this->areas->requireWidget('posts.categories', 'posts.categories', 'posts.sidebar', 0, ['posts.index', 'posts.show']);
         $this->areas->requireWidget('posts.trending', 'posts.trending', 'posts.sidebar', 1);

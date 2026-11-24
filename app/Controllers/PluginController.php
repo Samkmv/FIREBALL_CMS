@@ -3,13 +3,17 @@
 namespace App\Controllers;
 
 use App\Services\PluginUpdateService;
+use App\Services\PluginCatalogCategories;
 use Throwable;
 
 final class PluginController extends BaseController
 {
     public function index(): string
     {
-        $plugins = plugin_manager()->all();
+        $plugins = array_values(array_filter(
+            plugin_manager()->all(),
+            static fn(array $plugin): bool => !empty($plugin['installed'])
+        ));
         try {
             $plugins = (new PluginUpdateService())->decoratePlugins($plugins);
         } catch (Throwable $exception) {
@@ -25,16 +29,61 @@ final class PluginController extends BaseController
 
     public function install(): void
     {
+        $this->installPlugin('/admin/plugins');
+    }
+
+    public function marketplace(): string
+    {
+        $query = request()->get('q', '');
+        $catalog = (new PluginUpdateService())->marketplace(
+            plugin_manager()->all(), false,
+            PluginCatalogCategories::normalize(request()->get('category', '')),
+            is_string($query) ? $query : ''
+        );
+        return view('admin/plugin_catalog', [
+            'title' => \FBL\Language::get('admin_plugin_marketplace_title'),
+            'catalog' => $catalog,
+        ]);
+    }
+
+    public function refreshMarketplace(): void
+    {
+        $this->requirePluginUpdatePermission();
+        $catalog = (new PluginUpdateService())->marketplace(plugin_manager()->all(), true);
+        session()->setFlash($catalog['error'] === '' ? 'success' : 'error',
+            $catalog['error'] ?: \FBL\Language::get('admin_plugin_marketplace_refreshed'));
+        response()->redirect(base_href($this->catalogReturnPath()));
+    }
+
+    public function installMarketplace(): void
+    {
+        $this->installPlugin($this->catalogReturnPath());
+    }
+
+    private function catalogReturnPath(): string
+    {
+        $query = request()->post('q', '');
+        $parameters = http_build_query(array_filter([
+            'category' => PluginCatalogCategories::normalize(request()->post('category', '')),
+            'q' => is_string($query) ? mb_substr(trim($query), 0, 200) : '',
+        ], static fn(string $value): bool => $value !== ''), '', '&', PHP_QUERY_RFC3986);
+        return '/admin/plugins/catalog' . ($parameters !== '' ? '?' . $parameters : '');
+    }
+
+    private function installPlugin(string $redirect): void
+    {
+        $this->requirePluginUpdatePermission();
         $slug = (string)request()->post('slug', '');
         try {
-            plugin_manager()->install($slug);
-            session()->setFlash('success', \FBL\Language::get('admin_plugins_installed'));
+            (new PluginUpdateService())->installFromMarketplace($slug);
+            session()->setFlash('success', \FBL\Language::get('admin_plugin_marketplace_installed'));
+            $redirect = '/admin/plugins#plugin-' . $slug;
         } catch (Throwable $exception) {
             log_error_details('Plugin admin install failed', ['Plugin' => $slug], $exception);
             session()->setFlash('error', str_replace(':error', $exception->getMessage(), \FBL\Language::get('admin_plugins_install_failed')));
         }
 
-        response()->redirect(base_href('/admin/plugins'));
+        response()->redirect(base_href($redirect));
     }
 
     public function activate(): void

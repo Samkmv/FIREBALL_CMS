@@ -5,10 +5,11 @@
     "en": "Camera Manager"
   },
   "slug": "camera-manager",
-  "version": "1.3.6",
+  "version": "1.3.7",
   "description": "Управление объектами, регистраторами и безопасная публикация RTSP-камер на отдельный сервер.",
   "author": "FIREBALL CMS",
   "release_notes": [
+    "Added searchable admin quick actions grouped by plugin.",
     "Manage sites, recorders and cameras with encrypted RTSP credentials and public HLS URLs.",
     "Atomic stream publishing with syntax validation, backups and rollback.",
     "Host-key-checked SSH and HTTPS pull synchronization with a restricted agent.",
@@ -18,6 +19,7 @@
   ],
   "release_notes_i18n": {
     "ru": [
+      "Добавлены быстрые действия админки с поиском и группировкой по плагинам.",
       "Управление объектами, регистраторами и камерами; шифрование RTSP-паролей и публичные HLS-ссылки.",
       "Атомарная публикация потоков с проверкой синтаксиса, резервными копиями и откатом.",
       "SSH с проверкой host key и HTTPS pull-синхронизация с ограниченным агентом.",
@@ -26,6 +28,7 @@
       "Мастер подключения WireGuard, маршрутов и firewall; подписанная очередь разрешённых диагностик."
     ],
     "en": [
+      "Added searchable admin quick actions grouped by plugin.",
       "Manage sites, recorders and cameras with encrypted RTSP credentials and public HLS URLs.",
       "Atomic stream publishing with syntax validation, backups and rollback.",
       "Host-key-checked SSH and HTTPS pull synchronization with a restricted agent.",
@@ -34,6 +37,7 @@
       "WireGuard, route and firewall wizard with a signed allowlisted diagnostic queue."
     ],
     "de": [
+      "Durchsuchbare Admin-Schnellaktionen nach Plugin gruppiert hinzugefügt.",
       "Objekte, Rekorder und Kameras mit verschlüsselten RTSP-Zugangsdaten und öffentlichen HLS-URLs verwalten.",
       "Atomare Stream-Veröffentlichung mit Syntaxprüfung, Sicherungen und Wiederherstellung.",
       "SSH mit Host-Key-Prüfung und HTTPS-Pull-Synchronisierung über einen eingeschränkten Agenten.",
@@ -42,6 +46,7 @@
       "Assistent für WireGuard, Routen und Firewall mit signierter Diagnosewarteschlange und erlaubten Operationen."
     ],
     "zh-cn": [
+      "新增按插件分组并可搜索的后台快捷操作。",
       "管理站点、录像机和摄像机，支持加密 RTSP 凭据与公开 HLS 链接。",
       "原子发布流配置，提供语法检查、备份和回滚。",
       "通过主机密钥验证的 SSH 或受限代理进行 HTTPS 拉取同步。",
@@ -59,5 +64,67 @@
   },
   "requires": {
     "cms": ">=1.7.0"
-  }
+  },
+  "quick_actions": [
+    {
+      "route": "/admin/camera-manager",
+      "label": "Camera overview",
+      "label_i18n": {
+        "ru": "Обзор камер",
+        "en": "Camera overview",
+        "de": "Kameraübersicht",
+        "zh-cn": "摄像头概览"
+      },
+      "icon": "ci-video",
+      "keywords": ""
+    },
+    {
+      "route": "/admin/camera-manager/cameras/create",
+      "label": "Add camera",
+      "label_i18n": {
+        "ru": "Добавить камеру",
+        "en": "Add camera",
+        "de": "Kamera hinzufügen",
+        "zh-cn": "添加摄像头"
+      },
+      "icon": "ci-video",
+      "keywords": "rtsp hls камера camera"
+    },
+    {
+      "route": "/admin/camera-manager/sites/create",
+      "label": "Add camera site",
+      "label_i18n": {
+        "ru": "Добавить объект камер",
+        "en": "Add camera site",
+        "de": "Kamerastandort hinzufügen",
+        "zh-cn": "添加摄像头站点"
+      },
+      "icon": "ci-plus",
+      "keywords": ""
+    },
+    {
+      "route": "/admin/camera-manager/sites",
+      "label": "Camera sites",
+      "label_i18n": {
+        "ru": "Объекты камер",
+        "en": "Camera sites",
+        "de": "Kamerastandorte",
+        "zh-cn": "摄像头站点"
+      },
+      "icon": "ci-home",
+      "keywords": ""
+    },
+    {
+      "route": "/admin/camera-manager/settings",
+      "label": "Camera settings",
+      "label_i18n": {
+        "ru": "Настройки камер",
+        "en": "Camera settings",
+        "de": "Kameraeinstellungen",
+        "zh-cn": "摄像头设置"
+      },
+      "icon": "ci-settings",
+      "keywords": ""
+    }
+  ]
 }

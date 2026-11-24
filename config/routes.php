@@ -286,6 +286,9 @@ $app->router->post('/admin/theme-editor/restore', [ThemeEditorController::class,
 $app->router->post('/admin/theme-editor/copy', [ThemeEditorController::class, 'copyTheme'])->middleware(['auth', 'admin', 'creator']);
 $app->router->post('/admin/themes/delete', [AdminController::class, 'themeDelete'])->middleware(['auth', 'admin', 'creator']);
 $app->router->get('/admin/plugins', [PluginController::class, 'index'])->middleware(['auth', 'admin']);
+$app->router->get('/admin/plugins/catalog', [PluginController::class, 'marketplace'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/plugins/catalog/refresh', [PluginController::class, 'refreshMarketplace'])->middleware(['auth', 'admin']);
+$app->router->post('/admin/plugins/catalog/install', [PluginController::class, 'installMarketplace'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/plugins/install', [PluginController::class, 'install'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/plugins/activate', [PluginController::class, 'activate'])->middleware(['auth', 'admin']);
 $app->router->post('/admin/plugins/deactivate', [PluginController::class, 'deactivate'])->middleware(['auth', 'admin']);

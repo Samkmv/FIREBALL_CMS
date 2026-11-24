@@ -766,4 +766,7 @@
 
     initDateTimePickers();
     loadEvents();
+    if (query.get('create') === '1' && canManage) {
+        openCreate();
+    }
 })();

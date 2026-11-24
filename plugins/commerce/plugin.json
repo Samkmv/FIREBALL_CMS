@@ -2,11 +2,99 @@
   "name": "Commerce",
   "slug": "commerce",
   "class": "FireballPluginCommerce",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "type": "system",
   "description": "Storefront, products, inventory, cart and order management.",
   "name_i18n": {"ru": "Коммерция", "en": "Commerce", "de": "Shop", "zh-cn": "商城"},
   "description_i18n": {"ru": "Витрина, товары, остатки, корзина и управление заказами."},
   "author": "FIREBALL CMS",
-  "auto_migrate": true
+  "auto_migrate": true,
+  "quick_actions": [
+    {
+      "route": "/admin/commerce",
+      "label": "Shop overview",
+      "label_i18n": {
+        "ru": "Обзор магазина",
+        "en": "Shop overview",
+        "de": "Shop-Übersicht",
+        "zh-cn": "商城概览"
+      },
+      "icon": "ci-shopping-bag",
+      "keywords": ""
+    },
+    {
+      "route": "/admin/commerce/products/edit/0",
+      "label": "Add product",
+      "label_i18n": {
+        "ru": "Добавить товар",
+        "en": "Add product",
+        "de": "Produkt hinzufügen",
+        "zh-cn": "添加商品"
+      },
+      "icon": "ci-plus",
+      "keywords": "товар product"
+    },
+    {
+      "route": "/admin/commerce/products",
+      "label": "Products",
+      "label_i18n": {
+        "ru": "Товары",
+        "en": "Products",
+        "de": "Produkte",
+        "zh-cn": "商品"
+      },
+      "icon": "ci-shopping-bag",
+      "keywords": ""
+    },
+    {
+      "route": "/admin/commerce/categories",
+      "label": "Product categories",
+      "label_i18n": {
+        "ru": "Категории товаров",
+        "en": "Product categories",
+        "de": "Produktkategorien",
+        "zh-cn": "商品分类"
+      },
+      "icon": "ci-folder",
+      "keywords": ""
+    },
+    {
+      "route": "/admin/commerce/orders",
+      "label": "Orders",
+      "label_i18n": {
+        "ru": "Заказы",
+        "en": "Orders",
+        "de": "Bestellungen",
+        "zh-cn": "订单"
+      },
+      "icon": "ci-file-text",
+      "keywords": ""
+    },
+    {
+      "route": "/admin/commerce/settings",
+      "label": "Shop settings",
+      "label_i18n": {
+        "ru": "Настройки магазина",
+        "en": "Shop settings",
+        "de": "Shop-Einstellungen",
+        "zh-cn": "商城设置"
+      },
+      "icon": "ci-settings",
+      "keywords": ""
+    }
+  ],
+  "release_notes_i18n": {
+    "ru": [
+      "Добавлены быстрые действия админки с поиском и группировкой по плагинам."
+    ],
+    "en": [
+      "Added searchable admin quick actions grouped by plugin."
+    ],
+    "de": [
+      "Durchsuchbare Admin-Schnellaktionen nach Plugin gruppiert hinzugefügt."
+    ],
+    "zh-cn": [
+      "新增按插件分组并可搜索的后台快捷操作。"
+    ]
+  }
 }

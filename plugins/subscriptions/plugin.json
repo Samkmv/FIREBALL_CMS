@@ -2,7 +2,7 @@
   "name": "Subscriptions",
   "slug": "subscriptions",
   "class": "FireballPluginSubscriptions",
-  "version": "1.5.7",
+  "version": "1.5.8",
   "description": "Complete paid subscription management with Robokassa checkout and recurring payments, subscriber profiles, plans, and server-side protection for posts, videos, and camera archives.",
   "name_i18n": {
     "ru": "Подписки",
@@ -19,6 +19,7 @@
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
+    "Added searchable admin quick actions grouped by plugin.",
     "Added editing of names and descriptions for built-in plan capabilities and custom included items, displayed on plan cards, at checkout and in subscriber accounts.",
     "Russian phone masks and canonical +7 storage now match CMS account numbers; legacy records are displayed consistently without rewriting payment history.",
     "Locked posts remain searchable without exposing private snippets; video access follows the current visitor and any matching active plan.",
@@ -41,6 +42,7 @@
   },
   "release_notes_i18n": {
     "ru": [
+      "Добавлены быстрые действия админки с поиском и группировкой по плагинам.",
       "Добавлено редактирование названий и описаний встроенных возможностей тарифа и собственных пунктов состава подписки с отображением в карточках тарифов, при оформлении и в личном кабинете.",
       "Российская маска и сохранение телефона в формате +7 согласованы с аккаунтом CMS; старые номера отображаются единообразно без перезаписи истории платежей.",
       "Закрытые записи находятся в поиске без раскрытия закрытого текста; доступ к видео проверяется для текущего посетителя и всех подходящих действующих тарифов.",
@@ -58,6 +60,7 @@
       "Таблицы данных подписок на мобильных устройствах отображаются карточками в стиле шаблонов CMS."
     ],
     "en": [
+      "Added searchable admin quick actions grouped by plugin.",
       "Added editing of names and descriptions for built-in plan capabilities and custom included items, displayed on plan cards, at checkout and in subscriber accounts.",
       "Russian phone masks and canonical +7 storage now match CMS account numbers; legacy records are displayed consistently without rewriting payment history.",
       "Locked posts remain searchable without exposing private snippets; video access follows the current visitor and any matching active plan.",
@@ -75,6 +78,7 @@
       "Subscription data tables now use responsive mobile cards consistent with the CMS templates."
     ],
     "de": [
+      "Durchsuchbare Admin-Schnellaktionen nach Plugin gruppiert hinzugefügt.",
       "Namen und Beschreibungen integrierter Tarifleistungen und eigener Einträge lassen sich bearbeiten und werden auf Tarifkarten, beim Kauf und im Abonnentenkonto angezeigt.",
       "Russische Telefonmasken und die Speicherung im +7-Format entsprechen jetzt den CMS-Kontonummern; alte Datensätze werden einheitlich angezeigt, ohne den Zahlungsverlauf zu ändern.",
       "Geschützte Beiträge bleiben ohne private Textauszüge auffindbar; der Videozugriff berücksichtigt den aktuellen Besucher und jedes passende aktive Abonnement.",
@@ -92,6 +96,7 @@
       "Datentabellen für Abonnements werden auf Mobilgeräten als responsive Karten im Stil der CMS-Vorlagen dargestellt."
     ],
     "zh-cn": [
+      "新增按插件分组并可搜索的后台快捷操作。",
       "支持编辑套餐内置功能和自定义条目的名称与说明，并在套餐卡片、结账页和订阅者账户中显示。",
       "俄罗斯电话号码掩码及 +7 标准存储格式现与 CMS 账号一致；旧号码统一显示，不改写付款历史。",
       "受限文章仍可被搜索，但不会泄露私密摘要；视频访问根据当前访客及所有匹配的有效订阅套餐进行判断。",
@@ -115,5 +120,79 @@
     "repository": "Samkmv/FIREBALL_CMS",
     "branch": "main",
     "path": "plugins/subscriptions"
-  }
+  },
+  "quick_actions": [
+    {
+      "route": "/admin/subscriptions",
+      "label": "Subscription overview",
+      "label_i18n": {
+        "ru": "Обзор подписок",
+        "en": "Subscription overview",
+        "de": "Abonnementübersicht",
+        "zh-cn": "订阅概览"
+      },
+      "icon": "ci-credit-card",
+      "keywords": ""
+    },
+    {
+      "route": "/admin/subscriptions/plans/create",
+      "label": "Add subscription plan",
+      "label_i18n": {
+        "ru": "Добавить тариф подписки",
+        "en": "Add subscription plan",
+        "de": "Abonnementtarif hinzufügen",
+        "zh-cn": "添加订阅套餐"
+      },
+      "icon": "ci-plus",
+      "keywords": ""
+    },
+    {
+      "route": "/admin/subscriptions/subscribers?grant=1",
+      "label": "Add subscriber",
+      "label_i18n": {
+        "ru": "Добавить подписчика",
+        "en": "Add subscriber",
+        "de": "Abonnenten hinzufügen",
+        "zh-cn": "添加订阅者"
+      },
+      "icon": "ci-user-plus",
+      "keywords": "добавить подписчика выдать подписку grant subscriber"
+    },
+    {
+      "route": "/admin/subscriptions/exclusions/create",
+      "label": "Add access exclusion",
+      "label_i18n": {
+        "ru": "Добавить исключение доступа",
+        "en": "Add access exclusion",
+        "de": "Zugriffsausnahme hinzufügen",
+        "zh-cn": "添加访问例外"
+      },
+      "icon": "ci-shield",
+      "keywords": ""
+    },
+    {
+      "route": "/admin/subscriptions/profile-fields/create",
+      "label": "Add profile field",
+      "label_i18n": {
+        "ru": "Добавить поле профиля",
+        "en": "Add profile field",
+        "de": "Profilfeld hinzufügen",
+        "zh-cn": "添加个人资料字段"
+      },
+      "icon": "ci-plus",
+      "keywords": ""
+    },
+    {
+      "route": "/admin/subscriptions/payments",
+      "label": "Subscription payments",
+      "label_i18n": {
+        "ru": "Платежи по подпискам",
+        "en": "Subscription payments",
+        "de": "Abonnementzahlungen",
+        "zh-cn": "订阅付款"
+      },
+      "icon": "ci-credit-card",
+      "keywords": ""
+    }
+  ]
 }

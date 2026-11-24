@@ -168,7 +168,7 @@ foreach ($subscriptions as $subscription) {
 ?>
 
 <?php require __DIR__ . '/shell-open.php'; ?>
-    <details class="border rounded-5 subscriptions-grant-panel mb-4" data-subscriptions-grant-panel>
+    <details class="border rounded-5 subscriptions-grant-panel mb-4" data-subscriptions-grant-panel<?= (string)request()->get('grant', '') === '1' ? ' open' : '' ?>>
         <summary class="subscriptions-grant-summary p-3 p-md-4">
             <span class="subscriptions-grant-summary__icon" aria-hidden="true"><i class="ci-user-plus"></i></span>
             <span class="subscriptions-grant-summary__copy">

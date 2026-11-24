@@ -2,7 +2,7 @@
   "name": "Tape Room",
   "slug": "reel-player",
   "class": "FireballPluginReelPlayer",
-  "version": "1.8.6",
+  "version": "1.8.7",
   "type": "system",
   "description": "Reel-to-reel player with a shared album catalogue, artists, personal collections, playlists and audio chapters.",
   "name_i18n": {
@@ -19,17 +19,20 @@
     "cms": ">=1.8.19"
   },
   "release_notes": [
+    "Added searchable admin quick actions grouped by plugin.",
     "Use exact FLAC STREAMINFO sample duration for progress, reel winding, seeking, chapters and Media Session in both player views.",
     "Do not persist an initial browser FLAC estimate; repair stored durations when the verified header arrives without restarting playback.",
     "Resume beyond an underestimated end without jumping to zero; handle late duration changes and add FLAC regression coverage."
   ],
   "release_notes_i18n": {
     "en": [
+      "Added searchable admin quick actions grouped by plugin.",
       "Use exact FLAC STREAMINFO sample duration for progress, reel winding, seeking, chapters and Media Session in both player views.",
       "Do not persist an initial browser FLAC estimate; repair stored durations when the verified header arrives without restarting playback.",
       "Resume beyond an underestimated end without jumping to zero; handle late duration changes and add FLAC regression coverage."
     ],
     "ru": [
+      "Добавлены быстрые действия админки с поиском и группировкой по плагинам.",
       "Для FLAC шкала, намотка катушек, перемотка, главы и системное управление используют точное число семплов в обоих видах плеера.",
       "Первоначальная браузерная оценка FLAC не записывается в библиотеку; после чтения заголовка длительность исправляется без перезапуска песни.",
       "Продолжение после ошибочно определённого конца не сбрасывает позицию; добавлены проверки позднего уточнения длительности и FLAC-регрессии."
@@ -41,5 +44,43 @@
     "repository": "Samkmv/FIREBALL_CMS",
     "branch": "main",
     "path": "plugins/reel-player"
-  }
+  },
+  "quick_actions": [
+    {
+      "route": "/admin/reel-player",
+      "label": "Library and audio upload",
+      "label_i18n": {
+        "ru": "Медиатека и загрузка аудио",
+        "en": "Library and audio upload",
+        "de": "Mediathek und Audio-Upload",
+        "zh-cn": "媒体库及音频上传"
+      },
+      "icon": "ci-music",
+      "keywords": "музыка аудио альбом трек music audio album track"
+    },
+    {
+      "route": "/admin/reel-player/genres",
+      "label": "Music genres",
+      "label_i18n": {
+        "ru": "Музыкальные жанры",
+        "en": "Music genres",
+        "de": "Musikgenres",
+        "zh-cn": "音乐流派"
+      },
+      "icon": "ci-grid",
+      "keywords": ""
+    },
+    {
+      "route": "/admin/reel-player/settings",
+      "label": "Audio player settings",
+      "label_i18n": {
+        "ru": "Настройки аудиоплеера",
+        "en": "Audio player settings",
+        "de": "Audioplayer-Einstellungen",
+        "zh-cn": "音频播放器设置"
+      },
+      "icon": "ci-settings",
+      "keywords": ""
+    }
+  ]
 }

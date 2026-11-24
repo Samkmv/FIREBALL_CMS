@@ -2883,6 +2883,39 @@ html[data-fb-admin-hydrated="false"] .fb-admin-main {
     color: var(--fb-color-primary);
 }
 
+.fb-command-filters {
+    display: grid;
+    gap: 8px;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--fb-color-border);
+}
+
+.fb-command-filters .form-select {
+    width: 100%;
+}
+
+.fb-command-modes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.fb-command-mode {
+    padding: 6px 10px;
+    border: 1px solid var(--fb-color-border);
+    border-radius: var(--fb-radius-md);
+    background: var(--fb-color-surface-secondary);
+    color: var(--fb-color-text-secondary);
+    font: inherit;
+    font-size: .8rem;
+}
+
+.fb-command-mode[aria-pressed="true"] {
+    border-color: var(--fb-color-primary);
+    background: var(--fb-color-primary-soft);
+    color: var(--fb-color-primary);
+}
+
 .fb-command-results {
     min-height: 120px;
     overflow: auto;

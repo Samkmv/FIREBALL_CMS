@@ -242,6 +242,8 @@
         const dialog = root.querySelector('.fb-command-dialog');
         const input = root.querySelector('[data-fb-command-input]');
         const results = root.querySelector('[data-fb-command-results]');
+        const categoryFilter = root.querySelector('[data-fb-command-category-filter]');
+        const modeSwitches = Array.from(root.querySelectorAll('[data-fb-command-mode-switch]'));
         const openers = Array.from(admin.querySelectorAll('[data-fb-command-open]'));
         const emptyLabel = root.dataset.emptyLabel || 'No results';
         const actionsLabel = root.dataset.actionsLabel || 'Actions';
@@ -270,7 +272,11 @@
 
         function collect() {
             const map = new Map();
-            document.querySelectorAll('a[data-fb-command][href], a[data-fb-quick-action][href]').forEach((element) => {
+            const elements = [
+                ...admin.querySelectorAll('[data-fb-command-registry] a[data-fb-command][href]'),
+                ...admin.querySelectorAll('a[data-fb-command][href], a[data-fb-quick-action][href]')
+            ];
+            elements.forEach((element) => {
                 const href = element.href;
                 const kind = element.dataset.fbCommandKind
                     || (element.matches('[data-fb-quick-action]') ? 'action' : 'navigation');
@@ -304,6 +310,33 @@
                 map.set(href, command);
             });
             commands = Array.from(map.values());
+        }
+
+        function updateCategories() {
+            if (!categoryFilter) return;
+            categoryFilter.value = '';
+            while (categoryFilter.options.length > 1) categoryFilter.remove(1);
+            const categories = new Set(commands
+                .filter(command => openMode !== 'actions' || command.kind === 'action')
+                .map(command => command.category));
+            if (openMode === 'search' && siteSuggestUrl) categories.add(siteLabel);
+            Array.from(categories).sort((left, right) => left.localeCompare(right)).forEach(category => {
+                const option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                categoryFilter.appendChild(option);
+            });
+        }
+
+        function setMode(mode) {
+            openMode = mode;
+            root.dataset.commandMode = mode;
+            modeSwitches.forEach(button => {
+                button.setAttribute('aria-pressed', button.dataset.fbCommandModeSwitch === mode ? 'true' : 'false');
+            });
+            updateCategories();
+            activeIndex = 0;
+            queueSiteSearch(clean(input.value));
         }
 
         function iconForSiteType(type) {
@@ -407,7 +440,7 @@
             siteSearchSequence += 1;
             const sequence = siteSearchSequence;
 
-            if (query.length < 2) {
+            if (openMode === 'actions' || (categoryFilter?.value && categoryFilter.value !== siteLabel) || query.length < 2) {
                 render();
                 return;
             }
@@ -431,19 +464,19 @@
 
         function render() {
             const query = clean(input.value);
+            const terms = query.split(' ').filter(Boolean);
+            const selectedCategory = categoryFilter?.value || '';
             visibleCommands = commands
                 .concat(siteCommands)
                 .filter((command) => {
-                    if (query === '' && openMode === 'actions') {
-                        return command.kind === 'action';
-                    }
-                    return query === '' || command.search.includes(query);
+                    return (openMode !== 'actions' || command.kind === 'action')
+                        && (!selectedCategory || command.category === selectedCategory)
+                        && terms.every(term => command.search.includes(term));
                 })
                 .sort((left, right) => {
+                    const categoryOrder = left.category.localeCompare(right.category);
                     if (query === '') {
-                        const leftKind = openMode === 'actions' && left.kind === 'action' ? 0 : 1;
-                        const rightKind = openMode === 'actions' && right.kind === 'action' ? 0 : 1;
-                        return leftKind - rightKind
+                        return categoryOrder
                             || recentRank(left.href) - recentRank(right.href)
                             || left.label.localeCompare(right.label);
                     }
@@ -451,7 +484,7 @@
                     const rightSite = right.kind === 'site' ? 1 : 0;
                     const leftStart = clean(left.label).startsWith(query) ? 0 : 1;
                     const rightStart = clean(right.label).startsWith(query) ? 0 : 1;
-                    return leftSite - rightSite || leftStart - rightStart || left.label.localeCompare(right.label);
+                    return leftSite - rightSite || categoryOrder || leftStart - rightStart || left.label.localeCompare(right.label);
                 });
 
             activeIndex = Math.min(activeIndex, Math.max(visibleCommands.length - 1, 0));
@@ -537,22 +570,22 @@
         }
 
         function focusables() {
-            return Array.from(dialog.querySelectorAll('input, button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'))
+            return Array.from(dialog.querySelectorAll('input, select, button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'))
                 .filter((element) => !element.hidden && element.offsetParent !== null);
         }
 
         function open(trigger) {
             collect();
             returnFocus = trigger instanceof HTMLElement ? trigger : document.activeElement;
-            openMode = trigger instanceof HTMLElement && trigger.dataset.fbCommandMode === 'actions' ? 'actions' : 'search';
-            root.dataset.commandMode = openMode;
+            const mode = trigger instanceof HTMLElement && trigger.dataset.fbCommandMode === 'actions' ? 'actions' : 'search';
             root.hidden = false;
             root.setAttribute('aria-hidden', 'false');
             document.body.classList.add('fb-command-open');
             input.value = '';
             siteCommands = [];
+            siteSearchSequence += 1;
             activeIndex = 0;
-            render();
+            setMode(mode);
             window.requestAnimationFrame(() => input.focus());
         }
 
@@ -577,6 +610,14 @@
             activeIndex = 0;
             queueSiteSearch(clean(input.value));
         });
+        categoryFilter?.addEventListener('change', () => {
+            activeIndex = 0;
+            queueSiteSearch(clean(input.value));
+        });
+        modeSwitches.forEach(button => button.addEventListener('click', () => {
+            setMode(button.dataset.fbCommandModeSwitch);
+            input.focus();
+        }));
 
         root.addEventListener('keydown', (event) => {
             if (event.key === 'Escape') {
@@ -584,13 +625,13 @@
                 close();
                 return;
             }
-            if (event.key === 'ArrowDown' && visibleCommands.length > 0) {
+            if (event.key === 'ArrowDown' && document.activeElement !== categoryFilter && visibleCommands.length > 0) {
                 event.preventDefault();
                 activeIndex = (activeIndex + 1) % visibleCommands.length;
                 syncActive();
                 return;
             }
-            if (event.key === 'ArrowUp' && visibleCommands.length > 0) {
+            if (event.key === 'ArrowUp' && document.activeElement !== categoryFilter && visibleCommands.length > 0) {
                 event.preventDefault();
                 activeIndex = (activeIndex - 1 + visibleCommands.length) % visibleCommands.length;
                 syncActive();

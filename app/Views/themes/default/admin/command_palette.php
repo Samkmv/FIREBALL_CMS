@@ -107,6 +107,16 @@ if (!is_array($registeredAdminCommands)) {
                 <i class="ci-close" aria-hidden="true"></i>
             </button>
         </div>
+        <div class="fb-command-filters">
+            <div class="fb-command-modes" role="group" aria-label="<?= htmlSC(return_translation('admin_ui_command_title')) ?>">
+                <button type="button" class="fb-command-mode" data-fb-command-mode-switch="search" aria-pressed="true"><?= print_translation('admin_ui_command_all_results') ?></button>
+                <button type="button" class="fb-command-mode" data-fb-command-mode-switch="actions" aria-pressed="false"><?= print_translation('admin_dashboard_quick_actions') ?></button>
+            </div>
+            <label class="visually-hidden" for="fbCommandCategory"><?= print_translation('admin_ui_command_category') ?></label>
+            <select id="fbCommandCategory" class="form-select form-select-sm" data-fb-command-category-filter>
+                <option value=""><?= print_translation('admin_ui_command_all_categories') ?></option>
+            </select>
+        </div>
         <div class="fb-command-results" data-fb-command-results role="listbox"></div>
         <footer class="fb-command-footer">
             <span><kbd>↑</kbd><kbd>↓</kbd> <?= print_translation('admin_ui_command_move') ?></span>

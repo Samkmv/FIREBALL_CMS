@@ -38,11 +38,12 @@ final class WidgetsController extends BaseController
         }
         $repository = widgets()->instances;
         $context = new WidgetContext('admin');
+        $instanceId = null;
         try {
             switch ($payload['action'] ?? '') {
                 case 'add':
                     if (!is_string($payload['type'] ?? null) || !is_string($payload['area'] ?? null)) throw new \InvalidArgumentException(return_translation('widgets_invalid_request'));
-                    $repository->add($payload['type'], $payload['area'], $payload['revision'], $context);
+                    $instanceId = $repository->add($payload['type'], $payload['area'], $payload['revision'], $context);
                     break;
                 case 'update':
                     if (!is_int($payload['id'] ?? null) || !is_array($payload['settings'] ?? null) || !is_array($payload['visibility'] ?? null)) throw new \InvalidArgumentException(return_translation('widgets_invalid_request'));
@@ -59,7 +60,7 @@ final class WidgetsController extends BaseController
                 default: throw new \InvalidArgumentException(return_translation('widgets_invalid_request'));
             }
             $snapshot = $repository->snapshot();
-            response()->json(['status' => 'ok', 'revision' => $snapshot['revision'], 'message' => return_translation('widgets_saved'),
+            response()->json(['status' => 'ok', 'revision' => $snapshot['revision'], 'instance_id' => $instanceId, 'message' => return_translation('widgets_saved'),
                 'html' => view()->renderPartial('admin/widgets_editor', ['snapshot' => $snapshot, 'widget_context' => $context])]);
         } catch (WidgetConflictException $exception) {
             response()->json(['status' => 'error', 'message' => $exception->getMessage()], 409);

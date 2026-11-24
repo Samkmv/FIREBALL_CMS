@@ -16,6 +16,7 @@ final class PluginManager
     private array $loadErrors = [];
     private ?string $bootingPluginSlug = null;
     private array $settingsCache = [];
+    private array $quickActionPlugins = [];
 
     public function __construct(?string $pluginsPath = null)
     {
@@ -41,6 +42,7 @@ final class PluginManager
                 $plugin = $this->loadPluginInstance($metadata);
                 $this->bootPluginInstance($slug, $plugin);
                 $this->includePluginRoutes($metadata, $router);
+                $this->registerQuickActions($metadata);
             } catch (Throwable $exception) {
                 $this->recordError($slug, 'Plugin boot failed.', $exception);
             }
@@ -50,7 +52,7 @@ final class PluginManager
 
     private function manifestKey(): string
     {
-        return 'plugins:runtime:v1:' . hash('sha256', $this->pluginsPath);
+        return 'plugins:runtime:v2:' . hash('sha256', $this->pluginsPath);
     }
 
     public function invalidateRuntimeManifest(): void
@@ -155,6 +157,7 @@ final class PluginManager
         $this->invalidateRuntimeManifest();
         \App\Services\SchemaMigration::run(fn() => $this->ensureSchema());
         $metadata = $this->validMetadataBySlug($slug);
+        $wasInstalled = $this->pluginRow($slug) !== null;
         $now = date('Y-m-d H:i:s');
 
         db()->beginTransaction();
@@ -197,6 +200,15 @@ final class PluginManager
                     // MySQL DDL inside plugin migrations may auto-commit the transaction.
                 }
             }
+            // MySQL DDL may have committed the new row before a later hook failed.
+            // Keep migration progress/settings for retry, but do not report success.
+            if (!$wasInstalled) {
+                try {
+                    db()->query('DELETE FROM plugins WHERE slug = ?', [$slug]);
+                } catch (Throwable $cleanupException) {
+                    $this->recordError($slug, 'Failed installation record cleanup failed.', $cleanupException);
+                }
+            }
             $this->recordError($metadata['slug'], 'Plugin install failed.', $exception);
             throw $exception;
         }
@@ -231,6 +243,7 @@ final class PluginManager
             \FBL\AssetManifest::rebuild();
             $this->invalidateRuntimeManifest();
             $this->bootPluginInstance($slug, $plugin);
+            $this->registerQuickActions($metadata);
             if (function_exists('search_indexer')) {
                 foreach (search_registry()->namesByOwner($slug) as $providerName) {
                     search_indexer()->reindexProvider($providerName);
@@ -305,6 +318,25 @@ final class PluginManager
     public function currentBootingPluginSlug(): ?string
     {
         return $this->bootingPluginSlug;
+    }
+
+    private function registerQuickActions(array $metadata): void
+    {
+        $slug = (string)$metadata['slug'];
+        $registered = isset($this->quickActionPlugins[$slug]);
+        $this->quickActionPlugins[$slug] = $metadata;
+        if ($registered) {
+            return;
+        }
+
+        $append = function (array $actions) use ($slug): array {
+            if (!check_admin()) {
+                return $actions;
+            }
+            return array_merge($actions, \App\Services\PluginQuickActions::fromMetadata($this->quickActionPlugins[$slug]));
+        };
+        add_filter('admin_command_palette_commands', $append);
+        add_filter('admin_quick_actions', $append);
     }
 
     private function bootPluginInstance(string $slug, PluginInterface $plugin): void

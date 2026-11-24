@@ -20,6 +20,8 @@ class PluginUpdateService extends UpdateCenter
     private const BASELINE_HISTORY_PAGE_SIZE = 50;
     private const BASELINE_HISTORY_PAGES = 4;
     private const FAILED_CHECK_RETRY_SECONDS = 300;
+    private const MARKETPLACE_REPOSITORY = 'Samkmv/FIREBALL_CMS';
+    private const MARKETPLACE_CACHE_KEY = 'plugins:marketplace:v1';
 
     private PluginManager $pluginManager;
     private string $pluginsPath;
@@ -98,6 +100,213 @@ class PluginUpdateService extends UpdateCenter
         unset($plugin);
 
         return $plugins;
+    }
+
+    /** Remote manifests are cached; local installation state is always read afresh. */
+    public function marketplace(array $localPlugins, bool $refresh = false, string $category = '', string $query = ''): array
+    {
+        $stored = cache()->get(self::MARKETPLACE_CACHE_KEY);
+        $catalog = is_array($stored) ? $stored : [];
+        $error = '';
+        if ($refresh || ((int)($catalog['retry_at'] ?? 0) <= time()
+            && (int)($catalog['checked_at'] ?? 0) + self::AUTO_CHECK_INTERVAL_SECONDS <= time())) {
+            try {
+                $catalog = $this->fetchMarketplaceCatalog();
+                cache()->set(self::MARKETPLACE_CACHE_KEY, $catalog, 7 * 86400);
+            } catch (Throwable $exception) {
+                $error = $this->safeError($exception, 'admin_plugin_marketplace_load_failed');
+                $catalog['error'] = $error;
+                $catalog['retry_at'] = max(time() + self::FAILED_CHECK_RETRY_SECONDS, $this->retryNotBefore);
+                cache()->set(self::MARKETPLACE_CACHE_KEY, $catalog, 7 * 86400);
+            }
+        }
+        $error = $error ?: (string)($catalog['error'] ?? '');
+        $items = [];
+        foreach ($catalog['plugins'] ?? [] as $metadata) {
+            $slug = (string)$metadata['slug'];
+            $incompatible = '';
+            try {
+                $this->assertRequirements($metadata);
+            } catch (Throwable $exception) {
+                $incompatible = $exception->getMessage();
+            }
+            $items[$slug] = [
+                'slug' => $slug,
+                'name' => $this->marketplaceText($metadata, 'name', $slug),
+                'description' => $this->marketplaceText($metadata, 'description'),
+                'version' => (string)$metadata['version'],
+                'author' => (string)($metadata['author'] ?? ''),
+                'category' => PluginCatalogCategories::resolve($metadata),
+                'installed' => false,
+                'status' => 'not_installed',
+                'local' => false,
+                'valid' => true,
+                'error' => '',
+                'incompatible' => $incompatible,
+            ];
+        }
+        foreach ($localPlugins as $plugin) {
+            $slug = (string)$plugin['slug'];
+            // Local code takes precedence, including invalid packages: never overwrite it.
+            $items[$slug] = array_merge($items[$slug] ?? [], $plugin, [
+                'local' => true, 'incompatible' => '', 'category' => PluginCatalogCategories::resolve($plugin),
+            ]);
+            if (!empty($plugin['valid']) && empty($plugin['installed'])) {
+                try {
+                    $metadata = $this->pluginManager->metadata($slug);
+                    $items[$slug]['category'] = PluginCatalogCategories::resolve($metadata);
+                    $this->assertRequirements($metadata);
+                } catch (Throwable $exception) {
+                    $items[$slug]['incompatible'] = $exception->getMessage();
+                }
+            }
+        }
+        ksort($items);
+        $category = PluginCatalogCategories::normalize($category);
+        $query = mb_substr(trim($query), 0, 200);
+        $items = array_filter($items, static function (array $plugin) use ($query): bool {
+            if (!empty($plugin['installed'])) return false;
+            if ($query === '') return true;
+            foreach (['name', 'description', 'slug', 'author'] as $field) {
+                if (mb_stripos((string)($plugin[$field] ?? ''), $query) !== false) return true;
+            }
+            return false;
+        });
+        $categories = [];
+        foreach (PluginCatalogCategories::labels() as $key => $label) {
+            $categories[$key] = ['label' => $label, 'count' => 0];
+        }
+        foreach ($items as $plugin) $categories[$plugin['category']]['count']++;
+        return [
+            'plugins' => array_values(array_filter($items, static fn(array $plugin): bool => $category === '' || $plugin['category'] === $category)),
+            'categories' => $categories,
+            'category' => $category,
+            'query' => $query,
+            'total' => count($items),
+            'error' => $error,
+            'checked_at' => (int)($catalog['checked_at'] ?? 0),
+            'repository' => self::MARKETPLACE_REPOSITORY,
+        ];
+    }
+
+    private function fetchMarketplaceCatalog(): array
+    {
+        $config = $this->marketplaceConfig('');
+        $headers = $this->buildGithubHeaders('');
+        $commit = $this->remotePluginBranchHead($config, $headers);
+        $entries = $this->decodeGithubJson($this->pluginMetadataRequest(
+            $this->buildGithubApiUrl($config['repository'], '/contents/plugins?ref=' . rawurlencode($commit)), $headers
+        ));
+        if (!array_is_list($entries)) {
+            throw new RuntimeException(return_translation('admin_plugin_updates_remote_invalid'));
+        }
+        $plugins = [];
+        foreach ($entries as $entry) {
+            $slug = (string)($entry['name'] ?? '');
+            if (($entry['type'] ?? '') !== 'dir' || preg_match('/^[a-zA-Z0-9_-]{1,120}$/D', $slug) !== 1) {
+                continue;
+            }
+            $metadata = $this->fetchRemotePluginMetadata($this->marketplaceConfig($slug), $slug, $commit, true)['metadata'];
+            if ($metadata === []) continue;
+            $this->assertMarketplaceMetadata($metadata, $slug);
+            $plugins[] = $metadata;
+        }
+        return ['plugins' => $plugins, 'checked_at' => time(), 'commit' => $commit];
+    }
+
+    private function marketplaceConfig(string $slug): array
+    {
+        return ['repository' => self::MARKETPLACE_REPOSITORY, 'branch' => 'main', 'path' => 'plugins/' . $slug];
+    }
+
+    private function assertMarketplaceMetadata(array $metadata, string $slug): void
+    {
+        if (($metadata['slug'] ?? '') !== $slug || !is_string($metadata['name'] ?? null)
+            || trim($metadata['name']) === '' || !is_string($metadata['version'] ?? null)
+            || preg_match('/^\d+\.\d+\.\d+(?:[-+][a-zA-Z0-9.-]+)?$/D', $metadata['version']) !== 1) {
+            throw new RuntimeException(return_translation('admin_plugin_updates_remote_invalid'));
+        }
+    }
+
+    private function marketplaceText(array $metadata, string $field, string $fallback = ''): string
+    {
+        foreach (\FBL\Localization::localeCandidates(null, ['en']) as $locale) {
+            $value = $metadata[$field . '_i18n'][$locale] ?? null;
+            if (is_string($value) && trim($value) !== '') return trim($value);
+        }
+        return is_string($metadata[$field] ?? null) && trim($metadata[$field]) !== '' ? trim($metadata[$field]) : $fallback;
+    }
+
+    /** Install local packages as-is, or stage a missing package from the official source. */
+    public function installFromMarketplace(string $slug): void
+    {
+        if (preg_match('/^[a-zA-Z0-9_-]{1,120}$/D', $slug) !== 1) {
+            throw new RuntimeException(return_translation('admin_plugin_updates_plugin_invalid'));
+        }
+        $lock = $this->acquireUpdateLock();
+        $workspace = '';
+        $stagePath = '';
+        try {
+            if (is_link($this->pluginsPath) || !is_dir($this->pluginsPath)) {
+                throw new RuntimeException(return_translation('admin_plugin_updates_package_invalid'));
+            }
+            foreach ($this->pluginManager->all() as $plugin) {
+                if ($plugin['slug'] !== $slug) continue;
+                if (!empty($plugin['installed'])) {
+                    throw new RuntimeException(return_translation('admin_plugin_marketplace_already_installed'));
+                }
+                $this->assertRequirements($this->pluginManager->metadata($slug));
+                $this->pluginManager->install($slug);
+                return;
+            }
+            $targetPath = $this->pluginsPath . '/' . $slug;
+            if (file_exists($targetPath) || is_link($targetPath)) {
+                throw new RuntimeException(return_translation('admin_plugin_marketplace_path_exists'));
+            }
+            $config = $this->marketplaceConfig($slug);
+            $remote = $this->fetchRemotePluginMetadata($config, $slug);
+            $this->assertMarketplaceMetadata($remote['metadata'], $slug);
+            $this->assertRequirements($remote['metadata']);
+            $workspace = $this->workspaceRoot . '/work/install-' . $slug . '-' . bin2hex(random_bytes(8));
+            $extractPath = $workspace . '/extract';
+            $archivePath = $workspace . '/repository.zip';
+            $this->ensureDirectory($extractPath);
+            $this->downloadPluginArchive($config, $remote['commit'], $archivePath);
+            if (!is_file($archivePath) || filesize($archivePath) <= 0 || filesize($archivePath) > self::MAX_ARCHIVE_BYTES) {
+                throw new RuntimeException(return_translation('admin_plugin_updates_archive_invalid'));
+            }
+            $this->extractRepositoryArchive($archivePath, $extractPath);
+            $packagePath = $this->resolvePluginPackagePath($extractPath, $config['path']);
+            $metadata = $this->readPackageMetadata($packagePath, $slug);
+            if ($metadata !== $remote['metadata'] || !is_file($packagePath . '/Plugin.php')) {
+                throw new RuntimeException(return_translation('admin_plugin_updates_package_mismatch'));
+            }
+            $this->assertRequirements($metadata);
+            $this->assertNoLinks($packagePath);
+            $installations = new ManagedPluginInstallations(ROOT);
+            $files = $installations->tree($packagePath);
+            $stagePath = $this->pluginsPath . '/.' . $slug . '.install-' . bin2hex(random_bytes(8));
+            $this->copyDirectory($packagePath, $stagePath);
+            if ($files !== $installations->tree($stagePath)) {
+                throw new RuntimeException(return_translation('admin_plugin_updates_package_mismatch'));
+            }
+            clearstatcache(true, $targetPath);
+            if (file_exists($targetPath) || is_link($targetPath) || !@rename($stagePath, $targetPath)) {
+                throw new RuntimeException(return_translation('admin_plugin_marketplace_path_exists'));
+            }
+            // Retain the validated files if a migration fails so installation can be retried.
+            $this->pluginManager->install($slug);
+            $installations->record($slug, [
+                'repository' => $config['repository'], 'commit' => $remote['commit'], 'version' => $metadata['version'],
+            ], $files);
+        } finally {
+            try {
+                if ($stagePath !== '' && is_dir($stagePath)) $this->deleteDirectory($stagePath);
+                if ($workspace !== '' && is_dir($workspace)) $this->deleteDirectory($workspace);
+            } finally {
+                $this->releaseUpdateLock($lock);
+            }
+        }
     }
 
     /** Automatic checks share the existing six-hour cache and never install packages. */

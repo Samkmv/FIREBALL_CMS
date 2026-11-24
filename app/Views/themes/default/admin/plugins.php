@@ -2,7 +2,6 @@
 $statusLabels = [
     'active' => [return_translation('admin_plugins_status_active'), 'text-success bg-success-subtle'],
     'inactive' => [return_translation('admin_plugins_status_inactive'), 'text-secondary bg-secondary-subtle'],
-    'not_installed' => [return_translation('admin_plugins_status_not_installed'), 'text-body bg-body-tertiary'],
 ];
 $canUpdatePlugins = \FBL\Auth::isAdmin();
 $configuredUpdateCount = count(array_filter(
@@ -20,6 +19,9 @@ $olderSourceCount = count(array_filter(
     static fn(array $plugin): bool => !empty($plugin['update']['source_older'])
 ));
 $pageActions = '<div class="d-flex flex-wrap align-items-center gap-2">';
+$pageActions .= '<a class="btn btn-primary rounded-pill d-inline-flex align-items-center gap-2" href="'
+    . htmlSC(base_href('/admin/plugins/catalog')) . '"><i class="ci-package" aria-hidden="true"></i>'
+    . htmlSC(return_translation('admin_plugin_marketplace_title')) . '</a>';
 $pageActions .= '<a class="btn btn-outline-secondary rounded-pill d-inline-flex align-items-center gap-2" href="'
     . htmlSC(base_href('/admin/docs/plugins')) . '"><i class="ci-book-open"></i>'
     . htmlSC(return_translation('admin_plugins_docs')) . '</a>';
@@ -101,7 +103,8 @@ $pageActions .= '</div>';
         <div class="border rounded-5 p-4 p-md-5 text-center">
             <i class="ci-box fs-1 text-body-tertiary d-block mb-3"></i>
             <h2 class="h5 mb-2"><?= print_translation('admin_plugins_empty_title') ?></h2>
-            <p class="text-body-secondary mb-0"><?= print_translation('admin_plugins_empty_text_before') ?> <code>/plugins</code><?= print_translation('admin_plugins_empty_text_after') ?></p>
+            <p class="text-body-secondary mb-3"><?= print_translation('admin_plugins_empty_text') ?></p>
+            <a class="btn btn-dark rounded-pill" href="<?= htmlSC(base_href('/admin/plugins/catalog')) ?>"><?= print_translation('admin_plugin_marketplace_title') ?></a>
         </div>
     <?php else: ?>
         <div class="row g-4 align-items-start fb-plugin-grid">
@@ -292,15 +295,7 @@ $pageActions .= '</div>';
                                         </button>
                                     </form>
                                 <?php endif; ?>
-                                <?php if (!$isInstalled): ?>
-                                    <form class="fb-plugin-action-primary" action="<?= base_href('/admin/plugins/install') ?>" method="post">
-                                        <?= get_csrf_field() ?>
-                                        <input type="hidden" name="slug" value="<?= htmlSC($pluginSlug) ?>">
-                                        <button class="btn btn-dark rounded-pill w-100" type="submit" <?= $isValid ? '' : 'disabled' ?>>
-                                            <?= print_translation('admin_plugins_install') ?>
-                                        </button>
-                                    </form>
-                                <?php elseif (!$isActive): ?>
+                                <?php if (!$isActive): ?>
                                     <form class="<?= $updateConfigured ? '' : 'fb-plugin-action-primary' ?>" action="<?= base_href('/admin/plugins/activate') ?>" method="post">
                                         <?= get_csrf_field() ?>
                                         <input type="hidden" name="slug" value="<?= htmlSC($pluginSlug) ?>">
