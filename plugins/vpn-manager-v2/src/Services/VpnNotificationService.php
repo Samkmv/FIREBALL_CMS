@@ -190,6 +190,7 @@ final class VpnNotificationService
                 $subscriptionId = (int)$row['subscription_id'];
                 $recipientId = (int)$row['user_id'];
                 $isAdminExpiration = in_array($type, [self::ADMIN_EXPIRES_3_DAYS, self::ADMIN_EXPIRES_1_DAY], true);
+                $title = $this->title($type);
                 $message = $this->message($type);
                 $actionUrl = '/profile/vpn-v2/' . $subscriptionId;
                 if ($isAdminExpiration) {
@@ -203,14 +204,17 @@ final class VpnNotificationService
                         $this->repository()->markSkipped($id);
                         continue;
                     }
-                    $message = sprintf($message, $subscriptionId, $date);
+                    $label = $row['subscription_label']
+                        ?? \FireballPluginVpnManagerV2::t('vpn_manager_v2_notification_admin_expiration_unnamed');
+                    $title = sprintf($title, $label);
+                    $message = sprintf($message, $date);
                     $actionUrl = '/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId;
                 }
                 if ((string)$row['channel'] === 'email') {
                     $email = trim((string)($row['user_email'] ?? ''));
                     if ($email === '' || !($this->mail ?? new MailService())->send(
                         [$email],
-                        $this->title($type),
+                        $title,
                         '<p>' . htmlSC($message) . '</p>',
                         $message
                     )) {
@@ -219,7 +223,7 @@ final class VpnNotificationService
                 } else {
                     ($this->notifications ?? new NotificationService())->createNotification([
                         'user_id' => $recipientId,
-                        'title' => $this->title($type),
+                        'title' => $title,
                         'message' => $message,
                         'type' => 'vpn_v2_' . $type,
                         'action_url' => $actionUrl,

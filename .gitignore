@@ -61,6 +61,7 @@ __pycache__/
 
 # Local tests, fixtures and verification artifacts. Keep the Xray regression sources.
 /tests/*
+!/tests/update_manifest.php
 !/tests/widget_catalog.php
 !/tests/plugin_marketplace.php
 !/tests/vpn_xray_auto_unit.php

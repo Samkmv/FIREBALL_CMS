@@ -1,7 +1,7 @@
 {
   "name": "Управление VPN",
   "slug": "vpn-manager-v2",
-  "version": "3.8.1",
+  "version": "3.8.2",
   "type": "system",
   "description": "Управление VPN на самостоятельном Xray-core через FIREBALL Agent, совместимые подписки и поэтапный переход с 3x-ui.",
   "description_i18n": {
@@ -19,6 +19,7 @@
   },
   "auto_migrate": true,
   "release_notes": [
+    "VPN expiration notifications and push alerts display the client name or login.",
     "Added searchable admin quick actions grouped by plugin.",
     "Selected administrators receive website and push notifications three days and one day before VPN expiration, including for manual subscriptions.",
     "Server presets share connection selection and order across linked plans.",
@@ -56,6 +57,7 @@
   ],
   "release_notes_i18n": {
     "en": [
+      "VPN expiration notifications and push alerts display the client name or login.",
       "Added searchable admin quick actions grouped by plugin.",
       "Selected administrators receive website and push notifications three days and one day before VPN expiration, including for manual subscriptions.",
       "Server presets share connection selection and order across linked plans.",
@@ -92,6 +94,7 @@
       "Added quick server replacement and Happ notices for expiry and maintenance."
     ],
     "ru": [
+      "В уведомлениях и push об окончании VPN видно имя клиента или логин.",
       "Добавлены быстрые действия админки с поиском и группировкой по плагинам.",
       "Выбранные администраторы получают уведомления на сайте и push за 3 дня и за 1 день до окончания VPN-подписки, включая ручные.",
       "Пресеты серверов с единым составом и порядком подключений для нескольких тарифов.",
@@ -128,6 +131,7 @@
       "Добавлены быстрая замена сервера и уведомления об истечении подписки и техработах в Happ."
     ],
     "de": [
+      "Ablaufhinweise im Web und per Push zeigen den Kundennamen oder Login.",
       "Durchsuchbare Admin-Schnellaktionen nach Plugin gruppiert hinzugefügt.",
       "Ausgewählte Administratoren erhalten drei Tage und einen Tag vor Ablauf Website- und Push-Hinweise, auch für manuelle VPN-Abonnements.",
       "Servervorgaben mit gemeinsamer Verbindungsauswahl und Reihenfolge für zugeordnete Tarife.",
@@ -164,6 +168,7 @@
       "Schneller Serverwechsel und Happ-Hinweise zu Ablauf und Wartung hinzugefügt."
     ],
     "zh-cn": [
+      "VPN 到期站内通知和推送显示客户名称或登录名。",
       "新增按插件分组并可搜索的后台快捷操作。",
       "选定的管理员在 VPN 订阅到期前三天和一天收到站内通知及推送，包括手动添加的订阅。",
       "服务器预设让多个套餐共享连接及顺序。",

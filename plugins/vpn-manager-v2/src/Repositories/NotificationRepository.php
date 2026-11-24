@@ -68,10 +68,14 @@ final class NotificationRepository
         return db()->query(
             "SELECT n.id, n.subscription_id, n.user_id, n.notification_type,
                     n.occurrence_key, n.channel, n.status, n.attempts, n.scheduled_for,
-                    u.email AS user_email, s.status AS subscription_status, s.expires_at
+                    u.email AS user_email, s.status AS subscription_status, s.expires_at,
+                    COALESCE(NULLIF(TRIM(s.client_display_name), ''),
+                             NULLIF(TRIM(s.manual_customer_name), ''),
+                             NULLIF(TRIM(owner.login), ''), NULLIF(TRIM(owner.name), '')) AS subscription_label
              FROM vpn_v2_notifications n
              INNER JOIN vpn_v2_subscriptions s ON s.id = n.subscription_id
              INNER JOIN users u ON u.id = n.user_id
+             LEFT JOIN users owner ON owner.id = s.user_id
              WHERE n.status = 'pending' AND n.scheduled_for <= ?{$typeSql}
              ORDER BY n.id ASC LIMIT {$limit}",
             $params

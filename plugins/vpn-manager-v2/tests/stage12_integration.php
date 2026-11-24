@@ -100,8 +100,8 @@ $assert = static function (bool $condition, string $message): void {
 };
 
 $admin = db()->query("SELECT id FROM users WHERE role IN ('creator', 'admin') ORDER BY id LIMIT 1")->getOne();
-$user = db()->query("SELECT id FROM users WHERE role = 'user' ORDER BY id LIMIT 1")->getOne()
-    ?: db()->query('SELECT id FROM users ORDER BY id LIMIT 1')->getOne();
+$user = db()->query("SELECT id, login FROM users WHERE role = 'user' ORDER BY id LIMIT 1")->getOne()
+    ?: db()->query('SELECT id, login FROM users ORDER BY id LIMIT 1')->getOne();
 $assert(is_array($admin) && is_array($user), 'CMS users are required for Stage 12 integration tests.');
 $assert((int)db()->query("SELECT COUNT(*) FROM vpn_v2_notifications WHERE status IN ('pending', 'failed', 'sending')")->getColumn() === 0,
     'Use a database without queued notifications: the test must not consume an existing outbox.');
@@ -399,25 +399,33 @@ try {
     $adminTypes = [VpnNotificationService::ADMIN_EXPIRES_3_DAYS, VpnNotificationService::ADMIN_EXPIRES_1_DAY];
     $tomorrow = date('Y-m-d 12:00:00', strtotime('+1 day'));
     $manual = $createSubscription('active', $tomorrow, 0, 0)['subscription_id'];
+    $byLogin = $createSubscription('active', $tomorrow, 0, 0)['subscription_id'];
     $renewed = $createSubscription('active', $tomorrow, 0, 0)['subscription_id'];
     $createSubscription('active', date('Y-m-d 12:00:00', strtotime('+2 days')), 0, 0);
     db()->query("UPDATE vpn_v2_subscriptions SET user_id = NULL, manual_customer_name = 'Manual test' WHERE id = ?", [$manual]);
     $notificationService->queueExpirationNotifications();
+    db()->query('UPDATE vpn_v2_subscriptions SET client_display_name = ? WHERE id = ?', ['Клиент 100%', $futureFixture['subscription_id']]);
     db()->query('UPDATE vpn_v2_subscriptions SET expires_at = ? WHERE id = ?', [date('Y-m-d H:i:s', strtotime('+30 days')), $renewed]);
     $offset = count($fakeNotifications->payloads);
-    $assert($notificationService->dispatch($adminTypes) === ['sent' => 2, 'failed' => 0], 'Incorrect administrator reminder count.');
-    $deliveries = array_column(array_slice($fakeNotifications->payloads, $offset), null, 'type');
+    $assert($notificationService->dispatch($adminTypes) === ['sent' => 3, 'failed' => 0], 'Incorrect administrator reminder count.');
     $expected = [
-        VpnNotificationService::ADMIN_EXPIRES_3_DAYS => $futureFixture['subscription_id'],
-        VpnNotificationService::ADMIN_EXPIRES_1_DAY => $manual,
+        $futureFixture['subscription_id'] => [VpnNotificationService::ADMIN_EXPIRES_3_DAYS, 'Клиент 100%', date('Y-m-d', strtotime('+3 days'))],
+        $manual => [VpnNotificationService::ADMIN_EXPIRES_1_DAY, 'Manual test', substr($tomorrow, 0, 10)],
+        $byLogin => [VpnNotificationService::ADMIN_EXPIRES_1_DAY, $user['login'], substr($tomorrow, 0, 10)],
     ];
-    foreach ($expected as $type => $subscriptionId) {
-        $payload = $deliveries['vpn_v2_' . $type] ?? [];
-        $assert(($payload['user_id'] ?? 0) === $adminId
-            && ($payload['action_url'] ?? '') === '/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId
-            && str_contains($payload['message'], '#' . $subscriptionId)
+    foreach (array_slice($fakeNotifications->payloads, $offset) as $payload) {
+        $subscriptionId = $payload['metadata']['subscription_id'];
+        $assert(isset($expected[$subscriptionId]), 'Unexpected or duplicate administrator reminder.');
+        [$type, $label, $date] = $expected[$subscriptionId];
+        unset($expected[$subscriptionId]);
+        $assert($payload['user_id'] === $adminId
+            && $payload['type'] === 'vpn_v2_' . $type
+            && $payload['action_url'] === '/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId
+            && str_contains($payload['title'], $label)
+            && str_contains($payload['message'], $date)
+            && !str_contains($payload['message'], '#' . $subscriptionId)
             && ($payload['push_notification'] ?? true),
-            'Reminder must open the subscription in the admin panel and be eligible for push.');
+            'Reminder must identify the client, open the subscription in the admin panel and be eligible for push.');
     }
     $notificationService->queueExpirationNotifications();
     $assert($notificationService->dispatch($adminTypes)['sent'] === 0, 'Administrator reminders were duplicated.');
