@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'home_index_object_plans' => '套餐',
     'home_index_category_items' => '内容',
     'home_index_hero_title_accent' => '精彩呈现。',
     'home_index_featured_all' => '查看全部',

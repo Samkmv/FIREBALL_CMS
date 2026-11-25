@@ -6,6 +6,8 @@ use Fireball\Subscriptions\Support\Money;
 
 final class PlanRepository
 {
+    public const HOMEPAGE_CATEGORIES = ['apartments', 'business'];
+
     public const PERMISSIONS = [
         'posts.view_paid',
         'videos.view_paid',
@@ -40,6 +42,10 @@ final class PlanRepository
 
     public function save(array $data, ?int $id = null): int
     {
+        $homepageCategory = trim((string)($data['homepage_category'] ?? ''));
+        if ($homepageCategory !== '' && !in_array($homepageCategory, self::HOMEPAGE_CATEGORIES, true)) {
+            throw new \InvalidArgumentException(\FireballPluginSubscriptions::t('subscriptions_home_category_invalid'));
+        }
         $name = mb_substr(trim((string)($data['name'] ?? '')), 0, 255);
         $slug = make_slug((string)($data['slug'] ?? $name), '');
         if ($name === '' || $slug === '') {
@@ -84,6 +90,10 @@ final class PlanRepository
                     [...$values, $now, $now]
                 );
                 $id = (int)db()->getInsertId();
+            }
+
+            if (array_key_exists('homepage_category', $data)) {
+                db()->query('UPDATE subscription_plans SET homepage_category = ? WHERE id = ?', [$homepageCategory, $id]);
             }
 
             if ($isPopular) {

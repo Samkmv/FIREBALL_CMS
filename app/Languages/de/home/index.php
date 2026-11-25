@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'home_index_object_plans' => 'Tarife',
     'home_index_category_items' => 'Veröffentlichungen',
     'home_index_hero_title_accent' => 'Schön umgesetzt.',
     'home_index_featured_all' => 'Alle entdecken',

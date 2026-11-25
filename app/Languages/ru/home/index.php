@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'home_index_object_plans' => 'Тарифы',
     'home_index_category_items' => 'Публикаций',
     'home_index_hero_title_accent' => 'Красивое воплощение.',
     'home_index_featured_all' => 'Смотреть всё',

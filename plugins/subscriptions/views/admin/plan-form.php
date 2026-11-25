@@ -31,6 +31,16 @@ $value = static fn(string $key, mixed $default = ''): mixed => $values[$key] ?? 
             <div class="col-md-8"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_field_name')) ?></label><input class="form-control" id="subscription_plan_name" name="name" value="<?= htmlSC((string)$value('name')) ?>" data-slug-source="#subscription_plan_slug" required></div>
             <div class="col-md-4"><label class="form-label">Slug</label><input class="form-control" id="subscription_plan_slug" name="slug" value="<?= htmlSC((string)$value('slug')) ?>" inputmode="url" autocomplete="off" spellcheck="false" autocapitalize="off" lang="en" pattern="[a-z0-9-]+" data-slug-input required><div class="form-text"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_slug_hint')) ?></div></div>
             <div class="col-12"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_field_description')) ?></label><textarea class="form-control" name="description" rows="4"><?= htmlSC((string)$value('description')) ?></textarea></div>
+            <div class="col-12">
+                <label class="form-label" for="subscriptionHomepageCategory"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_home_category')) ?></label>
+                <select class="form-select" id="subscriptionHomepageCategory" name="homepage_category">
+                    <option value=""><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_home_category_none')) ?></option>
+                    <?php foreach (\Fireball\Subscriptions\Repositories\PlanRepository::HOMEPAGE_CATEGORIES as $homepageCategory): ?>
+                        <option value="<?= htmlSC($homepageCategory) ?>" <?= $value('homepage_category') === $homepageCategory ? 'selected' : '' ?>><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_home_category_' . $homepageCategory)) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <div class="form-text"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_home_category_hint')) ?></div>
+            </div>
             <div class="col-md-3"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_field_price')) ?></label><input class="form-control" name="price" inputmode="decimal" value="<?= htmlSC(isset($values['price_minor']) ? \Fireball\Subscriptions\Support\Money::decimal((int)$values['price_minor']) : (string)$value('price', '0.00')) ?>" required></div>
             <div class="col-md-2"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_field_currency')) ?></label><input class="form-control text-uppercase" name="currency" maxlength="3" value="<?= htmlSC((string)$value('currency', 'RUB')) ?>" required></div>
             <div class="col-md-3"><label class="form-label"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_field_duration')) ?></label><input class="form-control" type="number" name="duration_value" min="1" value="<?= (int)$value('duration_value', 30) ?>" required></div>

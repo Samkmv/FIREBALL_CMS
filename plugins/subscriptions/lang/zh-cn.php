@@ -3,6 +3,12 @@
 $en = require __DIR__ . '/en.php';
 
 return array_replace($en, [
+    'subscriptions_home_category' => '首页套餐分类',
+    'subscriptions_home_category_none' => '不在首页显示',
+    'subscriptions_home_category_apartments' => '公寓住宅',
+    'subscriptions_home_category_business' => '商业',
+    'subscriptions_home_category_hint' => '选择展示此套餐的首页卡片。仅显示已启用的公开套餐。',
+    'subscriptions_home_category_invalid' => '请选择有效的套餐分类。',
     'subscriptions_end_reason' => '结束原因',
     'subscriptions_end_reason_site' => '已在网站关闭自动续订',
     'subscriptions_end_reason_payment_failed' => '续订付款失败',

@@ -1,6 +1,12 @@
 <?php
 
 return [
+    'subscriptions_home_category' => 'Homepage plan category',
+    'subscriptions_home_category_none' => 'Hide from homepage',
+    'subscriptions_home_category_apartments' => 'Apartment buildings',
+    'subscriptions_home_category_business' => 'Business',
+    'subscriptions_home_category_hint' => 'Choose the homepage card for this plan. Only active public plans are displayed.',
+    'subscriptions_home_category_invalid' => 'Choose a valid plan category.',
     'subscriptions_end_reason' => 'Reason for ending',
     'subscriptions_end_reason_site' => 'Auto-renewal turned off on the site',
     'subscriptions_end_reason_payment_failed' => 'Renewal payment failed',

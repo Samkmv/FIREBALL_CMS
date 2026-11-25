@@ -19,9 +19,16 @@ final class PublicController
 {
     public function plans(): string
     {
+        $category = (string)request()->get('category', '');
+        $category = in_array($category, PlanRepository::HOMEPAGE_CATEGORIES, true) ? $category : '';
+        $plans = (new PlanRepository())->all(true);
+        if ($category !== '') {
+            $plans = array_values(array_filter($plans, static fn(array $plan): bool => ($plan['homepage_category'] ?? '') === $category));
+        }
         return plugin_view('subscriptions', 'public/plans', \FireballPluginSubscriptions::viewData([
             'title' => \FireballPluginSubscriptions::t('subscriptions_plans_title'),
-            'plans' => (new PlanRepository())->all(true),
+            'plans' => $plans,
+            'category_label' => $category !== '' ? \FireballPluginSubscriptions::t('subscriptions_home_category_' . $category) : '',
         ]));
     }
 

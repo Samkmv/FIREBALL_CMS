@@ -19,7 +19,7 @@ final class FeatureTestDatabase
     {
         $this->pdo = new PDO('sqlite::memory:', options: [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
         $this->pdo->exec('CREATE TABLE subscription_plans (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT, name TEXT, description TEXT, features_json TEXT, permission_details_json TEXT,
+            id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT, name TEXT, description TEXT, homepage_category TEXT DEFAULT "", features_json TEXT, permission_details_json TEXT,
             price_minor INTEGER, currency TEXT, duration_unit TEXT, duration_value INTEGER,
             grace_period_days INTEGER, is_recurring INTEGER, auto_renew_enabled INTEGER,
             is_active INTEGER, is_public INTEGER, is_popular INTEGER, sort_order INTEGER,
@@ -213,4 +213,23 @@ foreach (['public/plans', 'public/checkout', 'public/account'] as $view) {
 }
 $repository->save(array_replace($permissionInput, ['permission_details' => []]), $id);
 featureCheck($repository->find($id)['permission_details'] === [], 'Clearing metadata restores default text');
+$categoryId = $repository->save(array_replace($input, ['slug' => 'home-category', 'homepage_category' => 'apartments']));
+featureCheck($repository->find($categoryId)['homepage_category'] === 'apartments', 'Homepage category persists');
+$repository->save($input, $categoryId);
+featureCheck($repository->find($categoryId)['homepage_category'] === 'apartments', 'Existing callers preserve the category');
+featureCheck($repository->find($repository->clone($categoryId))['homepage_category'] === 'apartments', 'Cloning retains the category');
+$repository->save(array_replace($input, ['homepage_category' => '']), $categoryId);
+featureCheck($repository->find($categoryId)['homepage_category'] === '', 'Category can be cleared');
+try {
+    $repository->save(array_replace($input, ['homepage_category' => 'unknown']), $categoryId);
+    throw new LogicException('Invalid category accepted');
+} catch (InvalidArgumentException) {
+    featureCheck($repository->find($categoryId)['homepage_category'] === '', 'Invalid categories leave the plan unchanged');
+}
+foreach (['ru', 'en', 'de', 'zh-cn'] as $locale) {
+    $translations = require __DIR__ . '/../plugins/subscriptions/lang/' . $locale . '.php';
+    foreach (['', '_none', '_apartments', '_business', '_hint', '_invalid'] as $suffix) {
+        featureCheck(isset($translations['subscriptions_home_category' . $suffix]), 'Homepage category translation exists in ' . $locale);
+    }
+}
 echo "Subscription plan features passed. {$checks} checks.\n";

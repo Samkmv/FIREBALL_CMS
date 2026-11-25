@@ -3,6 +3,12 @@
 $en = require __DIR__ . '/en.php';
 
 return array_replace($en, [
+    'subscriptions_home_category' => 'Категория тарифа на главной',
+    'subscriptions_home_category_none' => 'Не показывать на главной',
+    'subscriptions_home_category_apartments' => 'Многоквартирные дома',
+    'subscriptions_home_category_business' => 'Бизнес',
+    'subscriptions_home_category_hint' => 'Выберите карточку главной страницы для этого тарифа. Отображаются только активные публичные тарифы.',
+    'subscriptions_home_category_invalid' => 'Выберите допустимую категорию тарифа.',
     'subscriptions_end_reason' => 'Причина завершения',
     'subscriptions_end_reason_site' => 'Автопродление отключено на сайте',
     'subscriptions_end_reason_payment_failed' => 'Неудачная оплата продления',

@@ -2,7 +2,7 @@
   "name": "Subscriptions",
   "slug": "subscriptions",
   "class": "FireballPluginSubscriptions",
-  "version": "1.5.8",
+  "version": "1.5.9",
   "description": "Complete paid subscription management with Robokassa checkout and recurring payments, subscriber profiles, plans, and server-side protection for posts, videos, and camera archives.",
   "name_i18n": {
     "ru": "Подписки",
@@ -19,6 +19,7 @@
   "author": "FIREBALL CMS",
   "auto_migrate": true,
   "release_notes": [
+    "Public plans can be assigned to homepage categories, with translated editing controls and category-specific pricing cards.",
     "Added searchable admin quick actions grouped by plugin.",
     "Added editing of names and descriptions for built-in plan capabilities and custom included items, displayed on plan cards, at checkout and in subscriber accounts.",
     "Russian phone masks and canonical +7 storage now match CMS account numbers; legacy records are displayed consistently without rewriting payment history.",
@@ -42,6 +43,7 @@
   },
   "release_notes_i18n": {
     "ru": [
+      "Добавлены категории тарифов для карточек главной страницы, вывод цен по категории и переводы новых полей.",
       "Добавлены быстрые действия админки с поиском и группировкой по плагинам.",
       "Добавлено редактирование названий и описаний встроенных возможностей тарифа и собственных пунктов состава подписки с отображением в карточках тарифов, при оформлении и в личном кабинете.",
       "Российская маска и сохранение телефона в формате +7 согласованы с аккаунтом CMS; старые номера отображаются единообразно без перезаписи истории платежей.",
@@ -60,6 +62,7 @@
       "Таблицы данных подписок на мобильных устройствах отображаются карточками в стиле шаблонов CMS."
     ],
     "en": [
+      "Public plans can be assigned to homepage categories, with translated editing controls and category-specific pricing cards.",
       "Added searchable admin quick actions grouped by plugin.",
       "Added editing of names and descriptions for built-in plan capabilities and custom included items, displayed on plan cards, at checkout and in subscriber accounts.",
       "Russian phone masks and canonical +7 storage now match CMS account numbers; legacy records are displayed consistently without rewriting payment history.",
@@ -78,6 +81,7 @@
       "Subscription data tables now use responsive mobile cards consistent with the CMS templates."
     ],
     "de": [
+      "Tarife können Startseitenkategorien zugeordnet werden, mit übersetzten Formularfeldern und passenden Preisen auf den Karten.",
       "Durchsuchbare Admin-Schnellaktionen nach Plugin gruppiert hinzugefügt.",
       "Namen und Beschreibungen integrierter Tarifleistungen und eigener Einträge lassen sich bearbeiten und werden auf Tarifkarten, beim Kauf und im Abonnentenkonto angezeigt.",
       "Russische Telefonmasken und die Speicherung im +7-Format entsprechen jetzt den CMS-Kontonummern; alte Datensätze werden einheitlich angezeigt, ohne den Zahlungsverlauf zu ändern.",
@@ -96,6 +100,7 @@
       "Datentabellen für Abonnements werden auf Mobilgeräten als responsive Karten im Stil der CMS-Vorlagen dargestellt."
     ],
     "zh-cn": [
+      "新增首页套餐分类、分类价格展示及表单字段翻译。",
       "新增按插件分组并可搜索的后台快捷操作。",
       "支持编辑套餐内置功能和自定义条目的名称与说明，并在套餐卡片、结账页和订阅者账户中显示。",
       "俄罗斯电话号码掩码及 +7 标准存储格式现与 CMS 账号一致；旧号码统一显示，不改写付款历史。",

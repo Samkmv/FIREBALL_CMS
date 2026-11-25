@@ -27,11 +27,18 @@ foreach (array_slice($featured_posts ?? [], 0, 10) as $post) {
         'favorite_post' => $post,
     ];
 }
+$objectPlans = apply_filters('home_object_plans', []);
 $objectCards = [
     ['title' => return_translation('home_index_object_apartments_title'), 'text' => return_translation('home_index_object_apartments_text'), 'image' => theme_asset('images/home/home.webp'), 'icon' => 'ci-home'],
     ['title' => return_translation('home_index_object_business_title'), 'text' => return_translation('home_index_object_business_text'), 'image' => theme_asset('images/home/business.webp'), 'icon' => 'ci-briefcase'],
-    ['title' => return_translation('home_index_object_public_title'), 'text' => return_translation('home_index_object_public_text'), 'image' => theme_asset('images/home/social.webp'), 'icon' => 'ci-globe'],
+    ['title' => return_translation('home_index_object_public_title'), 'text' => return_translation('home_index_object_public_text'), 'image' => theme_asset('images/home/installers.webp'), 'icon' => 'ci-globe'],
 ];
+foreach (['apartments', 'business', 'installers'] as $index => $category) {
+    $objectCards[$index]['plans'] = is_array($objectPlans[$category] ?? null) ? $objectPlans[$category] : [];
+    $objectCards[$index]['href'] = $objectCards[$index]['plans'] !== []
+        ? base_href('/subscriptions/plans') . '?category=' . $category
+        : base_href('/contacts');
+}
 $benefits = [
     ['icon' => 'ci-monitor', 'title' => return_translation('home_index_benefit_simple_title'), 'text' => return_translation('home_index_benefit_simple_text')],
     ['icon' => 'ci-check-shield', 'title' => return_translation('home_index_benefit_reliable_title'), 'text' => return_translation('home_index_benefit_reliable_text')],
@@ -126,8 +133,19 @@ $benefitsTitleLines = preg_split('/(?<=[.!?。！？])\s+/u', return_translation
                 <?php foreach ($objectCards as $index => $card): ?>
                     <article class="home-object-card home-appear <?= $index === 0 ? 'home-object-card--large' : '' ?>">
                         <img src="<?= htmlSC($card['image']) ?>" alt="" width="1536" height="1024" loading="lazy" decoding="async">
-                        <div class="home-object-card__content"><span class="home-object-card__number">0<?= $index + 1 ?></span><h3><?= htmlSC($card['title']) ?></h3><p><?= htmlSC($card['text']) ?></p></div>
-                        <a class="home-object-card__link" href="<?= base_href('/contacts') ?>" aria-label="<?= htmlSC($card['title'] . ': ' . return_translation('home_index_connect_object')) ?>"><i class="ci-arrow-up-right" aria-hidden="true"></i></a>
+                        <div class="home-object-card__content">
+                            <span class="home-object-card__number">0<?= $index + 1 ?></span>
+                            <h3><?= htmlSC($card['title']) ?></h3>
+                            <p><?= htmlSC($card['text']) ?></p>
+                            <?php if ($card['plans'] !== []): ?>
+                                <ul class="home-object-plans" aria-label="<?= htmlSC(return_translation('home_index_object_plans')) ?>">
+                                    <?php foreach ($card['plans'] as $plan): ?>
+                                        <li><a href="<?= htmlSC($plan['href']) ?>"><strong><?= htmlSC($plan['name']) ?></strong><small><?= htmlSC($plan['price'] . ' / ' . $plan['period']) ?></small></a></li>
+                                    <?php endforeach; ?>
+                                </ul>
+                            <?php endif; ?>
+                        </div>
+                        <a class="home-object-card__link" href="<?= htmlSC($card['href']) ?>" aria-label="<?= htmlSC($card['title'] . ': ' . return_translation($card['plans'] !== [] ? 'home_index_object_plans' : 'home_index_connect_object')) ?>"><i class="ci-arrow-up-right" aria-hidden="true"></i></a>
                     </article>
                 <?php endforeach; ?>
             </div>

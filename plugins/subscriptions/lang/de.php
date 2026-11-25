@@ -3,6 +3,12 @@
 $en = require __DIR__ . '/en.php';
 
 return array_replace($en, [
+    'subscriptions_home_category' => 'Tarifkategorie auf der Startseite',
+    'subscriptions_home_category_none' => 'Nicht auf der Startseite anzeigen',
+    'subscriptions_home_category_apartments' => 'Mehrfamilienhäuser',
+    'subscriptions_home_category_business' => 'Unternehmen',
+    'subscriptions_home_category_hint' => 'Wählen Sie die Startseitenkarte für diesen Tarif. Nur aktive öffentliche Tarife werden angezeigt.',
+    'subscriptions_home_category_invalid' => 'Wählen Sie eine gültige Tarifkategorie.',
     'subscriptions_end_reason' => 'Grund für das Ende',
     'subscriptions_end_reason_site' => 'Automatische Verlängerung auf der Website deaktiviert',
     'subscriptions_end_reason_payment_failed' => 'Verlängerungszahlung fehlgeschlagen',

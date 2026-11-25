@@ -23,6 +23,9 @@ $features = [
         </span>
         <h1 class="display-5 fw-semibold mb-3"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_plans_title')) ?></h1>
         <p class="lead text-body-secondary mb-0"><?= htmlSC(FireballPluginSubscriptions::t('subscriptions_plans_subtitle')) ?></p>
+        <?php if (!empty($category_label)): ?>
+            <p class="mt-3 mb-0 fw-semibold"><?= htmlSC($category_label) ?></p>
+        <?php endif; ?>
     </div>
 
     <div class="row g-4 justify-content-center align-items-stretch subscriptions-plan-grid">

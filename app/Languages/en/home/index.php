@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'home_index_object_plans' => 'Plans',
     'home_index_category_items' => 'Publications',
     'home_index_hero_title_accent' => 'Beautifully brought to life.',
     'home_index_featured_all' => 'Explore all',

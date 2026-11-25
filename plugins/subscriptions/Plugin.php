@@ -89,6 +89,22 @@ final class FireballPluginSubscriptions implements PluginInterface
 
         add_filter('profile_subscriptions_available', static fn(bool $available): bool => true);
 
+        add_filter('home_object_plans', static function (array $groups): array {
+            foreach ((new PlanRepository())->all(true) as $plan) {
+                $category = (string)($plan['homepage_category'] ?? '');
+                if (!in_array($category, PlanRepository::HOMEPAGE_CATEGORIES, true)) {
+                    continue;
+                }
+                $groups[$category][] = [
+                    'name' => (string)$plan['name'],
+                    'price' => (string)$plan['price_display'],
+                    'period' => (int)$plan['duration_value'] . ' ' . self::t('subscriptions_duration_' . $plan['duration_unit']),
+                    'href' => base_href('/subscriptions/checkout/' . (int)$plan['id']),
+                ];
+            }
+            return $groups;
+        });
+
         add_filter('profile_subscriptions', static function (array $items, array $user = []): array {
             $subscription = (new AccessService())->activeSubscription((int)($user['id'] ?? 0));
             if (!$subscription) {
