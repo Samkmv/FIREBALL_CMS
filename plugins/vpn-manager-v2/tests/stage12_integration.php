@@ -99,7 +99,7 @@ $assert = static function (bool $condition, string $message): void {
     }
 };
 
-$admin = db()->query("SELECT id FROM users WHERE role IN ('creator', 'admin') ORDER BY id LIMIT 1")->getOne();
+$admin = db()->query("SELECT id, locale, admin_locale FROM users WHERE role IN ('creator', 'admin') ORDER BY id LIMIT 1")->getOne();
 $user = db()->query("SELECT id, login FROM users WHERE role = 'user' ORDER BY id LIMIT 1")->getOne()
     ?: db()->query('SELECT id, login FROM users ORDER BY id LIMIT 1')->getOne();
 $assert(is_array($admin) && is_array($user), 'CMS users are required for Stage 12 integration tests.');
@@ -129,6 +129,8 @@ $settingKeys = [
     'notify_critical_errors',
 ];
 $restoreSettings = array_intersect_key($settingsBefore, array_flip($settingKeys));
+$requestLanguage = app()->get('lang');
+$changedAdministratorLocale = false;
 $results = [];
 
 try {
@@ -386,6 +388,12 @@ try {
     };
     $adminId = (int)$admin['id'];
     $userId = (int)$user['id'];
+    app()->set('lang', ['code' => 'de']);
+    FBL\Language::load(null);
+    $assert(str_contains(FireballPluginVpnManagerV2::t('vpn_manager_v2_notification_admin_expires_1_day_title'), 'läuft morgen ab'),
+        'The regression fixture must start with German request translations.');
+    db()->query("UPDATE users SET locale = 'de', admin_locale = 'ru' WHERE id = ?", [$adminId]);
+    $changedAdministratorLocale = true;
     $assert($saveRecipients(['', (string)$adminId, $adminId]) === [$adminId], 'Administrator selection was not saved.');
     if ($userId !== $adminId) {
         $rejected = false;
@@ -422,10 +430,12 @@ try {
             && $payload['type'] === 'vpn_v2_' . $type
             && $payload['action_url'] === '/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId
             && str_contains($payload['title'], $label)
+            && str_contains($payload['title'], 'VPN-подписка истекает')
+            && str_contains($payload['message'], 'Дата окончания подписки')
             && str_contains($payload['message'], $date)
             && !str_contains($payload['message'], '#' . $subscriptionId)
             && ($payload['push_notification'] ?? true),
-            'Reminder must identify the client, open the subscription in the admin panel and be eligible for push.');
+            'Reminder must use the recipient’s Russian admin locale even when the request and public languages are German.');
     }
     $notificationService->queueExpirationNotifications();
     $assert($notificationService->dispatch($adminTypes)['sent'] === 0, 'Administrator reminders were duplicated.');
@@ -438,6 +448,10 @@ try {
     $assert($notificationService->dispatch($adminTypes)['sent'] === 1, 'A reselected administrator did not receive the reminder.');
     $results['administrator_expiration_reminders'] = true;
 } finally {
+    if ($changedAdministratorLocale) {
+        db()->query('UPDATE users SET locale = ?, admin_locale = ? WHERE id = ?', [$admin['locale'], $admin['admin_locale'], (int)$admin['id']]);
+        app()->set('lang', $requestLanguage);
+    }
     foreach (array_reverse($subscriptionIds) as $subscriptionId) {
         db()->query('DELETE FROM vpn_v2_notifications WHERE subscription_id = ?', [$subscriptionId]);
         db()->query('DELETE FROM vpn_v2_events WHERE subscription_id = ?', [$subscriptionId]);

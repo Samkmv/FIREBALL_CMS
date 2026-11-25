@@ -3,6 +3,8 @@
 namespace Fireball\VpnManagerV2\Repositories;
 
 use App\Models\User;
+use App\Services\SchemaManifest;
+use FBL\Localization;
 
 final class NotificationRepository
 {
@@ -64,11 +66,15 @@ final class NotificationRepository
                 $params = array_merge($params, $types);
             }
         }
+        $columns = $this->recipientLocaleColumns();
+        $locale = in_array('locale', $columns, true) ? 'u.locale' : 'NULL';
+        $adminLocale = in_array('admin_locale', $columns, true) ? 'u.admin_locale' : 'NULL';
 
         return db()->query(
             "SELECT n.id, n.subscription_id, n.user_id, n.notification_type,
                     n.occurrence_key, n.channel, n.status, n.attempts, n.scheduled_for,
-                    u.email AS user_email, s.status AS subscription_status, s.expires_at,
+                    u.email AS user_email, {$locale} AS recipient_locale, {$adminLocale} AS recipient_admin_locale,
+                    s.status AS subscription_status, s.expires_at,
                     COALESCE(NULLIF(TRIM(s.client_display_name), ''),
                              NULLIF(TRIM(s.manual_customer_name), ''),
                              NULLIF(TRIM(owner.login), ''), NULLIF(TRIM(owner.name), '')) AS subscription_label
@@ -80,6 +86,19 @@ final class NotificationRepository
              ORDER BY n.id ASC LIMIT {$limit}",
             $params
         )->get() ?: [];
+    }
+
+    private function recipientLocaleColumns(): array
+    {
+        if (!class_exists(Localization::class)) {
+            return [];
+        }
+        $columns = class_exists(SchemaManifest::class) ? SchemaManifest::columns('users') : [];
+        if (in_array('locale', $columns, true) && in_array('admin_locale', $columns, true)) {
+            return $columns;
+        }
+
+        return array_column(db()->query("SHOW COLUMNS FROM users WHERE Field IN ('locale', 'admin_locale')")->get() ?: [], 'Field');
     }
 
     public function claim(int $id): bool

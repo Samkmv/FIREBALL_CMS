@@ -4,6 +4,7 @@ namespace Fireball\VpnManagerV2\Services;
 
 use App\Services\MailService;
 use App\Services\NotificationService;
+use FBL\Localization;
 use Fireball\VpnManagerV2\Repositories\AutomationRepository;
 use Fireball\VpnManagerV2\Repositories\NotificationRepository;
 
@@ -179,6 +180,7 @@ final class VpnNotificationService
         $sent = 0;
         $failed = 0;
         $administrators = null;
+        $translationsByLocale = [];
         $today = new \DateTimeImmutable('today');
         foreach ($this->repository()->pending($types) as $row) {
             $id = (int)$row['id'];
@@ -190,8 +192,15 @@ final class VpnNotificationService
                 $subscriptionId = (int)$row['subscription_id'];
                 $recipientId = (int)$row['user_id'];
                 $isAdminExpiration = in_array($type, [self::ADMIN_EXPIRES_3_DAYS, self::ADMIN_EXPIRES_1_DAY], true);
-                $title = $this->title($type);
-                $message = $this->message($type);
+                $locale = (string)($isAdminExpiration ? $row['recipient_admin_locale'] : '');
+                if (class_exists(Localization::class)) {
+                    $locale = Localization::normalizeLocale($locale) ?: Localization::normalizeLocale((string)$row['recipient_locale']);
+                }
+                $translations = $translationsByLocale[$locale] ??= $this->notificationTranslations($locale);
+                $titleKey = 'vpn_manager_v2_notification_' . $type . '_title';
+                $messageKey = 'vpn_manager_v2_notification_' . $type . '_message';
+                $title = $translations[$titleKey] ?? \FireballPluginVpnManagerV2::t($titleKey);
+                $message = $translations[$messageKey] ?? \FireballPluginVpnManagerV2::t($messageKey);
                 $actionUrl = '/profile/vpn-v2/' . $subscriptionId;
                 if ($isAdminExpiration) {
                     $administrators ??= $this->expirationRecipients($this->settings());
@@ -204,8 +213,8 @@ final class VpnNotificationService
                         $this->repository()->markSkipped($id);
                         continue;
                     }
-                    $label = $row['subscription_label']
-                        ?? \FireballPluginVpnManagerV2::t('vpn_manager_v2_notification_admin_expiration_unnamed');
+                    $unnamedKey = 'vpn_manager_v2_notification_admin_expiration_unnamed';
+                    $label = $row['subscription_label'] ?? $translations[$unnamedKey] ?? \FireballPluginVpnManagerV2::t($unnamedKey);
                     $title = sprintf($title, $label);
                     $message = sprintf($message, $date);
                     $actionUrl = '/admin/plugins/vpn-manager-v2/subscriptions/' . $subscriptionId;
@@ -302,14 +311,21 @@ final class VpnNotificationService
         return $count;
     }
 
-    private function title(string $type): string
+    private function notificationTranslations(string $locale): array
     {
-        return \FireballPluginVpnManagerV2::t('vpn_manager_v2_notification_' . $type . '_title');
-    }
+        if (!class_exists(Localization::class)) {
+            return [];
+        }
+        $candidates = Localization::localeCandidates($locale ?: Localization::siteLocale(), ['ru', 'en']);
+        $translations = [];
+        foreach (array_reverse($candidates) as $candidate) {
+            $file = dirname(__DIR__, 2) . '/lang/' . $candidate . '.php';
+            if (is_file($file)) {
+                $translations = array_replace($translations, require $file);
+            }
+        }
 
-    private function message(string $type): string
-    {
-        return \FireballPluginVpnManagerV2::t('vpn_manager_v2_notification_' . $type . '_message');
+        return $translations;
     }
 
     private function settings(): array
