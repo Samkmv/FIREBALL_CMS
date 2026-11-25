@@ -2136,11 +2136,19 @@ html[data-fb-admin-hydrated="false"] .fb-admin-main {
 }
 
 .fb-dashboard-traffic-card {
+    align-self: start;
+    min-height: 0;
     order: 1;
 }
 
 .fb-dashboard-quick-actions-card {
     order: 2;
+}
+
+.fb-dashboard-quick-actions-card .fb-quick-actions {
+    max-height: 330px;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
 }
 
 .fb-dashboard-chart-card {
@@ -3718,6 +3726,10 @@ html[data-fb-admin-hydrated="false"] .fb-admin-main {
 
     .fb-dashboard-chart [data-analytics-chart] {
         height: 250px;
+    }
+
+    .fb-dashboard-quick-actions-card .fb-quick-actions {
+        max-height: 290px;
     }
 
     .fb-admin-body .table-responsive {
